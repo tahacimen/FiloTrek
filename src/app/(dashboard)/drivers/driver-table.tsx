@@ -1,11 +1,12 @@
 "use client";
 
 import { useTransition } from "react";
-import { Link2, Trash2 } from "lucide-react";
+import { Link2, Link2Off, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 import {
   deleteDriverAction,
+  revokeDriverLoginLinkAction,
   sendDriverLoginLinkAction,
 } from "@/app/(dashboard)/drivers/actions";
 import { DriverFormDialog } from "@/app/(dashboard)/drivers/driver-form-dialog";
@@ -48,6 +49,21 @@ export function DriverTable({ drivers }: { drivers: SerializableDriver[] }) {
       const result = await sendDriverLoginLinkAction(driver.id);
       if (result?.error) toast.error(result.error);
       else toast.success(`${driver.fullName} adlı şoföre giriş bağlantısı gönderildi.`);
+    });
+  }
+
+  function handleRevokeLoginLink(driver: SerializableDriver) {
+    if (
+      !confirm(
+        `${driver.fullName} adlı şoförün giriş bağlantısını iptal etmek istediğinize emin misiniz? Şoför yeni bir bağlantı gönderilene kadar bu yolla giriş yapamayacak.`
+      )
+    ) {
+      return;
+    }
+    startTransition(async () => {
+      const result = await revokeDriverLoginLinkAction(driver.id);
+      if (result?.error) toast.error(result.error);
+      else toast.success(`${driver.fullName} adlı şoförün giriş bağlantısı iptal edildi.`);
     });
   }
 
@@ -104,6 +120,18 @@ export function DriverTable({ drivers }: { drivers: SerializableDriver[] }) {
                   <span className="sr-only">Giriş Bağlantısı Gönder</span>
                   <Link2 />
                 </Button>
+                {driver.hasActiveLoginLink && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    disabled={isPending}
+                    title="Giriş Bağlantısını İptal Et"
+                    onClick={() => handleRevokeLoginLink(driver)}
+                  >
+                    <span className="sr-only">Giriş Bağlantısını İptal Et</span>
+                    <Link2Off />
+                  </Button>
+                )}
                 <Button
                   variant="ghost"
                   size="icon"

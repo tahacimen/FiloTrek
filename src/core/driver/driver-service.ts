@@ -167,6 +167,23 @@ export async function regenerateDriverLoginToken(
   return { token, email: existing.email, fullName: existing.fullName };
 }
 
+/**
+ * Kills the driver's current login-link token immediately without sending a
+ * new one — for when a dispatcher suspects a link leaked and wants access
+ * cut off right away, rather than waiting on regenerateDriverLoginToken's
+ * "resend rotates" implicit revoke. Password login (if also set) and the
+ * driver's email are untouched; only the bearer-token path is affected.
+ */
+export async function revokeDriverLoginLink(
+  ctx: TenantContext,
+  driverId: string
+) {
+  requireCompanyType(ctx, CompanyType.SUPPLIER);
+  const existing = await driverRepository.getDriverForTenant(ctx, driverId);
+  if (!existing) throw new NotFoundError("Şoför bulunamadı.");
+  await driverRepository.setDriverLoginToken(ctx, driverId, null);
+}
+
 export async function getDriverStatusCounts(ctx: TenantContext) {
   requireCompanyType(ctx, CompanyType.SUPPLIER);
   const groups = await driverRepository.countDriversByStatus(ctx);

@@ -39,6 +39,12 @@ export function StatusBreakdownChart({
           innerRadius={55}
           outerRadius={90}
           paddingAngle={2}
+          // Recharts sweeps the pie in from 0 degrees by default, which
+          // renders as a fully empty circle for the first chunk of the
+          // animation — on a slow connection/device this reads as a broken
+          // chart rather than a loading one. Rendering the final state
+          // immediately avoids that without needing a separate skeleton.
+          isAnimationActive={false}
         >
           {data.map((_, index) => (
             <Cell key={index} fill={COLORS[index % COLORS.length]} />

@@ -3,6 +3,7 @@ import { hash } from "bcryptjs";
 import { prisma } from "../src/lib/db";
 import {
   CompanyRole,
+  CompanyType,
   DriverStatus,
   ShipmentStatus,
   StatusChangeSource,
@@ -223,6 +224,12 @@ async function main() {
         distanceKm: opts.distanceKm,
         tonnage: opts.tonnage,
         agreedPrice: opts.price,
+        // Matches assignVehicleAndDriver in shipment-status.ts, which always
+        // sets this to SUPPLIER at assignment time — every demo shipment
+        // here goes through that same path, so it should never be null
+        // while agreedPrice is set (see the shipments_price_proposed_by_required_check
+        // DB constraint).
+        priceProposedBy: CompanyType.SUPPLIER,
         priceApprovedAt: reachedHeadingToPickup
           ? new Date(opts.createdAt.getTime() + 15 * 60 * 1000)
           : null,

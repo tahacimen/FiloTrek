@@ -74,6 +74,20 @@ export async function sendDriverLoginLinkAction(
   } catch (error) {
     return { error: toActionErrorMessage(error) };
   }
+  revalidatePath("/drivers");
+  return undefined;
+}
+
+export async function revokeDriverLoginLinkAction(
+  driverId: string
+): Promise<DriverFormState> {
+  try {
+    const ctx = await requireTenantContext();
+    await driverService.revokeDriverLoginLink(ctx, driverId);
+  } catch (error) {
+    return { error: toActionErrorMessage(error) };
+  }
+  revalidatePath("/drivers");
   return undefined;
 }
 

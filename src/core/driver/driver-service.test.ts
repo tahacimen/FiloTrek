@@ -279,4 +279,19 @@ describe("driver-service: login link", () => {
       driverService.regenerateDriverLoginToken(ctx, driver.id)
     ).rejects.toThrow(ValidationError);
   });
+
+  it("revokes an active login-link token without touching email/password", async () => {
+    const ctx = await createSupplierContext();
+    companyIds.push(ctx.companyId);
+    const driver = await createTestDriver(ctx.companyId, {
+      email: "revoke-link@test.local",
+    });
+    await driverService.regenerateDriverLoginToken(ctx, driver.id);
+
+    await driverService.revokeDriverLoginLink(ctx, driver.id);
+
+    const updated = await driverService.getDriver(ctx, driver.id);
+    expect(updated.loginToken).toBeNull();
+    expect(updated.email).toBe("revoke-link@test.local");
+  });
 });
