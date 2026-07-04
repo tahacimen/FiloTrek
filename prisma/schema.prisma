@@ -1,0 +1,417 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ---------------------------------------------------------------------------
+// Enums
+// ---------------------------------------------------------------------------
+
+enum CompanyType {
+  SUPPLIER
+  CUSTOMER
+}
+
+enum CompanyStatus {
+  ACTIVE
+  SUSPENDED
+}
+
+enum CompanyRole {
+  ADMIN
+  MEMBER
+}
+
+enum VehicleType {
+  TIR
+  KAMYON
+  KAMYONET
+  PANELVAN
+}
+
+enum VehicleBedType {
+  ACIK_KASA
+  KAPALI_KASA
+  TENTELI
+  FRIGORIFIK
+  KONTEYNER
+  LOWBED
+}
+
+// Resting states for a vehicle. COMPLETED is never a resting state — it is
+// written to StatusHistory as a momentary marker in the same transaction
+// that returns the vehicle to AVAILABLE (see core/shipment/shipment-status.ts).
+enum VehicleStatus {
+  AVAILABLE
+  ASSIGNED
+  HEADING_TO_PICKUP
+  LOADING
+  EN_ROUTE
+  AT_DELIVERY_POINT
+  MAINTENANCE
+}
+
+enum DriverStatus {
+  AVAILABLE
+  ON_TRIP
+  OFF_DUTY
+}
+
+// Shipment ("sefer") status is the authoritative state machine; Vehicle/Driver
+// status is kept as a consistent projection of it (see plan section 4).
+enum ShipmentStatus {
+  PENDING
+  ASSIGNED
+  HEADING_TO_PICKUP
+  LOADING
+  // Driver confirms arrival at the depot/warehouse gate specifically (as
+  // opposed to the broader pickup area, reached at the LOADING transition)
+  // and that the vehicle is ready to be loaded. No photo requirement here —
+  // that stays exclusively on the AT_PICKUP_GATE -> EN_ROUTE departure.
+  AT_PICKUP_GATE
+  EN_ROUTE
+  AT_DELIVERY_POINT
+  COMPLETED
+  CANCELLED
+}
+
+enum StatusEntityType {
+  VEHICLE
+  DRIVER
+  SHIPMENT
+}
+
+enum StatusChangeSource {
+  MANUAL
+  SYSTEM_AUTO
+  EXTERNAL_WEBHOOK
+  DRIVER
+}
+
+enum NotificationType {
+  SHIPMENT_REQUESTED
+  LOAD_READY
+  VEHICLE_DEPARTED
+  PRICE_PROPOSED
+  PRICE_APPROVED
+  PRICE_REJECTED
+  DRIVER_ARRIVED_PICKUP
+  DRIVER_AT_PICKUP_GATE
+  DRIVER_DEPARTED_PICKUP
+  DRIVER_ARRIVED_DELIVERY
+  DRIVER_COMPLETED_DELIVERY
+  INCIDENT_REPORTED
+  INCIDENT_RESOLVED
+  VEHICLE_ENTERED_GATE
+  VEHICLE_EXITED_GATE
+}
+
+// ---------------------------------------------------------------------------
+// Models
+// ---------------------------------------------------------------------------
+
+model Company {
+  id        String        @id @default(uuid(7)) @db.Uuid
+  name      String
+  type      CompanyType
+  taxNumber String?       @unique @map("tax_number")
+  address   String?
+  phone     String?
+  status    CompanyStatus @default(ACTIVE)
+  createdAt DateTime      @default(now()) @map("created_at")
+  updatedAt DateTime      @updatedAt @map("updated_at")
+
+  users               User[]
+  vehicles            Vehicle[]
+  drivers             Driver[]
+  gateGuards          GateGuard[]
+  shipmentsAsCustomer Shipment[]     @relation("CustomerShipments")
+  shipmentsAsSupplier Shipment[]     @relation("SupplierShipments")
+  notifications       Notification[]
+
+  @@map("companies")
+}
+
+model User {
+  id           String      @id @default(uuid(7)) @db.Uuid
+  companyId    String      @map("company_id") @db.Uuid
+  company      Company     @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  email        String      @unique
+  passwordHash String      @map("password_hash")
+  fullName     String      @map("full_name")
+  phone        String?
+  companyRole  CompanyRole @default(MEMBER) @map("company_role")
+  isActive     Boolean     @default(true) @map("is_active")
+  lastLoginAt  DateTime?   @map("last_login_at")
+  createdAt    DateTime    @default(now()) @map("created_at")
+  updatedAt    DateTime    @updatedAt @map("updated_at")
+
+  statusChanges     StatusHistory[]
+  resolvedIncidents ShipmentIncident[]
+
+  @@index([companyId])
+  @@map("users")
+}
+
+model Vehicle {
+  id              String         @id @default(uuid(7)) @db.Uuid
+  companyId       String         @map("company_id") @db.Uuid
+  company         Company        @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  plate           String         @unique
+  vehicleType     VehicleType    @map("vehicle_type")
+  bedType         VehicleBedType @map("bed_type")
+  tonnageCapacity Decimal        @map("tonnage_capacity") @db.Decimal(10, 2)
+  status          VehicleStatus  @default(AVAILABLE)
+  createdAt       DateTime       @default(now()) @map("created_at")
+  updatedAt       DateTime       @updatedAt @map("updated_at")
+
+  shipments Shipment[]
+
+  @@index([companyId, status])
+  @@map("vehicles")
+}
+
+model Driver {
+  id              String       @id @default(uuid(7)) @db.Uuid
+  companyId       String       @map("company_id") @db.Uuid
+  company         Company      @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  fullName        String       @map("full_name")
+  phone           String
+  licenseNumber   String       @unique @map("license_number")
+  status          DriverStatus @default(AVAILABLE)
+  // Login is opt-in — a Driver row can exist with both null, meaning no
+  // login capability (matches pre-existing behavior). Set together by the
+  // dispatcher via the driver create/edit form.
+  email           String?      @unique
+  passwordHash    String?      @map("password_hash")
+  // Bearer token for the "send login link" flow — drivers who can't
+  // reliably type an email+password on a phone can instead tap an emailed
+  // link straight into an authenticated session. Deliberately has no
+  // expiry (see notes at the call site): it's meant to be a durable,
+  // bookmarkable link, not a one-time magic link. Cleared whenever email
+  // login is revoked (email cleared on the driver edit form) so the two
+  // login paths share one revocation point.
+  loginToken      String?      @unique @map("login_token")
+  tcNumber        String?      @map("tc_number")
+  experienceYears Int?         @map("experience_years")
+  lastLoginAt     DateTime?    @map("last_login_at")
+  createdAt       DateTime     @default(now()) @map("created_at")
+  updatedAt       DateTime     @updatedAt @map("updated_at")
+
+  shipments         Shipment[]
+  statusChanges     StatusHistory[]
+  reportedIncidents ShipmentIncident[] @relation("ReportedIncidents")
+  resolvedIncidents ShipmentIncident[] @relation("ResolvedIncidents")
+
+  @@index([companyId, status])
+  @@map("drivers")
+}
+
+// "Nizamiye" in the product's own vocabulary — gatehouse/security staff at a
+// CUSTOMER company's facility who log physical vehicle entry/exit for
+// shipments picking up from or delivering to that facility. Deliberately
+// restricted to CUSTOMER companies at the service layer (not enforceable via
+// the FK alone, same as every other company-type restriction in this app,
+// e.g. resolveCounterparty in shipment-service.ts) — the existing "Kapı
+// Rezervasyonu" pickup-gate-info feature is already customer-owned, so this
+// is the same side of the relationship. Unlike Driver, login is NOT
+// opt-in — the whole point of this account is to log in and record gate
+// events, so email/passwordHash are required, not nullable.
+model GateGuard {
+  id           String   @id @default(uuid(7)) @db.Uuid
+  companyId    String   @map("company_id") @db.Uuid
+  company      Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  fullName     String   @map("full_name")
+  email        String   @unique
+  passwordHash String   @map("password_hash")
+  isActive     Boolean  @default(true) @map("is_active")
+  lastLoginAt  DateTime? @map("last_login_at")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  gateEvents GateEvent[]
+
+  @@index([companyId])
+  @@map("gate_guards")
+}
+
+// Append-only log, not a mutable "current state" field on Shipment — a
+// vehicle's current in/out status is simply derived from its most recent
+// event, same "history is the source of truth" spirit as StatusHistory.
+// Lets a truck legitimately re-enter after leaving (e.g. forgot something)
+// without any special-casing.
+model GateEvent {
+  id          String        @id @default(uuid(7)) @db.Uuid
+  shipmentId  String        @map("shipment_id") @db.Uuid
+  shipment    Shipment      @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
+  gateGuardId String        @map("gate_guard_id") @db.Uuid
+  gateGuard   GateGuard     @relation(fields: [gateGuardId], references: [id])
+  eventType   GateEventType @map("event_type")
+  occurredAt  DateTime      @default(now()) @map("occurred_at")
+
+  @@index([shipmentId, occurredAt])
+  @@map("gate_events")
+}
+
+enum GateEventType {
+  VEHICLE_ENTERED
+  VEHICLE_EXITED
+}
+
+model Shipment {
+  id                  String         @id @default(uuid(7)) @db.Uuid
+  customerCompanyId   String         @map("customer_company_id") @db.Uuid
+  customerCompany     Company        @relation("CustomerShipments", fields: [customerCompanyId], references: [id])
+  supplierCompanyId   String?        @map("supplier_company_id") @db.Uuid
+  supplierCompany     Company?       @relation("SupplierShipments", fields: [supplierCompanyId], references: [id])
+  originAddress       String         @map("origin_address")
+  originMapsUrl       String?        @map("origin_maps_url")
+  destinationAddress  String         @map("destination_address")
+  destinationMapsUrl  String?        @map("destination_maps_url")
+  distanceKm          Decimal        @map("distance_km") @db.Decimal(10, 2)
+  tonnage             Decimal        @db.Decimal(10, 2)
+  cargoDescription    String?        @map("cargo_description")
+  documentTrackingNumber String?     @map("document_tracking_number")
+  vehicleId           String?        @map("vehicle_id") @db.Uuid
+  vehicle             Vehicle?       @relation(fields: [vehicleId], references: [id])
+  driverId            String?        @map("driver_id") @db.Uuid
+  driver              Driver?        @relation(fields: [driverId], references: [id])
+  status              ShipmentStatus @default(PENDING)
+  agreedPrice         Decimal?       @map("agreed_price") @db.Decimal(12, 2)
+  // Who put the CURRENT agreedPrice on the table — the other side is the
+  // only one who can approve or reject it. Set to SUPPLIER at assignment
+  // time; flips whenever either side counters via proposePrice. Together
+  // with agreedPrice/priceApprovedAt/priceRejectedAt this is the entire
+  // negotiation state — no separate offer-history table, since nothing in
+  // the product ask needs a past-offers log, only "what's on the table now
+  // and whose turn is it."
+  priceProposedBy     CompanyType?   @map("price_proposed_by")
+  priceApprovedAt     DateTime?      @map("price_approved_at")
+  // Set when the receiving side rejects the current agreedPrice WITHOUT a
+  // counter-offer (a bare "no") — distinguishes "rejected, waiting on the
+  // proposer for a new number" from "freshly proposed, awaiting first
+  // review" in the UI. Cleared by any new proposePrice call (a counter IS
+  // a new proposal, whether it came via rejectPrice's optional amount or a
+  // standalone re-propose) and by approvePrice.
+  priceRejectedAt     DateTime?      @map("price_rejected_at")
+  pickupGateInfo      String?        @map("pickup_gate_info")
+  pickupMapsUrl       String?        @map("pickup_maps_url")
+  loadReadyAt         DateTime?      @map("load_ready_at")
+  // Supplier's own estimate of when the vehicle will reach the pickup
+  // point — set any time while ASSIGNED or HEADING_TO_PICKUP, re-settable
+  // to reflect delays (same "overwrite rather than lock" reasoning as
+  // pickupGateInfo above). Distinct from loadReadyAt (customer confirming
+  // cargo is ready) and from the real arrival, which is simply the
+  // HEADING_TO_PICKUP -> LOADING transition timestamp in StatusHistory.
+  estimatedPickupArrivalAt DateTime? @map("estimated_pickup_arrival_at")
+  // Denormalized: true while a driver-reported breakdown is unresolved.
+  // Deliberately orthogonal to `status` — a breakdown doesn't change what
+  // stage the shipment is in (see ShipmentIncident below), it's a warning
+  // overlay so list views can badge it without joining shipment_incidents.
+  hasOpenIncident     Boolean        @default(false) @map("has_open_incident")
+  createdAt           DateTime       @default(now()) @map("created_at")
+  updatedAt           DateTime       @updatedAt @map("updated_at")
+  completedAt         DateTime?      @map("completed_at")
+  cancelledAt         DateTime?      @map("cancelled_at")
+
+  notifications Notification[]
+  incidents     ShipmentIncident[]
+  gateEvents    GateEvent[]
+
+  @@index([customerCompanyId, status])
+  @@index([supplierCompanyId, status])
+  @@index([vehicleId])
+  @@index([driverId])
+  @@map("shipments")
+}
+
+// Generic append-only audit trail shared by Vehicle, Driver and Shipment status
+// transitions. entityType + entityId identify the record instead of separate
+// per-entity history tables, since all three follow the same shape.
+model StatusHistory {
+  id                String              @id @default(uuid(7)) @db.Uuid
+  entityType        StatusEntityType    @map("entity_type")
+  entityId          String              @map("entity_id") @db.Uuid
+  fromStatus        String?             @map("from_status")
+  toStatus          String              @map("to_status")
+  changedByUserId   String?             @map("changed_by_user_id") @db.Uuid
+  changedByUser     User?               @relation(fields: [changedByUserId], references: [id])
+  // Exactly one of changedByUserId/changedByDriverId is ever set (enforced by
+  // a CHECK constraint in the migration) — a driver's id can't be stored in
+  // changedByUserId since that column is FK'd specifically to User.
+  changedByDriverId String?             @map("changed_by_driver_id") @db.Uuid
+  changedByDriver   Driver?             @relation(fields: [changedByDriverId], references: [id])
+  source            StatusChangeSource
+  sourceReference   String?             @map("source_reference")
+  // Evidence photo for a routine transition (currently: the mandatory
+  // pickup-departure photo on SHIPMENT LOADING -> EN_ROUTE). Distinct from
+  // ShipmentIncident.photoUrl, which is breakdown evidence attached to an
+  // out-of-band event that doesn't correspond to any transition here.
+  photoUrl          String?             @map("photo_url")
+  createdAt         DateTime            @default(now()) @map("created_at")
+
+  @@index([entityType, entityId, createdAt])
+  @@map("status_history")
+}
+
+// A driver-reported breakdown. Deliberately NOT modeled as a ShipmentStatus
+// value or folded into StatusHistory — it doesn't change what stage the
+// shipment is at (the DAG in shipment-transitions.ts stays untouched), and
+// it has a genuine open/close lifecycle with two independent actor slots
+// (who reported vs. who resolved), which StatusHistory's single-actor
+// from->to transition shape doesn't fit. Shipment.hasOpenIncident is the
+// denormalized "is there currently one open" flag kept in sync with this.
+model ShipmentIncident {
+  id                 String    @id @default(uuid(7)) @db.Uuid
+  shipmentId         String    @map("shipment_id") @db.Uuid
+  shipment           Shipment  @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
+  // Optional + implicit SetNull (not required/Restrict), matching every
+  // other actor-attribution FK in this schema (StatusHistory's
+  // changedByUserId/changedByDriverId) — a driver can be deleted later
+  // (see deleteDriver in driver-service.ts) and a past incident's
+  // attribution should survive that as NULL, not block the deletion.
+  reportedByDriverId String?   @map("reported_by_driver_id") @db.Uuid
+  reportedByDriver   Driver?   @relation("ReportedIncidents", fields: [reportedByDriverId], references: [id])
+  note               String?
+  photoUrl           String?   @map("photo_url")
+  reportedAt         DateTime  @default(now()) @map("reported_at")
+  resolvedAt         DateTime? @map("resolved_at")
+  // Exactly one of resolvedByDriverId/resolvedByUserId is ever set when
+  // resolvedAt is non-null (enforced by a CHECK constraint in the
+  // migration) — either the driver self-resolved or a dispatcher did.
+  resolvedByDriverId String?   @map("resolved_by_driver_id") @db.Uuid
+  resolvedByDriver   Driver?   @relation("ResolvedIncidents", fields: [resolvedByDriverId], references: [id])
+  resolvedByUserId   String?   @map("resolved_by_user_id") @db.Uuid
+  resolvedByUser     User?     @relation(fields: [resolvedByUserId], references: [id])
+  resolutionNote     String?   @map("resolution_note")
+
+  @@index([shipmentId, resolvedAt])
+  @@map("shipment_incidents")
+}
+
+// Company-scoped ("shared team inbox") notifications — read state is per
+// company, not per user, matching how the rest of this schema has no
+// per-user read/seen state on shared company data. `message` is denormalized
+// plain text written at creation time rather than derived from relations at
+// render time, so old notifications stay readable even if a related company
+// is renamed or a shipment is later removed, and so the client-facing bell
+// never needs to touch a Decimal-bearing relation.
+model Notification {
+  id                String           @id @default(uuid(7)) @db.Uuid
+  companyId         String           @map("company_id") @db.Uuid
+  company           Company          @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  type              NotificationType
+  message           String
+  relatedShipmentId String?          @map("related_shipment_id") @db.Uuid
+  relatedShipment   Shipment?        @relation(fields: [relatedShipmentId], references: [id], onDelete: Cascade)
+  isRead            Boolean          @default(false) @map("is_read")
+  readAt            DateTime?        @map("read_at")
+  createdAt         DateTime         @default(now()) @map("created_at")
+
+  @@index([companyId, isRead, createdAt])
+  @@map("notifications")
+}
