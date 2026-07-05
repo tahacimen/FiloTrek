@@ -57,8 +57,21 @@ export default auth((req) => {
   const accountType = req.auth?.user?.accountType;
   const { pathname } = req.nextUrl;
   const isLoginPage = pathname === "/login";
+  // Public marketing landing at "/" — reachable by anyone, logged in or not,
+  // and never redirect-bounced. Everything else stays auth-gated below.
+  const isLandingPage = pathname === "/";
   const isDriverRoute = pathname === "/driver" || pathname.startsWith("/driver/");
   const isGateRoute = pathname === "/gate" || pathname.startsWith("/gate/");
+
+  if (isLandingPage) {
+    const requestHeaders = new Headers(req.headers);
+    requestHeaders.set("x-nonce", nonce);
+    requestHeaders.set("Content-Security-Policy", csp);
+    return withSecurityHeaders(
+      NextResponse.next({ request: { headers: requestHeaders } }),
+      csp
+    );
+  }
 
   if (!isLoggedIn && !isLoginPage) {
     const loginUrl = new URL("/login", req.nextUrl.origin);
