@@ -1,7 +1,7 @@
 "use client";
 
 import { useTransition } from "react";
-import { CircleCheck, CircleX, Clock, Loader2 } from "lucide-react";
+import { CircleCheck, CircleX, Clock, HandCoins, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { approvePriceAction } from "@/app/(dashboard)/shipments/actions";
@@ -66,12 +66,19 @@ export function PriceApprovalCard({
 
   return (
     <Card>
-      <CardHeader>
-        <CardTitle>Nakliye Fiyatı</CardTitle>
+      <CardHeader className="flex-row items-center justify-between">
+        <CardTitle className="flex items-center gap-2 text-base">
+          <HandCoins className="text-muted-foreground size-4" />
+          Fiyat Pazarlığı
+        </CardTitle>
+        <Badge variant={priceApprovedAt ? "outline" : "secondary"}>
+          {priceApprovedAt ? "Kapalı" : "Açık"}
+        </Badge>
       </CardHeader>
       <CardContent className="flex items-center justify-between gap-4">
         <div className="flex flex-col gap-1.5">
-          <span className="text-2xl font-semibold tracking-tight">
+          <span className="text-muted-foreground text-xs">Güncel Teklif</span>
+          <span className="text-3xl font-extrabold tracking-tight">
             {agreedPrice.toLocaleString("tr-TR")} ₺
           </span>
           {priceApprovedAt ? (

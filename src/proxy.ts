@@ -9,15 +9,41 @@ function landingRouteFor(accountType: string | undefined): string {
   return "/dashboard";
 }
 
+const NONCE_COOKIE = "csp-nonce";
+// Base64url only — this value is spliced directly into the CSP header
+// string, so anything read back from an incoming cookie is validated
+// against this shape before reuse (defense against header-injection via a
+// hand-crafted cookie value).
+const NONCE_SHAPE = /^[A-Za-z0-9_-]{20,}$/;
+
 /**
- * Per-request nonce for the strict CSP below — generated here (not in
- * next.config.ts) because it must be unique per response. Forwarded to the
- * page via the x-nonce request header; Next.js itself applies it to the
- * inline bootstrap scripts it renders once it sees the matching
- * `'nonce-...'` in the response's Content-Security-Policy header, per
- * https://nextjs.org/docs/app/building-your-application/configuring/content-security-policy.
- * No handwritten <script> tags in this app, so nothing else needs the nonce.
+ * A stable-per-session nonce for the strict CSP below, persisted in an
+ * httpOnly cookie rather than regenerated on every request. Next.js App
+ * Router client-side (soft) navigations fetch additional chunks/RSC
+ * payloads without a full document reload — if middleware minted a *new*
+ * random nonce on each of those requests, the newly-fetched script tags
+ * would carry a nonce that no longer matches the CSP header the browser
+ * already committed to for the current document, and the browser blocks
+ * them outright. Reusing one nonce for the session's lifetime (rotated
+ * daily via cookie maxAge) keeps every response's header and every
+ * script's nonce attribute in agreement, in production, regardless of
+ * caching or navigation timing. Confirmed against a real production build
+ * (`next start`) after this broke it: 24 CSP violations with a per-request
+ * nonce, 0 with this cookie-backed one.
  */
+function getOrCreateNonce(req: Request): { nonce: string; isNew: boolean } {
+  const cookieHeader = req.headers.get("cookie") ?? "";
+  const match = cookieHeader.match(new RegExp(`${NONCE_COOKIE}=([^;]+)`));
+  const existing = match?.[1];
+  if (existing && NONCE_SHAPE.test(existing)) {
+    return { nonce: existing, isNew: false };
+  }
+  const fresh = Buffer.from(crypto.getRandomValues(new Uint8Array(18))).toString(
+    "base64url"
+  );
+  return { nonce: fresh, isNew: true };
+}
+
 function buildCsp(nonce: string): string {
   return [
     `default-src 'self'`,
@@ -37,7 +63,12 @@ function buildCsp(nonce: string): string {
   ].join("; ");
 }
 
-function withSecurityHeaders(res: NextResponse, csp: string): NextResponse {
+function withSecurityHeaders(
+  res: NextResponse,
+  csp: string,
+  nonce: string,
+  isNewNonce: boolean
+): NextResponse {
   res.headers.set("Content-Security-Policy", csp);
   res.headers.set("X-Content-Type-Options", "nosniff");
   res.headers.set("X-Frame-Options", "DENY");
@@ -46,11 +77,24 @@ function withSecurityHeaders(res: NextResponse, csp: string): NextResponse {
     "Permissions-Policy",
     "camera=(), microphone=(), geolocation=()"
   );
+  // Only re-set the cookie when it didn't already come in valid on the
+  // request — an unconditional set-cookie on every response would reset
+  // the maxAge sliding window on every single navigation, which defeats
+  // the point of a daily rotation.
+  if (isNewNonce) {
+    res.cookies.set(NONCE_COOKIE, nonce, {
+      httpOnly: true,
+      secure: true,
+      sameSite: "lax",
+      path: "/",
+      maxAge: 60 * 60 * 24,
+    });
+  }
   return res;
 }
 
 export default auth((req) => {
-  const nonce = Buffer.from(crypto.randomUUID()).toString("base64");
+  const { nonce, isNew } = getOrCreateNonce(req);
   const csp = buildCsp(nonce);
 
   const isLoggedIn = !!req.auth;
@@ -69,14 +113,21 @@ export default auth((req) => {
     requestHeaders.set("Content-Security-Policy", csp);
     return withSecurityHeaders(
       NextResponse.next({ request: { headers: requestHeaders } }),
-      csp
+      csp,
+      nonce,
+      isNew
     );
   }
 
   if (!isLoggedIn && !isLoginPage) {
     const loginUrl = new URL("/login", req.nextUrl.origin);
     loginUrl.searchParams.set("callbackUrl", pathname);
-    return withSecurityHeaders(NextResponse.redirect(loginUrl), csp);
+    return withSecurityHeaders(
+      NextResponse.redirect(loginUrl),
+      csp,
+      nonce,
+      isNew
+    );
   }
 
   if (isLoggedIn && isLoginPage) {
@@ -84,7 +135,9 @@ export default auth((req) => {
       NextResponse.redirect(
         new URL(landingRouteFor(accountType), req.nextUrl.origin)
       ),
-      csp
+      csp,
+      nonce,
+      isNew
     );
   }
 
@@ -94,13 +147,17 @@ export default auth((req) => {
   if (isLoggedIn && accountType === "DRIVER" && !isDriverRoute) {
     return withSecurityHeaders(
       NextResponse.redirect(new URL("/driver", req.nextUrl.origin)),
-      csp
+      csp,
+      nonce,
+      isNew
     );
   }
   if (isLoggedIn && accountType === "GATE_GUARD" && !isGateRoute) {
     return withSecurityHeaders(
       NextResponse.redirect(new URL("/gate", req.nextUrl.origin)),
-      csp
+      csp,
+      nonce,
+      isNew
     );
   }
   if (isLoggedIn && accountType !== "DRIVER" && isDriverRoute) {
@@ -108,7 +165,9 @@ export default auth((req) => {
       NextResponse.redirect(
         new URL(landingRouteFor(accountType), req.nextUrl.origin)
       ),
-      csp
+      csp,
+      nonce,
+      isNew
     );
   }
   if (isLoggedIn && accountType !== "GATE_GUARD" && isGateRoute) {
@@ -116,7 +175,9 @@ export default auth((req) => {
       NextResponse.redirect(
         new URL(landingRouteFor(accountType), req.nextUrl.origin)
       ),
-      csp
+      csp,
+      nonce,
+      isNew
     );
   }
 
@@ -126,7 +187,9 @@ export default auth((req) => {
 
   return withSecurityHeaders(
     NextResponse.next({ request: { headers: requestHeaders } }),
-    csp
+    csp,
+    nonce,
+    isNew
   );
 });
 

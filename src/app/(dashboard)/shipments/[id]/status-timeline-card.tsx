@@ -1,4 +1,4 @@
-import { Check, X } from "lucide-react";
+import { Check, Truck, X } from "lucide-react";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatDateTime } from "@/lib/format";
@@ -11,9 +11,13 @@ import { SHIPMENT_STATUS_SEQUENCE } from "@/core/shipment/shipment-transitions";
 import type { ShipmentStatus } from "@/generated/prisma/enums";
 
 /**
- * Step-by-step timeline of the shipment's own lifecycle, with the date/time
- * each step was reached — visible to both SUPPLIER and CUSTOMER, each with
- * their own perspective-specific label (see customerShipmentStatusLabels).
+ * Horizontal step-by-step timeline of the shipment's own lifecycle, with the
+ * date/time each step was reached — visible to both SUPPLIER and CUSTOMER,
+ * each with their own perspective-specific label (see
+ * customerShipmentStatusLabels). Scrolls horizontally on narrow screens
+ * rather than wrapping, since a wrapped multi-row timeline reads as
+ * disconnected steps instead of one continuous journey.
+ *
  * CANCELLED isn't part of the fixed sequence (it can happen from any
  * non-terminal step) — handled as a trailing marker instead, so the
  * timeline reads as "here's how far it got before cancellation" rather
@@ -42,6 +46,12 @@ export function StatusTimelineCard({
 
   const isCancelled = status === "CANCELLED";
   const currentIndex = SHIPMENT_STATUS_SEQUENCE.indexOf(status);
+  const steps = isCancelled
+    ? SHIPMENT_STATUS_SEQUENCE.slice(0, currentIndex + 1 || SHIPMENT_STATUS_SEQUENCE.length)
+    : SHIPMENT_STATUS_SEQUENCE;
+  const progressPct = isCancelled
+    ? 100
+    : (Math.max(currentIndex, 0) / (SHIPMENT_STATUS_SEQUENCE.length - 1)) * 100;
 
   return (
     <Card>
@@ -49,58 +59,85 @@ export function StatusTimelineCard({
         <CardTitle>Sefer Durumu</CardTitle>
       </CardHeader>
       <CardContent>
-        <ol className="flex flex-col">
-          {SHIPMENT_STATUS_SEQUENCE.map((step) => {
-            const at = reachedAt.get(step);
-            const isReached = at !== undefined;
-            const stepIndex = SHIPMENT_STATUS_SEQUENCE.indexOf(step);
-            const isCurrent = !isCancelled && stepIndex === currentIndex;
-            const isFuture = isCancelled ? !isReached : stepIndex > currentIndex;
+        <div className="overflow-x-auto pb-1">
+          <div className="relative flex min-w-[640px] items-start px-5 pt-4">
+            <div className="absolute top-9 right-5 left-5 z-0 h-0.5">
+              <div
+                className="h-full w-full"
+                style={{
+                  backgroundImage:
+                    "repeating-linear-gradient(to right, var(--color-border) 0 4px, transparent 4px 8px)",
+                }}
+              />
+              <div
+                className="absolute inset-y-0 left-0 h-full"
+                style={{
+                  width: `${progressPct}%`,
+                  backgroundImage:
+                    "repeating-linear-gradient(to right, var(--color-primary) 0 4px, transparent 4px 8px)",
+                }}
+              />
+            </div>
 
-            return (
-              <li key={step} className="flex items-center gap-3 py-1.5">
-                <span
-                  className={cn(
-                    "flex size-6 shrink-0 items-center justify-center rounded-full border text-xs",
-                    isCurrent
-                      ? "border-primary bg-primary text-primary-foreground"
-                      : isReached
-                        ? "border-success bg-success text-success-foreground"
-                        : "border-border text-muted-foreground"
-                  )}
+            {steps.map((step) => {
+              const at = reachedAt.get(step);
+              const isReached = at !== undefined;
+              const stepIndex = SHIPMENT_STATUS_SEQUENCE.indexOf(step);
+              const isCurrent = !isCancelled && stepIndex === currentIndex;
+              const isFuture = isCancelled ? !isReached : stepIndex > currentIndex;
+
+              return (
+                <div
+                  key={step}
+                  className="relative z-10 flex flex-1 flex-col items-center gap-1.5 px-1"
                 >
-                  {isReached && <Check className="size-3.5" />}
+                  <span
+                    className={cn(
+                      "ring-background flex shrink-0 items-center justify-center rounded-full ring-4 transition-all",
+                      isCurrent
+                        ? "bg-accent-blue text-accent-blue-foreground size-10 shadow-lg"
+                        : isReached
+                          ? "bg-primary text-primary-foreground size-8"
+                          : "bg-muted text-muted-foreground border-border size-8 border"
+                    )}
+                  >
+                    {isReached && !isCurrent && <Check className="size-4" />}
+                    {isCurrent && <Truck className="size-[18px]" />}
+                  </span>
+                  <span
+                    className={cn(
+                      "text-center text-xs leading-tight font-semibold",
+                      isCurrent && "text-accent-blue",
+                      isReached && !isCurrent && "text-primary",
+                      isFuture && "text-muted-foreground font-normal"
+                    )}
+                  >
+                    {labels[step]}
+                  </span>
+                  <span className="text-muted-foreground text-center text-[11px]">
+                    {isCurrent ? "Şu an" : at ? formatDateTime(at) : "—"}
+                  </span>
+                </div>
+              );
+            })}
+
+            {isCancelled && (
+              <div className="relative z-10 flex flex-1 flex-col items-center gap-1.5 px-1">
+                <span className="ring-background bg-destructive text-destructive-foreground flex size-8 shrink-0 items-center justify-center rounded-full ring-4">
+                  <X className="size-4" />
                 </span>
-                <span
-                  className={cn(
-                    "flex-1 text-sm font-medium",
-                    isFuture && "text-muted-foreground"
-                  )}
-                >
-                  {labels[step]}
+                <span className="text-destructive text-center text-xs leading-tight font-semibold">
+                  İptal Edildi
                 </span>
-                <span className="text-muted-foreground text-xs">
-                  {at ? formatDateTime(at) : "—"}
+                <span className="text-muted-foreground text-center text-[11px]">
+                  {reachedAt.get("CANCELLED")
+                    ? formatDateTime(reachedAt.get("CANCELLED")!)
+                    : "—"}
                 </span>
-              </li>
-            );
-          })}
-          {isCancelled && (
-            <li className="flex items-center gap-3 py-1.5">
-              <span className="border-destructive bg-destructive text-destructive-foreground flex size-6 shrink-0 items-center justify-center rounded-full border text-xs">
-                <X className="size-3.5" />
-              </span>
-              <span className="text-destructive flex-1 text-sm font-medium">
-                İptal Edildi
-              </span>
-              <span className="text-muted-foreground text-xs">
-                {reachedAt.get("CANCELLED")
-                  ? formatDateTime(reachedAt.get("CANCELLED")!)
-                  : "—"}
-              </span>
-            </li>
-          )}
-        </ol>
+              </div>
+            )}
+          </div>
+        </div>
       </CardContent>
     </Card>
   );

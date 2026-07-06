@@ -6,10 +6,12 @@ import { getDashboardData } from "@/core/dashboard/dashboard-service";
 import { listShipments } from "@/core/shipment/shipment-service";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Separator } from "@/components/ui/separator";
 import { KpiCards } from "@/components/dashboard/kpi-cards";
 import { OccupancyChart } from "@/components/dashboard/occupancy-chart";
 import { TrendChart } from "@/components/dashboard/trend-chart";
 import { StatusBreakdownChart } from "@/components/dashboard/status-breakdown-chart";
+import { ActivityFeed } from "@/components/dashboard/activity-feed";
 import {
   customerShipmentStatusLabels,
   driverStatusLabels,
@@ -63,6 +65,7 @@ export default async function DashboardPage() {
             <StatusBreakdownChart
               counts={counts}
               labels={customerShipmentStatusLabels}
+              unitLabel="Sefer"
             />
           </CardContent>
         </Card>
@@ -88,50 +91,55 @@ export default async function DashboardPage() {
         idleDrivers={data.idleDrivers}
       />
 
-      <div className="grid gap-4 lg:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle>Araç Tipine Göre Filo Doluluğu</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <OccupancyChart data={data.occupancyByType} />
-          </CardContent>
-        </Card>
+      <div className="grid gap-4 lg:grid-cols-3">
+        <div className="flex flex-col gap-4 lg:col-span-2">
+          <Card>
+            <CardHeader>
+              <CardTitle>Araç Tipine Göre Filo Doluluğu</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <OccupancyChart data={data.occupancyByType} />
+            </CardContent>
+          </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Şoför Durum Kırılımı</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <StatusBreakdownChart
-              counts={data.driversByStatus}
-              labels={driverStatusLabels}
-            />
-          </CardContent>
-        </Card>
-      </div>
+          <Card>
+            <CardHeader>
+              <CardTitle>Kapasite Kullanım Trendi (Son 14 Gün)</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <TrendChart data={data.completedShipmentsTrend} />
+            </CardContent>
+          </Card>
+        </div>
 
-      <div className="grid gap-4 lg:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle>Kapasite Kullanım Trendi (Son 14 Gün)</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <TrendChart data={data.completedShipmentsTrend} />
-          </CardContent>
-        </Card>
+        <div className="flex flex-col gap-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Şoför/Araç Durumu</CardTitle>
+            </CardHeader>
+            <CardContent className="flex flex-col gap-6">
+              <div>
+                <p className="mb-2 text-sm font-medium">Araçlar</p>
+                <StatusBreakdownChart
+                  counts={data.vehiclesByStatus}
+                  labels={vehicleStatusLabels}
+                  unitLabel="Araç"
+                />
+              </div>
+              <Separator />
+              <div>
+                <p className="mb-2 text-sm font-medium">Şoförler</p>
+                <StatusBreakdownChart
+                  counts={data.driversByStatus}
+                  labels={driverStatusLabels}
+                  unitLabel="Şoför"
+                />
+              </div>
+            </CardContent>
+          </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Araç Durum Kırılımı</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <StatusBreakdownChart
-              counts={data.vehiclesByStatus}
-              labels={vehicleStatusLabels}
-            />
-          </CardContent>
-        </Card>
+          <ActivityFeed rows={data.recentActivity} />
+        </div>
       </div>
     </div>
   );

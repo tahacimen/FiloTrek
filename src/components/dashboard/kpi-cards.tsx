@@ -1,28 +1,26 @@
-import { Package, Truck, UserCheck, Waypoints } from "lucide-react";
-
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { CheckCircle2, Truck, UserCheck, Waypoints } from "lucide-react";
 
 function KpiCard({
   label,
   value,
   icon: Icon,
+  chipClassName,
 }: {
   label: string;
   value: number;
   icon: React.ComponentType<{ className?: string }>;
+  chipClassName: string;
 }) {
   return (
-    <Card>
-      <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
-        <CardTitle className="text-muted-foreground text-sm font-medium">
-          {label}
-        </CardTitle>
-        <Icon className="text-muted-foreground size-4" />
-      </CardHeader>
-      <CardContent>
-        <p className="text-2xl font-semibold">{value}</p>
-      </CardContent>
-    </Card>
+    <div className="rounded-xl border bg-card p-4 shadow-sm">
+      <div
+        className={`mb-3 flex size-10 items-center justify-center rounded-full ${chipClassName}`}
+      >
+        <Icon className="size-5" />
+      </div>
+      <p className="text-muted-foreground mb-1 text-sm">{label}</p>
+      <p className="text-3xl font-extrabold tracking-tight">{value}</p>
+    </div>
   );
 }
 
@@ -39,10 +37,30 @@ export function KpiCards({
 }) {
   return (
     <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-      <KpiCard label="Toplam Araç" value={totalVehicles} icon={Truck} />
-      <KpiCard label="Müsait Araç" value={availableVehicles} icon={Package} />
-      <KpiCard label="Yoldaki Araç" value={enRouteVehicles} icon={Waypoints} />
-      <KpiCard label="Boştaki Şoför" value={idleDrivers} icon={UserCheck} />
+      <KpiCard
+        label="Toplam Araç"
+        value={totalVehicles}
+        icon={Truck}
+        chipClassName="bg-primary/10 text-primary"
+      />
+      <KpiCard
+        label="Müsait Araç"
+        value={availableVehicles}
+        icon={CheckCircle2}
+        chipClassName="bg-success/15 text-success"
+      />
+      <KpiCard
+        label="Yoldaki Araç"
+        value={enRouteVehicles}
+        icon={Waypoints}
+        chipClassName="bg-brand/15 text-brand"
+      />
+      <KpiCard
+        label="Boştaki Şoför"
+        value={idleDrivers}
+        icon={UserCheck}
+        chipClassName="bg-accent-blue/15 text-accent-blue"
+      />
     </div>
   );
 }

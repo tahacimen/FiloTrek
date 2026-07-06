@@ -24,6 +24,17 @@ import {
 
 import { Logo } from "@/components/logo";
 
+// Forces per-request rendering rather than a build-time static export — this
+// page has no dynamic data of its own, but the strict CSP in proxy.ts stamps
+// a fresh nonce on every response, and Next.js can only tag this page's own
+// <script> tags with that nonce if it actually re-renders per request. A
+// statically-generated version of this page bakes in whatever (non-matching)
+// nonce existed at build time, which the browser then rejects at runtime —
+// confirmed via a real production build + Playwright run: every script on a
+// static "/" 404'd its CSP check while every other (already-dynamic, e.g.
+// auth-gated) route passed.
+export const dynamic = "force-dynamic";
+
 const NAV_LINKS = [
   { href: "#nasil", label: "Nasıl Çalışır" },
   { href: "#hizmetler", label: "Hizmetler" },

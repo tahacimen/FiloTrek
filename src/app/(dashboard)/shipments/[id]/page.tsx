@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { Navigation } from "lucide-react";
+import { MapPinned, Navigation, Package, Truck, User } from "lucide-react";
 
 import {
   getDeparturePhoto,
@@ -16,6 +16,8 @@ import {
   customerShipmentStatusLabels,
   shipmentStatusLabels,
   statusBadgeVariant,
+  vehicleBedTypeLabels,
+  vehicleTypeLabels,
 } from "@/lib/labels";
 import { formatDateTime } from "@/lib/format";
 import { ShipmentStatusActions } from "@/app/(dashboard)/shipments/[id]/shipment-status-actions";
@@ -122,29 +124,81 @@ export default async function ShipmentDetailPage({
         incident={incident}
       />
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Sefer Bilgileri</CardTitle>
-        </CardHeader>
-        <CardContent className="grid grid-cols-2 gap-4 sm:grid-cols-3">
-          <Field label="Müşteri" value={shipment.customerCompany.name} />
-          <Field
-            label="Tedarikçi"
-            value={shipment.supplierCompany?.name ?? "Henüz atanmadı"}
-          />
-          <Field label="Mesafe" value={`${shipment.distanceKm.toString()} km`} />
-          <Field label="Tonaj" value={`${shipment.tonnage.toString()} ton`} />
-          <Field
-            label="Belge Takip Numarası"
-            value={shipment.documentTrackingNumber ?? "Girilmedi"}
-          />
-          {shipment.cargoDescription && (
-            <div className="col-span-full">
-              <Field label="Yük Açıklaması" value={shipment.cargoDescription} />
+      <div className="grid gap-4 md:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-base">
+              <MapPinned className="text-muted-foreground size-4" />
+              Rota Bilgisi
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="relative flex flex-col gap-5 pl-1">
+              <div
+                className="absolute top-2 bottom-2 left-[5px] z-0 w-px"
+                style={{
+                  backgroundImage:
+                    "repeating-linear-gradient(to bottom, var(--color-border) 0 4px, transparent 4px 8px)",
+                }}
+              />
+              <div className="relative flex gap-3">
+                <span className="bg-primary relative z-10 mt-1 size-2.5 shrink-0 rounded-full" />
+                <div>
+                  <p className="text-muted-foreground text-xs">Çıkış Noktası</p>
+                  <p className="text-sm font-medium">{shipment.originAddress}</p>
+                </div>
+              </div>
+              <div className="relative flex gap-3">
+                <span className="bg-accent-blue relative z-10 mt-1 size-2.5 shrink-0 rounded-full" />
+                <div>
+                  <p className="text-muted-foreground text-xs">Varış Noktası</p>
+                  <p className="text-sm font-medium">
+                    {shipment.destinationAddress}
+                  </p>
+                </div>
+              </div>
             </div>
-          )}
-        </CardContent>
-      </Card>
+            <Separator className="my-4" />
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-muted-foreground">Toplam Mesafe</span>
+              <span className="font-semibold">
+                ~{shipment.distanceKm.toString()} km
+              </span>
+            </div>
+            <div className="mt-2 flex items-center justify-between text-sm">
+              <span className="text-muted-foreground">Müşteri</span>
+              <span className="font-medium">{shipment.customerCompany.name}</span>
+            </div>
+            <div className="mt-2 flex items-center justify-between text-sm">
+              <span className="text-muted-foreground">Tedarikçi</span>
+              <span className="font-medium">
+                {shipment.supplierCompany?.name ?? "Henüz atanmadı"}
+              </span>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Package className="text-muted-foreground size-4" />
+              Yük Detayları
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="grid grid-cols-2 gap-4">
+            <Field label="Tonaj" value={`${shipment.tonnage.toString()} ton`} />
+            <Field
+              label="Belge Takip Numarası"
+              value={shipment.documentTrackingNumber ?? "Girilmedi"}
+            />
+            {shipment.cargoDescription && (
+              <div className="col-span-full">
+                <Field label="Yük Açıklaması" value={shipment.cargoDescription} />
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
 
       {(shipment.originMapsUrl || shipment.destinationMapsUrl) && (
         <Card>
@@ -166,28 +220,65 @@ export default async function ShipmentDetailPage({
 
       <Card>
         <CardHeader>
-          <CardTitle>Araç ve Şoför</CardTitle>
+          <CardTitle className="flex items-center gap-2 text-base">
+            <Truck className="text-muted-foreground size-4" />
+            Araç ve Şoför
+          </CardTitle>
         </CardHeader>
-        <CardContent className="grid grid-cols-2 gap-4">
-          <Field label="Araç" value={shipment.vehicle?.plate ?? "Henüz atanmadı"} />
-          <Field
-            label="Şoför"
-            value={shipment.driver?.fullName ?? "Henüz atanmadı"}
-          />
+        <CardContent className="grid gap-4 sm:grid-cols-2">
+          <div className="flex items-center gap-3 rounded-lg border p-3">
+            <span className="bg-primary/10 text-primary flex size-10 shrink-0 items-center justify-center rounded-lg">
+              <Truck className="size-5" />
+            </span>
+            <div className="min-w-0">
+              <p className="truncate font-semibold">
+                {shipment.vehicle?.plate ?? "Henüz atanmadı"}
+              </p>
+              {shipment.vehicle && (
+                <div className="mt-1 flex flex-wrap gap-1.5">
+                  <Badge variant="outline" className="text-[11px]">
+                    {vehicleTypeLabels[shipment.vehicle.vehicleType]}
+                  </Badge>
+                  <Badge variant="outline" className="text-[11px]">
+                    {vehicleBedTypeLabels[shipment.vehicle.bedType]}
+                  </Badge>
+                </div>
+              )}
+            </div>
+          </div>
+          <div className="flex items-center gap-3 rounded-lg border p-3">
+            <span className="bg-accent-blue/10 text-accent-blue flex size-10 shrink-0 items-center justify-center rounded-full">
+              <User className="size-5" />
+            </span>
+            <div className="min-w-0">
+              <p className="truncate font-semibold">
+                {shipment.driver?.fullName ?? "Henüz atanmadı"}
+              </p>
+              {shipment.driver && (
+                <p className="text-muted-foreground truncate text-xs">
+                  {shipment.driver.phone}
+                  {shipment.driver.experienceYears != null &&
+                    ` • ${shipment.driver.experienceYears} yıl deneyim`}
+                </p>
+              )}
+            </div>
+          </div>
           {departurePhoto?.photoUrl && (
-            <Field
-              label="Yükleme Fotoğrafı"
-              value={
-                <a
-                  href={`/api/uploads/${departurePhoto.photoUrl}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-primary underline underline-offset-2"
-                >
-                  Fotoğrafı Görüntüle
-                </a>
-              }
-            />
+            <div className="col-span-full">
+              <Field
+                label="Yükleme Fotoğrafı"
+                value={
+                  <a
+                    href={`/api/uploads/${departurePhoto.photoUrl}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-primary underline underline-offset-2"
+                  >
+                    Fotoğrafı Görüntüle
+                  </a>
+                }
+              />
+            </div>
           )}
         </CardContent>
       </Card>

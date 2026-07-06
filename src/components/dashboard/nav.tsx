@@ -46,10 +46,10 @@ export function DashboardNav({
             key={item.href}
             href={item.href}
             className={cn(
-              "flex items-center gap-2.5 rounded-md px-3 py-2 text-sm font-medium transition-colors",
+              "flex items-center gap-2.5 rounded-md border-l-[3px] px-3 py-2 text-sm font-medium transition-colors",
               isActive
-                ? "bg-primary text-primary-foreground"
-                : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                ? "border-primary bg-primary/8 text-primary font-semibold"
+                : "border-transparent text-muted-foreground hover:bg-accent hover:text-accent-foreground"
             )}
           >
             <Icon className="size-4" />
