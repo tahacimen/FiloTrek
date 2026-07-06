@@ -54,13 +54,25 @@ export function OccupancyChart({ data }: { data: OccupancyRow[] }) {
           }}
         />
         <Legend wrapperStyle={{ fontSize: 12 }} />
-        <Bar dataKey="Müsait" stackId="a" fill="var(--color-chart-2)" radius={[0, 0, 0, 0]} />
-        <Bar dataKey="Seferde" stackId="a" fill="var(--color-chart-1)" />
+        <Bar
+          dataKey="Müsait"
+          stackId="a"
+          fill="var(--color-chart-2)"
+          radius={[0, 0, 0, 0]}
+          isAnimationActive={false}
+        />
+        <Bar
+          dataKey="Seferde"
+          stackId="a"
+          fill="var(--color-chart-1)"
+          isAnimationActive={false}
+        />
         <Bar
           dataKey="Bakımda"
           stackId="a"
           fill="var(--color-chart-4)"
           radius={[4, 4, 0, 0]}
+          isAnimationActive={false}
         />
       </BarChart>
     </ResponsiveContainer>

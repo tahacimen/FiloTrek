@@ -3,67 +3,78 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/*
+ * FiloTrek marka paleti — lacivert (#123a8a / #0d2a63) + turuncu (#ef7420).
+ * Landing/login tasarımından türetildi; shadcn token yapısı korunarak
+ * değerler oklch'e çevrildi. `--brand` (turuncu) shadcn'de karşılığı olmayan
+ * vurgu/CTA rengidir; @theme inline'da `bg-brand`/`text-brand` olarak açılır.
+ */
 :root {
-  --radius: 0.625rem;
+  --radius: 0.7rem;
   --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
+  --foreground: oklch(0.235 0.028 268);
   --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
+  --card-foreground: oklch(0.235 0.028 268);
   --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
+  --popover-foreground: oklch(0.235 0.028 268);
+  --primary: oklch(0.375 0.135 264);
+  --primary-foreground: oklch(0.99 0 0);
+  --secondary: oklch(0.975 0.005 260);
+  --secondary-foreground: oklch(0.375 0.135 264);
+  --muted: oklch(0.975 0.005 260);
+  --muted-foreground: oklch(0.545 0.028 265);
+  --accent: oklch(0.955 0.012 260);
+  --accent-foreground: oklch(0.375 0.135 264);
   --destructive: oklch(0.577 0.245 27.325);
-  --destructive-foreground: oklch(0.985 0 0);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
+  --destructive-foreground: oklch(0.99 0 0);
+  --border: oklch(0.912 0.009 262);
+  --input: oklch(0.912 0.009 262);
+  --ring: oklch(0.375 0.135 264);
+  --brand: oklch(0.705 0.175 47);
+  --brand-foreground: oklch(0.99 0 0);
   --success: oklch(0.6 0.15 145);
-  --success-foreground: oklch(0.985 0 0);
+  --success-foreground: oklch(0.99 0 0);
   --warning: oklch(0.75 0.16 75);
-  --warning-foreground: oklch(0.145 0 0);
-  --chart-1: oklch(0.646 0.222 41.116);
-  --chart-2: oklch(0.6 0.118 184.704);
-  --chart-3: oklch(0.398 0.07 227.392);
-  --chart-4: oklch(0.828 0.189 84.429);
-  --chart-5: oklch(0.769 0.188 70.08);
+  --warning-foreground: oklch(0.235 0.028 268);
+  /* Grafik dizisi: turuncu, lacivert, teal, amber, mor — marka öncelikli */
+  --chart-1: oklch(0.705 0.175 47);
+  --chart-2: oklch(0.435 0.135 262);
+  --chart-3: oklch(0.62 0.09 210);
+  --chart-4: oklch(0.828 0.155 84);
+  --chart-5: oklch(0.58 0.19 300);
 }
 
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
+  --background: oklch(0.2 0.028 266);
+  --foreground: oklch(0.97 0.006 260);
+  --card: oklch(0.245 0.032 266);
+  --card-foreground: oklch(0.97 0.006 260);
+  --popover: oklch(0.245 0.032 266);
+  --popover-foreground: oklch(0.97 0.006 260);
+  --primary: oklch(0.62 0.145 262);
+  --primary-foreground: oklch(0.99 0 0);
+  --secondary: oklch(0.28 0.025 266);
+  --secondary-foreground: oklch(0.97 0.006 260);
+  --muted: oklch(0.28 0.025 266);
+  --muted-foreground: oklch(0.72 0.02 262);
+  --accent: oklch(0.3 0.03 266);
+  --accent-foreground: oklch(0.97 0.006 260);
   --destructive: oklch(0.704 0.191 22.216);
-  --destructive-foreground: oklch(0.985 0 0);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
+  --destructive-foreground: oklch(0.99 0 0);
+  --border: oklch(1 0 0 / 12%);
+  --input: oklch(1 0 0 / 16%);
+  --ring: oklch(0.62 0.145 262);
+  --brand: oklch(0.72 0.175 47);
+  --brand-foreground: oklch(0.99 0 0);
   --success: oklch(0.7 0.15 145);
   --success-foreground: oklch(0.145 0 0);
   --warning: oklch(0.8 0.16 75);
   --warning-foreground: oklch(0.145 0 0);
-  --chart-1: oklch(0.488 0.243 264.376);
-  --chart-2: oklch(0.696 0.17 162.48);
-  --chart-3: oklch(0.769 0.188 70.08);
-  --chart-4: oklch(0.627 0.265 303.9);
-  --chart-5: oklch(0.645 0.246 16.439);
+  --chart-1: oklch(0.72 0.175 47);
+  --chart-2: oklch(0.62 0.145 262);
+  --chart-3: oklch(0.68 0.1 210);
+  --chart-4: oklch(0.828 0.155 84);
+  --chart-5: oklch(0.68 0.18 300);
 }
 
 @theme inline {
@@ -85,6 +96,8 @@
   --color-accent-foreground: var(--accent-foreground);
   --color-destructive: var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground);
+  --color-brand: var(--brand);
+  --color-brand-foreground: var(--brand-foreground);
   --color-success: var(--success);
   --color-success-foreground: var(--success-foreground);
   --color-warning: var(--warning);
@@ -109,6 +122,6 @@
   }
   body {
     @apply bg-background text-foreground;
-    font-family: Arial, Helvetica, sans-serif;
+    font-family: var(--font-geist-sans), system-ui, sans-serif;
   }
 }

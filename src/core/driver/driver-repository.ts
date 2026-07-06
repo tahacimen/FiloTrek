@@ -90,7 +90,7 @@ export function updateDriverRecord(
 export function setDriverLoginToken(
   ctx: TenantContext,
   driverId: string,
-  token: string
+  token: string | null
 ) {
   return prisma.driver.updateMany({
     where: { id: driverId, companyId: ctx.companyId },

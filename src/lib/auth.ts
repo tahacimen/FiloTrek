@@ -3,6 +3,7 @@ import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 
 import { prisma } from "@/lib/db";
+import { clearFailedLogins, isLocked, recordFailedLogin } from "@/lib/login-attempts";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   session: { strategy: "jwt" },
@@ -28,53 +29,72 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         // the DB level prevents the same address existing in more than one
         // (e.g. an owner-operator who is both the ADMIN user and personally
         // drives).
+        //
+        // Each branch also carries its own brute-force lockout (see
+        // src/lib/login-attempts.ts): a locked account skips the bcrypt
+        // compare entirely but still falls through to the next account
+        // type, so a locked-out email reveals nothing beyond the same
+        // null every other failure mode already returns.
         const user = await prisma.user.findUnique({
           where: { email },
           include: { company: true },
         });
-        if (user?.isActive && (await compare(password, user.passwordHash))) {
-          return {
-            id: user.id,
-            email: user.email,
-            name: user.fullName,
-            accountType: "COMPANY_USER",
-            companyId: user.companyId,
-            companyType: user.company.type,
-            companyName: user.company.name,
-            companyRole: user.companyRole,
-          };
+        if (user && !isLocked(user.lockedUntil)) {
+          if (user.isActive && (await compare(password, user.passwordHash))) {
+            await clearFailedLogins("user", user.id);
+            return {
+              id: user.id,
+              email: user.email,
+              name: user.fullName,
+              accountType: "COMPANY_USER",
+              companyId: user.companyId,
+              companyType: user.company.type,
+              companyName: user.company.name,
+              companyRole: user.companyRole,
+            };
+          }
+          await recordFailedLogin("user", user.id, user.failedLoginAttempts);
         }
 
         const driver = await prisma.driver.findUnique({ where: { email } });
-        if (
-          driver?.passwordHash &&
-          (await compare(password, driver.passwordHash))
-        ) {
-          return {
-            id: driver.id,
-            email: driver.email ?? email,
-            name: driver.fullName,
-            accountType: "DRIVER",
-            driverId: driver.id,
-            companyId: driver.companyId,
-          };
+        if (driver?.passwordHash && !isLocked(driver.lockedUntil)) {
+          if (await compare(password, driver.passwordHash)) {
+            await clearFailedLogins("driver", driver.id);
+            return {
+              id: driver.id,
+              email: driver.email ?? email,
+              name: driver.fullName,
+              accountType: "DRIVER",
+              driverId: driver.id,
+              companyId: driver.companyId,
+            };
+          }
+          await recordFailedLogin("driver", driver.id, driver.failedLoginAttempts);
         }
 
         const gateGuard = await prisma.gateGuard.findUnique({
           where: { email },
         });
-        if (
-          gateGuard?.isActive &&
-          (await compare(password, gateGuard.passwordHash))
-        ) {
-          return {
-            id: gateGuard.id,
-            email: gateGuard.email,
-            name: gateGuard.fullName,
-            accountType: "GATE_GUARD",
-            gateGuardId: gateGuard.id,
-            companyId: gateGuard.companyId,
-          };
+        if (gateGuard && !isLocked(gateGuard.lockedUntil)) {
+          if (
+            gateGuard.isActive &&
+            (await compare(password, gateGuard.passwordHash))
+          ) {
+            await clearFailedLogins("gateGuard", gateGuard.id);
+            return {
+              id: gateGuard.id,
+              email: gateGuard.email,
+              name: gateGuard.fullName,
+              accountType: "GATE_GUARD",
+              gateGuardId: gateGuard.id,
+              companyId: gateGuard.companyId,
+            };
+          }
+          await recordFailedLogin(
+            "gateGuard",
+            gateGuard.id,
+            gateGuard.failedLoginAttempts
+          );
         }
 
         return null;

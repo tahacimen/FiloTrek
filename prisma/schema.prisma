@@ -147,6 +147,10 @@ model User {
   companyRole  CompanyRole @default(MEMBER) @map("company_role")
   isActive     Boolean     @default(true) @map("is_active")
   lastLoginAt  DateTime?   @map("last_login_at")
+  // Brute-force lockout — see recordFailedLogin/clearFailedLogins in
+  // src/lib/login-attempts.ts, shared across User/Driver/GateGuard.
+  failedLoginAttempts Int       @default(0) @map("failed_login_attempts")
+  lockedUntil         DateTime? @map("locked_until")
   createdAt    DateTime    @default(now()) @map("created_at")
   updatedAt    DateTime    @updatedAt @map("updated_at")
 
@@ -199,6 +203,10 @@ model Driver {
   tcNumber        String?      @map("tc_number")
   experienceYears Int?         @map("experience_years")
   lastLoginAt     DateTime?    @map("last_login_at")
+  // Brute-force lockout for the email+password path only — the driver-token
+  // link isn't password-guessable, so it doesn't touch these fields.
+  failedLoginAttempts Int       @default(0) @map("failed_login_attempts")
+  lockedUntil         DateTime? @map("locked_until")
   createdAt       DateTime     @default(now()) @map("created_at")
   updatedAt       DateTime     @updatedAt @map("updated_at")
 
@@ -230,6 +238,8 @@ model GateGuard {
   passwordHash String   @map("password_hash")
   isActive     Boolean  @default(true) @map("is_active")
   lastLoginAt  DateTime? @map("last_login_at")
+  failedLoginAttempts Int       @default(0) @map("failed_login_attempts")
+  lockedUntil         DateTime? @map("locked_until")
   createdAt    DateTime @default(now()) @map("created_at")
   updatedAt    DateTime @updatedAt @map("updated_at")
 

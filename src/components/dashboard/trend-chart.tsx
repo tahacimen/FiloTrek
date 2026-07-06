@@ -50,6 +50,7 @@ export function TrendChart({
           stroke="var(--color-chart-1)"
           fill="url(#trendFill)"
           strokeWidth={2}
+          isAnimationActive={false}
         />
       </AreaChart>
     </ResponsiveContainer>

@@ -13,17 +13,21 @@ import type { Driver } from "@/generated/prisma/client";
  *
  * `loginToken` is stripped for the same reason as `passwordHash` — it's a
  * bearer credential equivalent to a password (see Driver.loginToken in
- * schema.prisma), not just an opaque id.
+ * schema.prisma), not just an opaque id. `hasActiveLoginLink` is the one
+ * bit of information about it the UI actually needs (whether to show
+ * "revoke" vs. leave it disabled) — derived here rather than exposing the
+ * token itself.
  *
  * `tcNumber` is deliberately kept (unlike passwordHash/loginToken) — it's
  * the driver's own employer's dispatcher viewing their own employee's
  * profile, already scoped to that company, same protection domain as
  * phone/license number.
  */
-export type SerializableDriver = Omit<Driver, "passwordHash" | "loginToken">;
+export type SerializableDriver = Omit<Driver, "passwordHash" | "loginToken"> & {
+  hasActiveLoginLink: boolean;
+};
 
 export function toSerializableDriver(driver: Driver): SerializableDriver {
-  const { passwordHash: _passwordHash, loginToken: _loginToken, ...rest } =
-    driver;
-  return rest;
+  const { passwordHash: _passwordHash, loginToken, ...rest } = driver;
+  return { ...rest, hasActiveLoginLink: loginToken !== null };
 }

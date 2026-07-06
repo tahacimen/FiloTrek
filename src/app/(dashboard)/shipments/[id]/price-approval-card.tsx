@@ -40,7 +40,15 @@ export function PriceApprovalCard({
   if (agreedPrice === null) return null;
   const confirmedPrice = agreedPrice;
 
-  const isProposer = companyType === priceProposedBy;
+  // priceProposedBy should never be null while agreedPrice is set (every
+  // real code path that sets a price sets this together — see the schema
+  // comment on Shipment.priceProposedBy), but treating null as "neither
+  // side" here rather than falling through to the `!isProposer` branch
+  // matters: `companyType === null` is false for both SUPPLIER and
+  // CUSTOMER, so a naive isProposer check would show the approve/reject
+  // actions to BOTH sides at once if this ever happened.
+  const isProposer = priceProposedBy !== null && companyType === priceProposedBy;
+  const isCounterparty = priceProposedBy !== null && companyType !== priceProposedBy;
 
   function handleApprove() {
     if (
@@ -88,10 +96,12 @@ export function PriceApprovalCard({
                 "Karşı tarafın teklifiniz için yanıtı bekleniyor."}
               {isProposer && priceRejectedAt &&
                 "Teklifiniz reddedildi — yeni bir fiyat girebilirsiniz."}
-              {!isProposer && !priceRejectedAt &&
+              {isCounterparty && !priceRejectedAt &&
                 "Karşı tarafın teklif ettiği fiyat."}
-              {!isProposer && priceRejectedAt &&
+              {isCounterparty && priceRejectedAt &&
                 "Bu teklifi reddettiniz, karşı tarafın yeni teklif girmesini bekliyor."}
+              {!isProposer && !isCounterparty &&
+                "Fiyat teklifi eksik bilgiyle kaydedilmiş — lütfen destek ile iletişime geçin."}
             </span>
           )}
         </div>
@@ -105,7 +115,7 @@ export function PriceApprovalCard({
           />
         )}
 
-        {!priceApprovedAt && !isProposer && !priceRejectedAt && (
+        {!priceApprovedAt && isCounterparty && !priceRejectedAt && (
           <div className="flex items-center gap-2">
             <Button onClick={handleApprove} disabled={isPending}>
               {isPending && <Loader2 className="animate-spin" />}

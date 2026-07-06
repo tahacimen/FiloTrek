@@ -9,6 +9,28 @@ const nextConfig: NextConfig = {
       bodySizeLimit: "10mb",
     },
   },
+  // Defense-in-depth for the paths proxy.ts's matcher deliberately excludes
+  // (/api/**, static assets) — those never get the nonce-based CSP set in
+  // proxy.ts, but still benefit from the non-CSP hardening headers below.
+  // Pages routed through proxy.ts get these same header names re-set there
+  // with the request-specific CSP; the later (middleware) write wins for
+  // those, so there's no conflict.
+  async headers() {
+    return [
+      {
+        source: "/:path*",
+        headers: [
+          { key: "X-Content-Type-Options", value: "nosniff" },
+          { key: "X-Frame-Options", value: "DENY" },
+          { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+          {
+            key: "Permissions-Policy",
+            value: "camera=(), microphone=(), geolocation=()",
+          },
+        ],
+      },
+    ];
+  },
 };
 
 export default nextConfig;
