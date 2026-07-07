@@ -160,7 +160,7 @@ export async function notifyDriverLoginLink(params: {
   ];
   await emailService.sendEmail({
     to: params.driverEmail,
-    subject: "FiloTrek giriş bağlantınız",
+    subject: "Tırpark giriş bağlantınız",
     text: lines.join("\n"),
   });
 }

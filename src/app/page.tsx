@@ -264,13 +264,13 @@ export default function LandingPage() {
           </div>
           <div>
             <div className="mb-3.5 text-[13px] font-bold uppercase tracking-[1.5px] text-[#ef7420]">
-              FiloTrek Hakkında
+              Tırpark Hakkında
             </div>
             <h2 className="mb-4.5 text-[28px] font-extrabold leading-tight tracking-tight text-[#151a29] sm:text-[34px]">
               Lojistiği baştan sona tek panelden yönetin
             </h2>
             <p className="mb-4 text-base leading-relaxed text-[#4a5268]">
-              FiloTrek, tedarikçi nakliye firmalarını ve yük sahibi müşteri
+              Tırpark, tedarikçi nakliye firmalarını ve yük sahibi müşteri
               işletmeleri tek platformda buluşturan B2B filo yönetim sistemidir.
               Yük ilanı, teklif, sözleşme, araç–sürücü ataması ve teslimat
               sürecini uçtan uca dijitalleştirir.
@@ -376,7 +376,7 @@ export default function LandingPage() {
                 <Phone className="size-4 text-[#ef9a5e]" />0850 840 00 00
               </span>
               <span className="flex items-center gap-2.5">
-                <Mail className="size-4 text-[#ef9a5e]" />info@filotrek.com
+                <Mail className="size-4 text-[#ef9a5e]" />info@tirpark.com
               </span>
               <span className="flex items-start gap-2.5">
                 <MapPin className="mt-0.5 size-4 text-[#ef9a5e]" />Ümraniye, İstanbul
@@ -389,7 +389,7 @@ export default function LandingPage() {
         </div>
         <div className="border-t border-white/15">
           <div className="mx-auto flex max-w-[1240px] flex-col gap-1 px-5 py-4 text-[13px] text-white/60 sm:flex-row sm:justify-between sm:px-8">
-            <span>© 2026 FiloTrek. Tüm hakları saklıdır.</span>
+            <span>© 2026 Tırpark. Tüm hakları saklıdır.</span>
             <span>Türkiye genelinde hizmet</span>
           </div>
         </div>

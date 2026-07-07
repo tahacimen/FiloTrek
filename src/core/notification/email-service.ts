@@ -57,7 +57,7 @@ export async function sendEmail(params: {
     return;
   }
   await transporter.sendMail({
-    from: process.env.SMTP_FROM ?? "FiloTrek <noreply@filotrek.local>",
+    from: process.env.SMTP_FROM ?? "Tırpark <noreply@tirpark.local>",
     to: params.to,
     subject: params.subject,
     text: params.text,

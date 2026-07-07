@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "FiloTrek | B2B Lojistik ve Filo Yönetimi",
+  title: "Tırpark | B2B Lojistik ve Filo Yönetimi",
   description:
     "Lojistik firmalarını ve yük sahibi müşterileri tek platformda buluşturan B2B filo yönetim sistemi.",
 };
