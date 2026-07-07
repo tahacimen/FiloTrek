@@ -4,10 +4,13 @@
 @custom-variant dark (&:is(.dark *));
 
 /*
- * FiloTrek marka paleti — lacivert (#123a8a / #0d2a63) + turuncu (#ef7420).
- * Landing/login tasarımından türetildi; shadcn token yapısı korunarak
- * değerler oklch'e çevrildi. `--brand` (turuncu) shadcn'de karşılığı olmayan
- * vurgu/CTA rengidir; @theme inline'da `bg-brand`/`text-brand` olarak açılır.
+ * FiloTrek marka paleti — "Logistics Blue": koyu lacivert (#002068) +
+ * canlı aksiyon mavisi (#0853ce) + turuncu (#ef7420), Stitch referans
+ * tasarımlarından (Tedarikçi Dashboard, Sefer Detayı) türetildi. shadcn
+ * token yapısı korunarak değerler oklch'e çevrildi. `--brand` (turuncu) ve
+ * `--accent-blue` (canlı mavi — "şu an" durumu/live göstergeler için)
+ * shadcn'de karşılığı olmayan ek vurgu rengleridir; @theme inline'da
+ * `bg-brand`/`bg-accent-blue` vb. olarak açılır.
  */
 :root {
   --radius: 0.7rem;
@@ -17,30 +20,32 @@
   --card-foreground: oklch(0.235 0.028 268);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.235 0.028 268);
-  --primary: oklch(0.375 0.135 264);
+  --primary: oklch(0.281 0.131 262);
   --primary-foreground: oklch(0.99 0 0);
   --secondary: oklch(0.975 0.005 260);
-  --secondary-foreground: oklch(0.375 0.135 264);
+  --secondary-foreground: oklch(0.281 0.131 262);
   --muted: oklch(0.975 0.005 260);
   --muted-foreground: oklch(0.545 0.028 265);
   --accent: oklch(0.955 0.012 260);
-  --accent-foreground: oklch(0.375 0.135 264);
+  --accent-foreground: oklch(0.281 0.131 262);
   --destructive: oklch(0.577 0.245 27.325);
   --destructive-foreground: oklch(0.99 0 0);
   --border: oklch(0.912 0.009 262);
   --input: oklch(0.912 0.009 262);
-  --ring: oklch(0.375 0.135 264);
+  --ring: oklch(0.281 0.131 262);
   --brand: oklch(0.705 0.175 47);
   --brand-foreground: oklch(0.99 0 0);
+  --accent-blue: oklch(0.485 0.202 261);
+  --accent-blue-foreground: oklch(0.99 0 0);
   --success: oklch(0.6 0.15 145);
   --success-foreground: oklch(0.99 0 0);
   --warning: oklch(0.75 0.16 75);
   --warning-foreground: oklch(0.235 0.028 268);
-  /* Grafik dizisi: turuncu, lacivert, teal, amber, mor — marka öncelikli */
-  --chart-1: oklch(0.705 0.175 47);
-  --chart-2: oklch(0.435 0.135 262);
-  --chart-3: oklch(0.62 0.09 210);
-  --chart-4: oklch(0.828 0.155 84);
+  /* Grafik dizisi: turuncu, koyu lacivert, canlı mavi, slate, mor */
+  --chart-1: oklch(0.68 0.185 48);
+  --chart-2: oklch(0.281 0.131 262);
+  --chart-3: oklch(0.485 0.202 261);
+  --chart-4: oklch(0.55 0.06 265);
   --chart-5: oklch(0.58 0.19 300);
 }
 
@@ -66,14 +71,16 @@
   --ring: oklch(0.62 0.145 262);
   --brand: oklch(0.72 0.175 47);
   --brand-foreground: oklch(0.99 0 0);
+  --accent-blue: oklch(0.72 0.16 261);
+  --accent-blue-foreground: oklch(0.145 0 0);
   --success: oklch(0.7 0.15 145);
   --success-foreground: oklch(0.145 0 0);
   --warning: oklch(0.8 0.16 75);
   --warning-foreground: oklch(0.145 0 0);
   --chart-1: oklch(0.72 0.175 47);
   --chart-2: oklch(0.62 0.145 262);
-  --chart-3: oklch(0.68 0.1 210);
-  --chart-4: oklch(0.828 0.155 84);
+  --chart-3: oklch(0.72 0.16 261);
+  --chart-4: oklch(0.68 0.05 265);
   --chart-5: oklch(0.68 0.18 300);
 }
 
@@ -98,6 +105,8 @@
   --color-destructive-foreground: var(--destructive-foreground);
   --color-brand: var(--brand);
   --color-brand-foreground: var(--brand-foreground);
+  --color-accent-blue: var(--accent-blue);
+  --color-accent-blue-foreground: var(--accent-blue-foreground);
   --color-success: var(--success);
   --color-success-foreground: var(--success-foreground);
   --color-warning: var(--warning);

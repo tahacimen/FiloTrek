@@ -9,8 +9,18 @@ import {
 const shipmentListInclude = {
   customerCompany: { select: { id: true, name: true } },
   supplierCompany: { select: { id: true, name: true } },
-  vehicle: { select: { id: true, plate: true, vehicleType: true } },
-  driver: { select: { id: true, fullName: true } },
+  vehicle: {
+    select: { id: true, plate: true, vehicleType: true, bedType: true },
+  },
+  driver: {
+    select: {
+      id: true,
+      fullName: true,
+      phone: true,
+      licenseNumber: true,
+      experienceYears: true,
+    },
+  },
 } as const;
 
 /** A shipment is visible to both the customer and the supplier side of it. */
@@ -280,4 +290,29 @@ export async function getCompletedShipmentsPerDay(
     select: { completedAt: true },
   });
   return rows;
+}
+
+/**
+ * Most recently touched shipments for the dashboard's "Son Aktiviteler"
+ * feed — a shipment's own `updatedAt`/`status` already reflects its latest
+ * status transition (see advanceShipmentStatusCore in shipment-status.ts,
+ * which always updates both together), so this needs no separate join
+ * against StatusHistory to show real, current activity.
+ */
+export async function listRecentActivity(ctx: TenantContext, limit: number) {
+  return prisma.shipment.findMany({
+    where: { supplierCompanyId: ctx.companyId },
+    orderBy: { updatedAt: "desc" },
+    take: limit,
+    select: {
+      id: true,
+      originAddress: true,
+      destinationAddress: true,
+      status: true,
+      updatedAt: true,
+      hasOpenIncident: true,
+      vehicle: { select: { plate: true } },
+      driver: { select: { fullName: true } },
+    },
+  });
 }
