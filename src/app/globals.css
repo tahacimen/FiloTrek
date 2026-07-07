@@ -4,7 +4,7 @@
 @custom-variant dark (&:is(.dark *));
 
 /*
- * FiloTrek marka paleti — "Logistics Blue": koyu lacivert (#002068) +
+ * Tırpark marka paleti — "Logistics Blue": koyu lacivert (#002068) +
  * canlı aksiyon mavisi (#0853ce) + turuncu (#ef7420), Stitch referans
  * tasarımlarından (Tedarikçi Dashboard, Sefer Detayı) türetildi. shadcn
  * token yapısı korunarak değerler oklch'e çevrildi. `--brand` (turuncu) ve

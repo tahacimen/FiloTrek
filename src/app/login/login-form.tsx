@@ -108,7 +108,7 @@ export function LoginForm({ callbackUrl }: { callbackUrl: string }) {
       </div>
 
       <div className="mx-auto mt-auto pt-8 text-center text-[12.5px] text-muted-foreground">
-        © 2026 FiloTrek · B2B Lojistik ve Filo Yönetimi
+        © 2026 Tırpark · B2B Lojistik ve Filo Yönetimi
       </div>
     </div>
   );
