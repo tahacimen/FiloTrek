@@ -376,7 +376,7 @@ export default function LandingPage() {
                 <Phone className="size-4 text-[#ef9a5e]" />0850 840 00 00
               </span>
               <span className="flex items-center gap-2.5">
-                <Mail className="size-4 text-[#ef9a5e]" />info@tirpark.com
+                <Mail className="size-4 text-[#ef9a5e]" />taha.cimen@tırpark.com
               </span>
               <span className="flex items-start gap-2.5">
                 <MapPin className="mt-0.5 size-4 text-[#ef9a5e]" />Ümraniye, İstanbul
