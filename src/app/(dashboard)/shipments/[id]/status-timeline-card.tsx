@@ -10,6 +10,32 @@ import {
 import { SHIPMENT_STATUS_SEQUENCE } from "@/core/shipment/shipment-transitions";
 import type { ShipmentStatus } from "@/generated/prisma/enums";
 
+// Adım başına renk geçişi: baştan (turuncu) sona (yeşil) doğru "olgunlaşan"
+// bir ilerleme ölçeği — son adım (COMPLETED / Tamamlandı) tam yeşil. İndeks,
+// SHIPMENT_STATUS_SEQUENCE'teki sabit konuma göre atanır, böylece her durum
+// her zaman aynı rengi taşır. Dizinin uzunluğuyla hizalı (8 adım).
+const STEP_COLORS = [
+  "#e0552e", // Atama Bekliyor
+  "#ee7e28", // Atandı
+  "#f5a312", // Yüklemeye Gidiyor
+  "#e0b710", // Yüklemede
+  "#bcc41c", // Yüklemeye Hazır
+  "#8ec02a", // Yolda
+  "#57b03f", // Teslimat Noktasında
+  "#2e9e4b", // Tamamlandı (yeşil)
+];
+// Açık tonlu adımlarda koyu, koyu tonlularda beyaz ikon — okunabilirlik için.
+const STEP_FG = [
+  "#ffffff",
+  "#ffffff",
+  "#1a1a1a",
+  "#1a1a1a",
+  "#1a1a1a",
+  "#1a1a1a",
+  "#ffffff",
+  "#ffffff",
+];
+
 /**
  * Horizontal step-by-step timeline of the shipment's own lifecycle, with the
  * date/time each step was reached — visible to both SUPPLIER and CUSTOMER,
@@ -70,11 +96,14 @@ export function StatusTimelineCard({
                 }}
               />
               <div
-                className="absolute inset-y-0 left-0 h-full"
+                className="absolute inset-y-0 left-0 h-full rounded-full"
                 style={{
                   width: `${progressPct}%`,
-                  backgroundImage:
-                    "repeating-linear-gradient(to right, var(--color-primary) 0 4px, transparent 4px 8px)",
+                  // Gradient tüm parkuru temsil eder; yalnızca ulaşılan kısım
+                  // görünür — böylece yeşil yalnızca sona yaklaşınca belirir.
+                  backgroundImage: `linear-gradient(to right, ${STEP_COLORS.join(", ")})`,
+                  backgroundSize: `${progressPct > 0 ? (100 / progressPct) * 100 : 100}% 100%`,
+                  backgroundRepeat: "no-repeat",
                 }}
               />
             </div>
@@ -84,7 +113,6 @@ export function StatusTimelineCard({
               const isReached = at !== undefined;
               const stepIndex = SHIPMENT_STATUS_SEQUENCE.indexOf(step);
               const isCurrent = !isCancelled && stepIndex === currentIndex;
-              const isFuture = isCancelled ? !isReached : stepIndex > currentIndex;
 
               return (
                 <div
@@ -94,12 +122,18 @@ export function StatusTimelineCard({
                   <span
                     className={cn(
                       "ring-background flex shrink-0 items-center justify-center rounded-full ring-4 transition-all",
-                      isCurrent
-                        ? "bg-accent-blue text-accent-blue-foreground size-10 shadow-lg"
-                        : isReached
-                          ? "bg-primary text-primary-foreground size-8"
-                          : "bg-muted text-muted-foreground border-border size-8 border"
+                      isCurrent ? "size-10 shadow-lg" : "size-8",
+                      !isReached && !isCurrent &&
+                        "bg-muted text-muted-foreground border-border border"
                     )}
+                    style={
+                      isReached || isCurrent
+                        ? {
+                            backgroundColor: STEP_COLORS[stepIndex],
+                            color: STEP_FG[stepIndex],
+                          }
+                        : undefined
+                    }
                   >
                     {isReached && !isCurrent && <Check className="size-4" />}
                     {isCurrent && <Truck className="size-[18px]" />}
@@ -107,9 +141,9 @@ export function StatusTimelineCard({
                   <span
                     className={cn(
                       "text-center text-xs leading-tight font-semibold",
-                      isCurrent && "text-accent-blue",
-                      isReached && !isCurrent && "text-primary",
-                      isFuture && "text-muted-foreground font-normal"
+                      isReached || isCurrent
+                        ? "text-foreground"
+                        : "text-muted-foreground font-normal"
                     )}
                   >
                     {labels[step]}
