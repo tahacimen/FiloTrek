@@ -4,84 +4,85 @@
 @custom-variant dark (&:is(.dark *));
 
 /*
- * Tırpark marka paleti — "Logistics Blue": koyu lacivert (#002068) +
- * canlı aksiyon mavisi (#0853ce) + turuncu (#ef7420), Stitch referans
- * tasarımlarından (Tedarikçi Dashboard, Sefer Detayı) türetildi. shadcn
- * token yapısı korunarak değerler oklch'e çevrildi. `--brand` (turuncu) ve
- * `--accent-blue` (canlı mavi — "şu an" durumu/live göstergeler için)
- * shadcn'de karşılığı olmayan ek vurgu rengleridir; @theme inline'da
- * `bg-brand`/`bg-accent-blue` vb. olarak açılır.
+ * Logigo marka paleti — "Amber Warehouse": sıcak altın sarısı (#f5b301) +
+ * antrasit/siyah (#1e1e1e) + açık sıcak gri zeminler. Fulfillment/depo
+ * estetiği referans alınarak lacivert+turuncu paletten çevrildi. shadcn
+ * token yapısı korunur: `--primary` (antrasit — birincil butonlar, başlık
+ * vurguları, aktif durumlar), `--brand` (sarı — öne çıkan CTA'lar, ikon
+ * rozetleri), `--accent-blue` (kehribar — "şu an"/canlı göstergeler; isim
+ * geriye dönük uyum için korundu). @theme inline'da bg-brand/bg-accent-blue
+ * vb. olarak açılır.
  */
 :root {
   --radius: 0.7rem;
   --background: oklch(1 0 0);
-  --foreground: oklch(0.235 0.028 268);
+  --foreground: oklch(0.22 0.004 60);
   --card: oklch(1 0 0);
-  --card-foreground: oklch(0.235 0.028 268);
+  --card-foreground: oklch(0.22 0.004 60);
   --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.235 0.028 268);
-  --primary: oklch(0.281 0.131 262);
+  --popover-foreground: oklch(0.22 0.004 60);
+  --primary: oklch(0.26 0.006 65);
   --primary-foreground: oklch(0.99 0 0);
-  --secondary: oklch(0.975 0.005 260);
-  --secondary-foreground: oklch(0.281 0.131 262);
-  --muted: oklch(0.975 0.005 260);
-  --muted-foreground: oklch(0.545 0.028 265);
-  --accent: oklch(0.955 0.012 260);
-  --accent-foreground: oklch(0.281 0.131 262);
+  --secondary: oklch(0.965 0.004 85);
+  --secondary-foreground: oklch(0.26 0.006 65);
+  --muted: oklch(0.965 0.004 85);
+  --muted-foreground: oklch(0.505 0.008 70);
+  --accent: oklch(0.95 0.008 88);
+  --accent-foreground: oklch(0.26 0.006 65);
   --destructive: oklch(0.577 0.245 27.325);
   --destructive-foreground: oklch(0.99 0 0);
-  --border: oklch(0.912 0.009 262);
-  --input: oklch(0.912 0.009 262);
-  --ring: oklch(0.281 0.131 262);
-  --brand: oklch(0.705 0.175 47);
-  --brand-foreground: oklch(0.99 0 0);
-  --accent-blue: oklch(0.485 0.202 261);
+  --border: oklch(0.905 0.006 82);
+  --input: oklch(0.905 0.006 82);
+  --ring: oklch(0.26 0.006 65);
+  --brand: oklch(0.82 0.155 85);
+  --brand-foreground: oklch(0.24 0.006 65);
+  --accent-blue: oklch(0.64 0.135 68);
   --accent-blue-foreground: oklch(0.99 0 0);
-  --success: oklch(0.6 0.15 145);
+  --success: oklch(0.6 0.14 150);
   --success-foreground: oklch(0.99 0 0);
-  --warning: oklch(0.75 0.16 75);
-  --warning-foreground: oklch(0.235 0.028 268);
-  /* Grafik dizisi: turuncu, koyu lacivert, canlı mavi, slate, mor */
-  --chart-1: oklch(0.68 0.185 48);
-  --chart-2: oklch(0.281 0.131 262);
-  --chart-3: oklch(0.485 0.202 261);
-  --chart-4: oklch(0.55 0.06 265);
-  --chart-5: oklch(0.58 0.19 300);
+  --warning: oklch(0.8 0.155 80);
+  --warning-foreground: oklch(0.24 0.006 65);
+  /* Grafik dizisi: sarı, antrasit, kehribar, sıcak gri, bronz */
+  --chart-1: oklch(0.82 0.155 85);
+  --chart-2: oklch(0.3 0.006 65);
+  --chart-3: oklch(0.64 0.135 68);
+  --chart-4: oklch(0.62 0.02 85);
+  --chart-5: oklch(0.5 0.1 62);
 }
 
 .dark {
-  --background: oklch(0.2 0.028 266);
-  --foreground: oklch(0.97 0.006 260);
-  --card: oklch(0.245 0.032 266);
-  --card-foreground: oklch(0.97 0.006 260);
-  --popover: oklch(0.245 0.032 266);
-  --popover-foreground: oklch(0.97 0.006 260);
-  --primary: oklch(0.62 0.145 262);
-  --primary-foreground: oklch(0.99 0 0);
-  --secondary: oklch(0.28 0.025 266);
-  --secondary-foreground: oklch(0.97 0.006 260);
-  --muted: oklch(0.28 0.025 266);
-  --muted-foreground: oklch(0.72 0.02 262);
-  --accent: oklch(0.3 0.03 266);
-  --accent-foreground: oklch(0.97 0.006 260);
+  --background: oklch(0.2 0.004 60);
+  --foreground: oklch(0.96 0.004 85);
+  --card: oklch(0.245 0.005 65);
+  --card-foreground: oklch(0.96 0.004 85);
+  --popover: oklch(0.245 0.005 65);
+  --popover-foreground: oklch(0.96 0.004 85);
+  --primary: oklch(0.9 0.006 85);
+  --primary-foreground: oklch(0.22 0.004 60);
+  --secondary: oklch(0.28 0.005 65);
+  --secondary-foreground: oklch(0.96 0.004 85);
+  --muted: oklch(0.28 0.005 65);
+  --muted-foreground: oklch(0.72 0.008 78);
+  --accent: oklch(0.3 0.006 68);
+  --accent-foreground: oklch(0.96 0.004 85);
   --destructive: oklch(0.704 0.191 22.216);
   --destructive-foreground: oklch(0.99 0 0);
   --border: oklch(1 0 0 / 12%);
   --input: oklch(1 0 0 / 16%);
-  --ring: oklch(0.62 0.145 262);
-  --brand: oklch(0.72 0.175 47);
-  --brand-foreground: oklch(0.99 0 0);
-  --accent-blue: oklch(0.72 0.16 261);
-  --accent-blue-foreground: oklch(0.145 0 0);
-  --success: oklch(0.7 0.15 145);
-  --success-foreground: oklch(0.145 0 0);
-  --warning: oklch(0.8 0.16 75);
-  --warning-foreground: oklch(0.145 0 0);
-  --chart-1: oklch(0.72 0.175 47);
-  --chart-2: oklch(0.62 0.145 262);
-  --chart-3: oklch(0.72 0.16 261);
-  --chart-4: oklch(0.68 0.05 265);
-  --chart-5: oklch(0.68 0.18 300);
+  --ring: oklch(0.84 0.14 85);
+  --brand: oklch(0.84 0.155 85);
+  --brand-foreground: oklch(0.2 0.004 60);
+  --accent-blue: oklch(0.72 0.13 72);
+  --accent-blue-foreground: oklch(0.18 0 0);
+  --success: oklch(0.7 0.14 150);
+  --success-foreground: oklch(0.16 0 0);
+  --warning: oklch(0.82 0.155 82);
+  --warning-foreground: oklch(0.18 0 0);
+  --chart-1: oklch(0.84 0.155 85);
+  --chart-2: oklch(0.75 0.01 85);
+  --chart-3: oklch(0.72 0.13 72);
+  --chart-4: oklch(0.6 0.02 85);
+  --chart-5: oklch(0.62 0.11 62);
 }
 
 @theme inline {

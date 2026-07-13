@@ -160,7 +160,7 @@ export async function notifyDriverLoginLink(params: {
   ];
   await emailService.sendEmail({
     to: params.driverEmail,
-    subject: "Tırpark giriş bağlantınız",
+    subject: "Logigo giriş bağlantınız",
     text: lines.join("\n"),
   });
 }

@@ -91,7 +91,7 @@ export function LoginForm({ callbackUrl }: { callbackUrl: string }) {
           <button
             type="submit"
             disabled={isPending}
-            className="inline-flex w-full items-center justify-center gap-2.5 rounded-xl bg-brand px-4 py-3.5 text-base font-bold text-brand-foreground shadow-[0_12px_26px_rgba(239,116,32,0.32)] transition hover:bg-brand/90 disabled:opacity-60"
+            className="inline-flex w-full items-center justify-center gap-2.5 rounded-xl bg-brand px-4 py-3.5 text-base font-bold text-brand-foreground shadow-[0_12px_26px_rgba(245,179,1,0.32)] transition hover:bg-brand/90 disabled:opacity-60"
           >
             {isPending && <Loader2 className="size-[18px] animate-spin" />}
             Panele Giriş Yap
@@ -108,7 +108,7 @@ export function LoginForm({ callbackUrl }: { callbackUrl: string }) {
       </div>
 
       <div className="mx-auto mt-auto pt-8 text-center text-[12.5px] text-muted-foreground">
-        © 2026 Tırpark · B2B Lojistik ve Filo Yönetimi
+        © 2026 Logigo · B2B Lojistik ve Filo Yönetimi
       </div>
     </div>
   );
