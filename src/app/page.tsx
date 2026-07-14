@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import {
   ArrowRight,
@@ -259,8 +260,14 @@ export default function LandingPage() {
       {/* HAKKIMIZDA */}
       <section id="hakkimizda" className="bg-[#f5f5f3]">
         <div className="mx-auto grid max-w-[1240px] items-center gap-10 px-5 py-16 sm:px-8 lg:grid-cols-[0.9fr_1.1fr] lg:gap-14">
-          <div className="flex aspect-[16/11] items-end justify-center rounded-[18px] bg-[repeating-linear-gradient(45deg,#e6e1d6,#e6e1d6_14px,#efeade_14px,#efeade_28px)] pb-4 shadow-[0_20px_50px_rgba(0,0,0,0.1)]">
-            <span className="font-mono text-xs text-[#9a9488]">[ filo / depo fotoğrafı ]</span>
+          <div className="relative aspect-[16/11] overflow-hidden rounded-[18px] shadow-[0_20px_50px_rgba(0,0,0,0.15)]">
+            <Image
+              src="/logigo_branded_global_image.png"
+              alt="Logigo lojistik filosu — kara, hava ve deniz taşımacılığı"
+              fill
+              sizes="(max-width: 1024px) 100vw, 45vw"
+              className="object-cover"
+            />
           </div>
           <div>
             <div className="mb-3.5 text-[13px] font-bold uppercase tracking-[1.5px] text-[#f5b301]">
