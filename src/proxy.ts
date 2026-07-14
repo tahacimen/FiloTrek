@@ -101,13 +101,16 @@ export default auth((req) => {
   const accountType = req.auth?.user?.accountType;
   const { pathname } = req.nextUrl;
   const isLoginPage = pathname === "/login";
-  // Public marketing landing at "/" — reachable by anyone, logged in or not,
-  // and never redirect-bounced. Everything else stays auth-gated below.
+  // Public pages reachable by anyone, logged in or not, and never
+  // redirect-bounced: the marketing landing at "/" and the shipment
+  // tracking page at "/track" (status-only lookup by tracking number, no
+  // login required). Everything else stays auth-gated below.
   const isLandingPage = pathname === "/";
+  const isTrackPage = pathname === "/track" || pathname.startsWith("/track/");
   const isDriverRoute = pathname === "/driver" || pathname.startsWith("/driver/");
   const isGateRoute = pathname === "/gate" || pathname.startsWith("/gate/");
 
-  if (isLandingPage) {
+  if (isLandingPage || isTrackPage) {
     const requestHeaders = new Headers(req.headers);
     requestHeaders.set("x-nonce", nonce);
     requestHeaders.set("Content-Security-Policy", csp);

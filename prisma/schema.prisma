@@ -274,6 +274,11 @@ enum GateEventType {
 
 model Shipment {
   id                  String         @id @default(uuid(7)) @db.Uuid
+  // Human-friendly 8-digit tracking number (10000000+) surfaced to end
+  // users and usable on the public /track page. Backed by a DB sequence
+  // starting at 10000000 (see the add_shipment_tracking_number migration);
+  // autoincrement keeps it out of create() calls so the DB assigns it.
+  trackingNumber      Int            @unique @default(autoincrement()) @map("tracking_number")
   customerCompanyId   String         @map("customer_company_id") @db.Uuid
   customerCompany     Company        @relation("CustomerShipments", fields: [customerCompanyId], references: [id])
   supplierCompanyId   String?        @map("supplier_company_id") @db.Uuid

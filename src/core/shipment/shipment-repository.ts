@@ -268,6 +268,28 @@ export function getShipmentStatusHistory(shipmentId: string) {
   });
 }
 
+/**
+ * Public tracking lookup — NO tenant scope, by design: anyone holding a
+ * tracking number can see a shipment's progress without logging in. The
+ * SELECT is deliberately narrow (no price, no company, no driver/vehicle,
+ * no internal id beyond what the caller needs to fetch status history) so
+ * nothing commercially sensitive leaks through the public /track page.
+ */
+export function getShipmentByTrackingNumber(trackingNumber: number) {
+  return prisma.shipment.findUnique({
+    where: { trackingNumber },
+    select: {
+      id: true,
+      trackingNumber: true,
+      originAddress: true,
+      destinationAddress: true,
+      status: true,
+      createdAt: true,
+      hasOpenIncident: true,
+    },
+  });
+}
+
 export function countShipmentsByStatus(ctx: TenantContext) {
   return prisma.shipment.groupBy({
     by: ["status"],

@@ -84,7 +84,10 @@ export default async function ShipmentDetailPage({
     <div className="mx-auto flex max-w-3xl flex-col gap-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">
+          <p className="text-muted-foreground font-mono text-xs">
+            Sevkiyat No: {shipment.trackingNumber}
+          </p>
+          <h1 className="mt-0.5 text-2xl font-semibold tracking-tight">
             {shipment.originAddress} → {shipment.destinationAddress}
           </h1>
           <p className="text-muted-foreground text-sm">

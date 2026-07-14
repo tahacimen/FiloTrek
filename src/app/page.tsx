@@ -180,18 +180,27 @@ export default function LandingPage() {
                   <MapPin className="size-[18px] text-[#1e1e1e]" />
                   Sevkiyat Takibi
                 </div>
-                <div className="flex items-center overflow-hidden rounded-[10px] border-[1.5px] border-[#e2ddd4]">
-                  <span className="flex-1 px-3 py-2.5 text-[13.5px] text-[#9aa2b5]">
-                    Sevkiyat no. girin
-                  </span>
+                <form
+                  action="/track"
+                  method="GET"
+                  className="flex items-center overflow-hidden rounded-[10px] border-[1.5px] border-[#e2ddd4] focus-within:border-[#f5b301]"
+                >
+                  <input
+                    type="text"
+                    name="no"
+                    inputMode="numeric"
+                    placeholder="Sevkiyat no. girin"
+                    aria-label="Sevkiyat numarası"
+                    className="flex-1 bg-transparent px-3 py-2.5 text-[13.5px] text-[#1a1a1a] outline-none placeholder:text-[#9aa2b5]"
+                  />
                   <button
-                    type="button"
-                    className="flex items-center bg-[#1e1e1e] px-3.5 py-3 text-white"
+                    type="submit"
+                    className="flex items-center bg-[#1e1e1e] px-3.5 py-3 text-white transition hover:bg-[#0a0a0a]"
                     aria-label="Sevkiyat ara"
                   >
                     <Search className="size-4" />
                   </button>
-                </div>
+                </form>
               </div>
             </div>
           </div>
