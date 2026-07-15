@@ -54,10 +54,14 @@ export async function getDashboardData(ctx: TenantContext) {
     return { vehicleType, total, available, inUse, maintenance };
   });
 
-  const [completedRows, recentActivity] = await Promise.all([
+  const [completedRows, recentActivity, featuredShipment] = await Promise.all([
     shipmentRepository.getCompletedShipmentsPerDay(ctx, sinceDate),
     shipmentRepository.listRecentActivity(ctx, 6),
+    shipmentRepository.getFeaturedShipmentForSupplier(ctx),
   ]);
+  const featuredShipmentHistory = featuredShipment
+    ? await shipmentRepository.getShipmentStatusHistory(featuredShipment.id)
+    : [];
   const trendByDate = new Map<string, number>();
   for (let i = TREND_WINDOW_DAYS - 1; i >= 0; i--) {
     const d = new Date();
@@ -85,6 +89,8 @@ export async function getDashboardData(ctx: TenantContext) {
     occupancyByType,
     completedShipmentsTrend,
     recentActivity,
+    featuredShipment,
+    featuredShipmentHistory,
   };
 }
 

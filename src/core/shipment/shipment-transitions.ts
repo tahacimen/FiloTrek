@@ -95,6 +95,19 @@ export function getNextShipmentSteps(status: ShipmentStatus) {
   );
 }
 
+/**
+ * How far along SHIPMENT_STATUS_SEQUENCE a shipment is, as a 0–100 percent —
+ * the single source of truth behind both the detail page's timeline bar and
+ * the dashboard's activity-list progress bars, so the two never drift apart.
+ * CANCELLED has no fixed position in the sequence (see the comment above),
+ * so callers must branch on that themselves rather than call this for it.
+ */
+export function getShipmentProgressPercent(status: ShipmentStatus): number {
+  const index = SHIPMENT_STATUS_SEQUENCE.indexOf(status);
+  if (index === -1) return 0;
+  return Math.round((index / (SHIPMENT_STATUS_SEQUENCE.length - 1)) * 100);
+}
+
 export function canCancelShipment(status: ShipmentStatus) {
   return SHIPMENT_ALLOWED_TRANSITIONS[status].includes(
     ShipmentStatus.CANCELLED

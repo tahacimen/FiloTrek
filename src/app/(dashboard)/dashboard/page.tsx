@@ -12,6 +12,7 @@ import { OccupancyChart } from "@/components/dashboard/occupancy-chart";
 import { TrendChart } from "@/components/dashboard/trend-chart";
 import { StatusBreakdownChart } from "@/components/dashboard/status-breakdown-chart";
 import { ActivityFeed } from "@/components/dashboard/activity-feed";
+import { FeaturedShipmentPanel } from "@/components/dashboard/featured-shipment-panel";
 import {
   customerShipmentStatusLabels,
   driverStatusLabels,
@@ -91,56 +92,59 @@ export default async function DashboardPage() {
         idleDrivers={data.idleDrivers}
       />
 
-      <div className="grid gap-4 lg:grid-cols-3">
-        <div className="flex flex-col gap-4 lg:col-span-2">
-          <Card>
-            <CardHeader>
-              <CardTitle>Araç Tipine Göre Filo Doluluğu</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <OccupancyChart data={data.occupancyByType} />
-            </CardContent>
-          </Card>
+      <div className="grid items-stretch gap-4 lg:grid-cols-3">
+        <Card className="lg:col-span-2">
+          <CardHeader>
+            <CardTitle>Araç Tipine Göre Filo Doluluğu</CardTitle>
+          </CardHeader>
+          <CardContent className="flex flex-1 items-center">
+            <OccupancyChart data={data.occupancyByType} />
+          </CardContent>
+        </Card>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Kapasite Kullanım Trendi (Son 14 Gün)</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <TrendChart data={data.completedShipmentsTrend} />
-            </CardContent>
-          </Card>
-        </div>
-
-        <div className="flex flex-col gap-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Şoför/Araç Durumu</CardTitle>
-            </CardHeader>
-            <CardContent className="flex flex-col gap-6">
-              <div>
-                <p className="mb-2 text-sm font-medium">Araçlar</p>
-                <StatusBreakdownChart
-                  counts={data.vehiclesByStatus}
-                  labels={vehicleStatusLabels}
-                  unitLabel="Araç"
-                />
-              </div>
-              <Separator />
-              <div>
-                <p className="mb-2 text-sm font-medium">Şoförler</p>
-                <StatusBreakdownChart
-                  counts={data.driversByStatus}
-                  labels={driverStatusLabels}
-                  unitLabel="Şoför"
-                />
-              </div>
-            </CardContent>
-          </Card>
-
-          <ActivityFeed rows={data.recentActivity} />
-        </div>
+        <FeaturedShipmentPanel
+          shipment={data.featuredShipment}
+          history={data.featuredShipmentHistory}
+        />
       </div>
+
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle>Kapasite Kullanım Trendi (Son 14 Gün)</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <TrendChart data={data.completedShipmentsTrend} />
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Şoför/Araç Durumu</CardTitle>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-6">
+            <div>
+              <p className="mb-2 text-sm font-medium">Araçlar</p>
+              <StatusBreakdownChart
+                counts={data.vehiclesByStatus}
+                labels={vehicleStatusLabels}
+                unitLabel="Araç"
+              />
+            </div>
+            <Separator />
+            <div>
+              <p className="mb-2 text-sm font-medium">Şoförler</p>
+              <StatusBreakdownChart
+                counts={data.driversByStatus}
+                labels={driverStatusLabels}
+                unitLabel="Şoför"
+              />
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      <ActivityFeed rows={data.recentActivity} />
     </div>
   );
 }

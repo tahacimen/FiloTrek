@@ -328,6 +328,7 @@ export async function listRecentActivity(ctx: TenantContext, limit: number) {
     take: limit,
     select: {
       id: true,
+      trackingNumber: true,
       originAddress: true,
       destinationAddress: true,
       status: true,
@@ -336,5 +337,37 @@ export async function listRecentActivity(ctx: TenantContext, limit: number) {
       vehicle: { select: { plate: true } },
       driver: { select: { fullName: true } },
     },
+  });
+}
+
+/**
+ * The single shipment the dashboard's "featured" detail panel highlights —
+ * whichever is currently most in-motion (not yet PENDING/unassigned, not
+ * yet finished), most recently touched first. Falls back to the most
+ * recently touched shipment of ANY status so the panel still has something
+ * to show for a supplier whose whole book is either brand new or finished,
+ * rather than going empty the moment nothing is mid-transit.
+ */
+export async function getFeaturedShipmentForSupplier(ctx: TenantContext) {
+  const inMotion = await prisma.shipment.findFirst({
+    where: {
+      supplierCompanyId: ctx.companyId,
+      status: {
+        notIn: [
+          ShipmentStatus.PENDING,
+          ShipmentStatus.COMPLETED,
+          ShipmentStatus.CANCELLED,
+        ],
+      },
+    },
+    orderBy: { updatedAt: "desc" },
+    include: shipmentListInclude,
+  });
+  if (inMotion) return inMotion;
+
+  return prisma.shipment.findFirst({
+    where: { supplierCompanyId: ctx.companyId },
+    orderBy: { updatedAt: "desc" },
+    include: shipmentListInclude,
   });
 }
