@@ -32,7 +32,10 @@ export async function createTestCompany(type: CompanyType) {
   });
 }
 
-export async function createTestUser(companyId: string) {
+export async function createTestUser(
+  companyId: string,
+  overrides: Partial<{ isPlatformAdmin: boolean }> = {}
+) {
   return prisma.user.create({
     data: {
       companyId,
@@ -40,6 +43,7 @@ export async function createTestUser(companyId: string) {
       passwordHash: "unused-in-tests",
       fullName: "Test User",
       companyRole: CompanyRole.ADMIN,
+      isPlatformAdmin: overrides.isPlatformAdmin ?? false,
     },
   });
 }
@@ -52,6 +56,7 @@ export async function createSupplierContext(): Promise<TenantContext> {
     companyId: company.id,
     companyType: CompanyType.SUPPLIER,
     companyRole: CompanyRole.ADMIN,
+    isPlatformAdmin: false,
   };
 }
 
@@ -63,6 +68,20 @@ export async function createCustomerContext(): Promise<TenantContext> {
     companyId: company.id,
     companyType: CompanyType.CUSTOMER,
     companyRole: CompanyRole.ADMIN,
+    isPlatformAdmin: false,
+  };
+}
+
+/** A CUSTOMER-company user who is ALSO a platform admin — the two are independent (see schema.prisma comment above Invitation). */
+export async function createPlatformAdminContext(): Promise<TenantContext> {
+  const company = await createTestCompany(CompanyType.CUSTOMER);
+  const user = await createTestUser(company.id, { isPlatformAdmin: true });
+  return {
+    userId: user.id,
+    companyId: company.id,
+    companyType: CompanyType.CUSTOMER,
+    companyRole: CompanyRole.ADMIN,
+    isPlatformAdmin: true,
   };
 }
 

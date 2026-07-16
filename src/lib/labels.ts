@@ -3,6 +3,8 @@ import {
   DockReservationStatus,
   DockReservationType,
   DriverStatus,
+  InvitationRole,
+  InvitationStatus,
   ShipmentStatus,
   VehicleBedType,
   VehicleStatus,
@@ -103,6 +105,26 @@ export const dockReservationStatusBadgeVariant: Record<
   [DockReservationStatus.VEHICLE_ARRIVED]: "warning",
   [DockReservationStatus.COMPLETED]: "success",
   [DockReservationStatus.CANCELLED]: "destructive",
+};
+
+export const invitationRoleLabels: Record<InvitationRole, string> = {
+  [InvitationRole.SUPPLIER_COMPANY]: "Tedarikçi",
+  [InvitationRole.CUSTOMER_COMPANY]: "Müşteri",
+};
+
+export const invitationStatusLabels: Record<InvitationStatus, string> = {
+  [InvitationStatus.PENDING]: "Bekliyor",
+  [InvitationStatus.ACCEPTED]: "Kabul Edildi",
+  [InvitationStatus.REVOKED]: "İptal Edildi",
+};
+
+export const invitationStatusBadgeVariant: Record<
+  InvitationStatus,
+  "default" | "secondary" | "outline" | "destructive" | "success" | "warning"
+> = {
+  [InvitationStatus.PENDING]: "warning",
+  [InvitationStatus.ACCEPTED]: "success",
+  [InvitationStatus.REVOKED]: "destructive",
 };
 
 /** Badge color variant per status, shared by vehicle/driver/shipment status chips. */

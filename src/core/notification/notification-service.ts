@@ -2,7 +2,7 @@ import type { TenantContext } from "@/core/shared/tenant-context";
 import { NotFoundError } from "@/core/shared/errors";
 import * as notificationRepository from "@/core/notification/notification-repository";
 import * as emailService from "@/core/notification/email-service";
-import { NotificationType } from "@/generated/prisma/client";
+import { InvitationRole, NotificationType } from "@/generated/prisma/client";
 
 /**
  * Fires after the in-app notification has already been written — email is
@@ -161,6 +161,38 @@ export async function notifyDriverLoginLink(params: {
   await emailService.sendEmail({
     to: params.driverEmail,
     subject: "Logigo giriş bağlantınız",
+    text: lines.join("\n"),
+  });
+}
+
+const INVITATION_ROLE_LABELS: Record<InvitationRole, string> = {
+  [InvitationRole.SUPPLIER_COMPANY]: "Tedarikçi",
+  [InvitationRole.CUSTOMER_COMPANY]: "Müşteri",
+};
+
+/**
+ * Same non-swallowing rationale as notifyDriverLoginLink above: a platform
+ * admin explicitly clicked "Davet Gönder", so a real send failure must
+ * surface back as a visible error rather than vanish silently.
+ */
+export async function notifyInvitation(params: {
+  email: string;
+  role: InvitationRole;
+  invitationUrl: string;
+}) {
+  const roleLabel = INVITATION_ROLE_LABELS[params.role];
+  const lines = [
+    "Merhaba,",
+    "",
+    `Logigo'ya ${roleLabel} hesabı olarak davet edildiniz. Hesabınızı ` +
+      "oluşturmak için aşağıdaki bağlantıyı kullanın:",
+    params.invitationUrl,
+    "",
+    "Bu bağlantı 7 gün geçerlidir ve yalnızca bir kez kullanılabilir.",
+  ];
+  await emailService.sendEmail({
+    to: params.email,
+    subject: "Logigo davetiniz",
     text: lines.join("\n"),
   });
 }

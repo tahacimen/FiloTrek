@@ -8,6 +8,7 @@ import {
   Users,
   Package,
   ClipboardList,
+  Settings,
   ShieldCheck,
   Warehouse,
 } from "lucide-react";
@@ -31,11 +32,19 @@ const customerNavItems = [
 
 export function DashboardNav({
   companyType,
+  isPlatformAdmin,
 }: {
   companyType: "SUPPLIER" | "CUSTOMER";
+  isPlatformAdmin?: boolean;
 }) {
   const pathname = usePathname();
-  const items = companyType === "SUPPLIER" ? supplierNavItems : customerNavItems;
+  const baseItems =
+    companyType === "SUPPLIER" ? supplierNavItems : customerNavItems;
+  // Platform-wide, not per-company — visible regardless of companyType (see
+  // requirePlatformAdmin in authorization.ts).
+  const items = isPlatformAdmin
+    ? [...baseItems, { href: "/admin", label: "Yönetim", icon: Settings }]
+    : baseItems;
 
   return (
     <nav className="flex flex-col gap-1 p-3">

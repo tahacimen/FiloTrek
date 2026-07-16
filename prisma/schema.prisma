@@ -169,14 +169,59 @@ model User {
   // src/lib/login-attempts.ts, shared across User/Driver/GateGuard.
   failedLoginAttempts Int       @default(0) @map("failed_login_attempts")
   lockedUntil         DateTime? @map("locked_until")
+  // Platform-wide (not per-company) capability: only lets this User manage
+  // /admin invitations. There is no in-app way to set this — it's flipped
+  // directly in the DB by the site owner, deliberately, since deciding who
+  // gets to invite new tenant companies is not a decision any UI should
+  // expose (see the schema comment above Invitation).
+  isPlatformAdmin     Boolean   @default(false) @map("is_platform_admin")
   createdAt    DateTime    @default(now()) @map("created_at")
   updatedAt    DateTime    @updatedAt @map("updated_at")
 
-  statusChanges     StatusHistory[]
-  resolvedIncidents ShipmentIncident[]
+  statusChanges      StatusHistory[]
+  resolvedIncidents  ShipmentIncident[]
+  createdInvitations Invitation[]
 
   @@index([companyId])
   @@map("users")
+}
+
+enum InvitationRole {
+  SUPPLIER_COMPANY
+  CUSTOMER_COMPANY
+}
+
+enum InvitationStatus {
+  PENDING
+  ACCEPTED
+  REVOKED
+}
+
+/**
+ * The only way a brand-new Company (and its first User) enters this system
+ * outside of seeding — there is no public sign-up (see the module comment
+ * this replaces). A platform admin (User.isPlatformAdmin) picks an email +
+ * role; the invitee completes the rest (company name, their own name,
+ * password) at /davet/[token] without ever choosing their own role.
+ */
+model Invitation {
+  id              String            @id @default(uuid(7)) @db.Uuid
+  email           String
+  role            InvitationRole
+  token           String            @unique
+  status          InvitationStatus  @default(PENDING)
+  expiresAt       DateTime          @map("expires_at")
+  acceptedAt      DateTime?         @map("accepted_at")
+  createdByUserId String            @map("created_by_user_id") @db.Uuid
+  // Cascade: an Invitation is throwaway audit trail tied to its creator, not
+  // load-bearing business data — deleting the platform admin User who sent
+  // it shouldn't be blocked by (or orphan) the invitations they created.
+  createdBy       User              @relation(fields: [createdByUserId], references: [id], onDelete: Cascade)
+  createdAt       DateTime          @default(now()) @map("created_at")
+  updatedAt       DateTime          @updatedAt @map("updated_at")
+
+  @@index([token])
+  @@map("invitations")
 }
 
 model Vehicle {

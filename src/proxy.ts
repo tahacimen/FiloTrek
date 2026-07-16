@@ -102,15 +102,18 @@ export default auth((req) => {
   const { pathname } = req.nextUrl;
   const isLoginPage = pathname === "/login";
   // Public pages reachable by anyone, logged in or not, and never
-  // redirect-bounced: the marketing landing at "/" and the shipment
-  // tracking page at "/track" (status-only lookup by tracking number, no
-  // login required). Everything else stays auth-gated below.
+  // redirect-bounced: the marketing landing at "/", the shipment tracking
+  // page at "/track" (status-only lookup by tracking number, no login
+  // required), and "/davet/[token]" (invitation acceptance — the invitee
+  // has no account yet by definition, see invitation-service.ts).
+  // Everything else stays auth-gated below.
   const isLandingPage = pathname === "/";
   const isTrackPage = pathname === "/track" || pathname.startsWith("/track/");
+  const isInvitePage = pathname === "/davet" || pathname.startsWith("/davet/");
   const isDriverRoute = pathname === "/driver" || pathname.startsWith("/driver/");
   const isGateRoute = pathname === "/gate" || pathname.startsWith("/gate/");
 
-  if (isLandingPage || isTrackPage) {
+  if (isLandingPage || isTrackPage || isInvitePage) {
     const requestHeaders = new Headers(req.headers);
     requestHeaders.set("x-nonce", nonce);
     requestHeaders.set("Content-Security-Policy", csp);

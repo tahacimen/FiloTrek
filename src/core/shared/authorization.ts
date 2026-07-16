@@ -23,3 +23,15 @@ export function requireAdmin(ctx: TenantContext) {
     throw new UnauthorizedError("Bu işlem için yönetici yetkisi gerekiyor.");
   }
 }
+
+/**
+ * Platform-wide, not per-company — gates /admin (invitation management).
+ * ctx.isPlatformAdmin only ever comes from the User row's own isPlatformAdmin
+ * column (see schema.prisma), which nothing in the app can set; it's flipped
+ * directly in the DB by the site owner.
+ */
+export function requirePlatformAdmin(ctx: TenantContext) {
+  if (!ctx.isPlatformAdmin) {
+    throw new UnauthorizedError("Bu işlem için platform yöneticisi yetkisi gerekiyor.");
+  }
+}

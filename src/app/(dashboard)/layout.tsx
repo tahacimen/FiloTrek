@@ -34,6 +34,7 @@ export default async function DashboardLayout({
     companyId: user.companyId,
     companyType: user.companyType,
     companyRole: user.companyRole,
+    isPlatformAdmin: user.isPlatformAdmin,
   } satisfies TenantContext);
 
   return (
@@ -44,7 +45,10 @@ export default async function DashboardLayout({
             <Logo className="h-8 w-auto" />
           </Link>
         </div>
-        <DashboardNav companyType={user.companyType} />
+        <DashboardNav
+          companyType={user.companyType}
+          isPlatformAdmin={user.isPlatformAdmin}
+        />
       </aside>
 
       <div className="flex min-h-screen flex-1 flex-col">

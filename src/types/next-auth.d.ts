@@ -16,6 +16,7 @@ export type CompanyUserSession = BaseSessionUser & {
   companyType: CompanyType;
   companyName: string;
   companyRole: CompanyRole;
+  isPlatformAdmin: boolean;
 };
 
 /** A driver's own scoped login — deliberately has no companyType/companyRole. */
@@ -43,6 +44,7 @@ declare module "next-auth" {
     companyType?: CompanyType;
     companyName?: string;
     companyRole?: CompanyRole;
+    isPlatformAdmin?: boolean;
     driverId?: string;
     gateGuardId?: string;
   }
@@ -59,6 +61,7 @@ declare module "next-auth/jwt" {
     companyType?: CompanyType;
     companyName?: string;
     companyRole?: CompanyRole;
+    isPlatformAdmin?: boolean;
     driverId?: string;
     gateGuardId?: string;
   }

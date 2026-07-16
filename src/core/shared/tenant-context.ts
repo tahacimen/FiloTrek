@@ -7,6 +7,7 @@ export type TenantContext = {
   companyId: string;
   companyType: CompanyType;
   companyRole: CompanyRole;
+  isPlatformAdmin: boolean;
 };
 
 /**
@@ -31,5 +32,6 @@ export async function requireTenantContext(): Promise<TenantContext> {
     companyId: session.user.companyId,
     companyType: session.user.companyType,
     companyRole: session.user.companyRole,
+    isPlatformAdmin: session.user.isPlatformAdmin,
   };
 }

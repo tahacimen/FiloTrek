@@ -51,6 +51,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
               companyType: user.company.type,
               companyName: user.company.name,
               companyRole: user.companyRole,
+              isPlatformAdmin: user.isPlatformAdmin,
             };
           }
           await recordFailedLogin("user", user.id, user.failedLoginAttempts);
@@ -143,6 +144,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           token.companyType = user.companyType;
           token.companyName = user.companyName;
           token.companyRole = user.companyRole;
+          token.isPlatformAdmin = user.isPlatformAdmin;
         }
       }
       return token;
@@ -174,6 +176,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           companyType: token.companyType!,
           companyName: token.companyName!,
           companyRole: token.companyRole!,
+          isPlatformAdmin: token.isPlatformAdmin ?? false,
         };
       }
       return session;
