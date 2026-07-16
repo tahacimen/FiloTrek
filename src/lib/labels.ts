@@ -1,5 +1,7 @@
 import {
   CompanyType,
+  DockReservationStatus,
+  DockReservationType,
   DriverStatus,
   ShipmentStatus,
   VehicleBedType,
@@ -79,6 +81,28 @@ export const driverNextStepLabels: Partial<Record<ShipmentStatus, string>> = {
 export const companyTypeLabels: Record<CompanyType, string> = {
   [CompanyType.SUPPLIER]: "Tedarikçi",
   [CompanyType.CUSTOMER]: "Müşteri",
+};
+
+export const dockReservationTypeLabels: Record<DockReservationType, string> = {
+  [DockReservationType.LOADING]: "Yükleme",
+  [DockReservationType.UNLOADING]: "Boşaltma",
+};
+
+export const dockReservationStatusLabels: Record<DockReservationStatus, string> = {
+  [DockReservationStatus.CREATED]: "Oluşturuldu",
+  [DockReservationStatus.VEHICLE_ARRIVED]: "Araç Geldi",
+  [DockReservationStatus.COMPLETED]: "Tamamlandı",
+  [DockReservationStatus.CANCELLED]: "İptal Edildi",
+};
+
+export const dockReservationStatusBadgeVariant: Record<
+  DockReservationStatus,
+  "default" | "secondary" | "outline" | "destructive" | "success" | "warning"
+> = {
+  [DockReservationStatus.CREATED]: "default",
+  [DockReservationStatus.VEHICLE_ARRIVED]: "warning",
+  [DockReservationStatus.COMPLETED]: "success",
+  [DockReservationStatus.CANCELLED]: "destructive",
 };
 
 /** Badge color variant per status, shared by vehicle/driver/shipment status chips. */

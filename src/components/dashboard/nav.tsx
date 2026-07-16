@@ -9,6 +9,7 @@ import {
   Package,
   ClipboardList,
   ShieldCheck,
+  Warehouse,
 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
@@ -19,6 +20,7 @@ const supplierNavItems = [
   { href: "/drivers", label: "Şoförler", icon: Users },
   { href: "/shipments", label: "Seferler", icon: Package },
   { href: "/assign", label: "Atama", icon: ClipboardList },
+  { href: "/warehouses", label: "Depo & Rampa", icon: Warehouse },
 ];
 
 const customerNavItems = [

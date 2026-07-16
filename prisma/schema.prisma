@@ -42,6 +42,18 @@ enum VehicleBedType {
   LOWBED
 }
 
+enum DockReservationType {
+  LOADING
+  UNLOADING
+}
+
+enum DockReservationStatus {
+  CREATED
+  VEHICLE_ARRIVED
+  COMPLETED
+  CANCELLED
+}
+
 // Resting states for a vehicle. COMPLETED is never a resting state — it is
 // written to StatusHistory as a momentary marker in the same transaction
 // that returns the vehicle to AVAILABLE (see core/shipment/shipment-status.ts).
@@ -129,6 +141,7 @@ model Company {
   vehicles            Vehicle[]
   drivers             Driver[]
   gateGuards          GateGuard[]
+  warehouses          Warehouse[]
   shipmentsAsCustomer Shipment[]     @relation("CustomerShipments")
   shipmentsAsSupplier Shipment[]     @relation("SupplierShipments")
   notifications       Notification[]
@@ -333,15 +346,120 @@ model Shipment {
   completedAt         DateTime?      @map("completed_at")
   cancelledAt         DateTime?      @map("cancelled_at")
 
-  notifications Notification[]
-  incidents     ShipmentIncident[]
-  gateEvents    GateEvent[]
+  notifications    Notification[]
+  incidents        ShipmentIncident[]
+  gateEvents       GateEvent[]
+  dockReservations DockReservation[]
 
   @@index([customerCompanyId, status])
   @@index([supplierCompanyId, status])
   @@index([vehicleId])
   @@index([driverId])
   @@map("shipments")
+}
+
+// ---------------------------------------------------------------------------
+// Warehouse / dock reservations — a supplier's own internal tool for
+// scheduling loading/unloading appointments at their own facility, entirely
+// separate from pickupGateInfo (the free-text field a CUSTOMER fills in for
+// their own pickup location) and from GateGuard/GateEvent (a CUSTOMER's own
+// checkpoint logging physical vehicle entry/exit). This module is scoped to
+// a single supplier company managing its own warehouse capacity — not a
+// cross-tenant marketplace where other companies book slots here.
+// ---------------------------------------------------------------------------
+
+model Warehouse {
+  id        String   @id @default(uuid(7)) @db.Uuid
+  companyId String   @map("company_id") @db.Uuid
+  company   Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  name      String
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  docks LoadingDock[]
+
+  @@index([companyId])
+  @@map("warehouses")
+}
+
+model LoadingDock {
+  id          String    @id @default(uuid(7)) @db.Uuid
+  warehouseId String    @map("warehouse_id") @db.Uuid
+  warehouse   Warehouse @relation(fields: [warehouseId], references: [id], onDelete: Cascade)
+  name        String
+  // Which reservation types / vehicle types / bed types this dock accepts —
+  // shown in the booking form to keep supplier staff from scheduling
+  // something the dock can't physically handle. Postgres native arrays
+  // (Prisma scalar lists), same as every other enum-based field elsewhere.
+  supportedReservationTypes DockReservationType[] @map("supported_reservation_types")
+  supportedVehicleTypes     VehicleType[]         @map("supported_vehicle_types")
+  supportedBedTypes         VehicleBedType[]      @map("supported_bed_types")
+  slotDurationMinutes       Int                   @default(60) @map("slot_duration_minutes")
+  isActive                  Boolean               @default(true) @map("is_active")
+  createdAt                 DateTime              @default(now()) @map("created_at")
+  updatedAt                 DateTime              @updatedAt @map("updated_at")
+
+  workingHours DockWorkingHours[]
+  reservations DockReservation[]
+
+  @@index([warehouseId])
+  @@map("loading_docks")
+}
+
+model DockWorkingHours {
+  id        String      @id @default(uuid(7)) @db.Uuid
+  dockId    String      @map("dock_id") @db.Uuid
+  dock      LoadingDock @relation(fields: [dockId], references: [id], onDelete: Cascade)
+  // 0=Pazar..6=Cumartesi, matching JS Date.getDay() so calendar math never
+  // needs to remap indices between the DB and the client.
+  dayOfWeek Int         @map("day_of_week")
+  isOpen    Boolean     @default(false) @map("is_open")
+  openTime  String      @map("open_time")
+  closeTime String      @map("close_time")
+
+  @@unique([dockId, dayOfWeek])
+  @@map("dock_working_hours")
+}
+
+model DockReservation {
+  id              String              @id @default(uuid(7)) @db.Uuid
+  dockId          String              @map("dock_id") @db.Uuid
+  dock            LoadingDock         @relation(fields: [dockId], references: [id], onDelete: Cascade)
+  // Optional link back to one of our own shipments, purely for convenience
+  // (autofill vehicle/driver) and traceability — a reservation never
+  // requires one, since a dock may be booked for a vehicle/load that isn't
+  // tracked as a Shipment in this system at all.
+  shipmentId      String?             @map("shipment_id") @db.Uuid
+  shipment        Shipment?           @relation(fields: [shipmentId], references: [id], onDelete: SetNull)
+  reservationType DockReservationType @map("reservation_type")
+  startAt         DateTime            @map("start_at")
+  endAt           DateTime            @map("end_at")
+  reason          String
+  vehicleType     VehicleType?        @map("vehicle_type")
+  // Free text, deliberately not VehicleBedType — this describes what the
+  // CARGO is (matches Shipment.cargoDescription's own free-text choice),
+  // not the vehicle's physical bed structure, a different concept.
+  cargoType       String?             @map("cargo_type")
+  quantity        Int?
+  totalWeightKg   Decimal?            @map("total_weight_kg") @db.Decimal(10, 2)
+  plate           String
+  driverName      String              @map("driver_name")
+  driverPhone     String?             @map("driver_phone")
+  notes           String?
+  status          DockReservationStatus @default(CREATED)
+  // Real timestamps per transition — required for any honest "on time vs.
+  // delayed" reporting later; without these, a delay metric would be
+  // fabricated rather than derived from actual data. Mirrors Shipment's own
+  // completedAt/cancelledAt pattern.
+  arrivedAt       DateTime?           @map("arrived_at")
+  completedAt     DateTime?           @map("completed_at")
+  cancelledAt     DateTime?           @map("cancelled_at")
+  createdAt       DateTime            @default(now()) @map("created_at")
+  updatedAt       DateTime            @updatedAt @map("updated_at")
+
+  @@index([dockId, startAt])
+  @@map("dock_reservations")
 }
 
 // Generic append-only audit trail shared by Vehicle, Driver and Shipment status

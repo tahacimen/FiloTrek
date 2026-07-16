@@ -5,6 +5,7 @@ import { prisma } from "@/lib/db";
 import {
   CompanyRole,
   CompanyType,
+  DockReservationType,
   DriverStatus,
   VehicleBedType,
   VehicleStatus,
@@ -103,6 +104,51 @@ export async function createDriverContext(
 ): Promise<DriverContext> {
   const driver = await createTestDriver(companyId);
   return { driverId: driver.id, companyId, fullName: driver.fullName };
+}
+
+export async function createTestWarehouse(companyId: string) {
+  return prisma.warehouse.create({
+    data: { companyId, name: unique("warehouse") },
+  });
+}
+
+/** Working hours are wide open (00:00-23:00, every day) so tests can pick any near-future time without fighting real business-hour alignment — the exclusion constraint and status transitions are what's under test, not the calendar grid. */
+export async function createTestDock(
+  warehouseId: string,
+  overrides: Partial<{
+    supportedReservationTypes: DockReservationType[];
+    supportedVehicleTypes: VehicleType[];
+    supportedBedTypes: VehicleBedType[];
+    slotDurationMinutes: number;
+  }> = {}
+) {
+  return prisma.loadingDock.create({
+    data: {
+      warehouseId,
+      name: unique("dock"),
+      supportedReservationTypes: overrides.supportedReservationTypes ?? [
+        DockReservationType.LOADING,
+        DockReservationType.UNLOADING,
+      ],
+      supportedVehicleTypes: overrides.supportedVehicleTypes ?? [
+        VehicleType.TIR,
+        VehicleType.KAMYON,
+      ],
+      supportedBedTypes: overrides.supportedBedTypes ?? [VehicleBedType.KAPALI_KASA],
+      slotDurationMinutes: overrides.slotDurationMinutes ?? 60,
+      workingHours: {
+        createMany: {
+          data: Array.from({ length: 7 }, (_, dayOfWeek) => ({
+            dayOfWeek,
+            isOpen: true,
+            openTime: "00:00",
+            closeTime: "23:00",
+          })),
+        },
+      },
+    },
+    include: { workingHours: true },
+  });
 }
 
 export async function createTestGateGuard(companyId: string) {
