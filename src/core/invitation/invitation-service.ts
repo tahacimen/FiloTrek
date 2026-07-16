@@ -9,6 +9,7 @@ import * as invitationRepository from "@/core/invitation/invitation-repository";
 import {
   invitationAcceptInputSchema,
   invitationInputSchema,
+  manualAccountInputSchema,
 } from "@/lib/validation/invitation";
 import {
   CompanyRole,
@@ -118,6 +119,57 @@ export async function acceptInvitation(token: string, rawInput: unknown) {
     await tx.invitation.update({
       where: { id: invitation.id },
       data: { status: InvitationStatus.ACCEPTED, acceptedAt: new Date() },
+    });
+    return { company, user };
+  });
+
+  return { email: user.email };
+}
+
+/**
+ * The admin sets the email AND password directly — no link, no invitee
+ * step. Still recorded as an Invitation (immediately ACCEPTED, own token
+ * never meant to be visited) purely so /admin's list stays a complete audit
+ * trail of every account the platform admin brought onto the platform,
+ * whichever of the two ways they did it.
+ */
+export async function createAccountDirectly(ctx: TenantContext, rawInput: unknown) {
+  requirePlatformAdmin(ctx);
+  const input = manualAccountInputSchema.parse(rawInput);
+
+  if (await invitationRepository.isEmailUsedAnywhere(input.email)) {
+    throw new ValidationError(
+      `${input.email} adresi zaten bir hesap tarafından kullanılıyor.`
+    );
+  }
+
+  const passwordHash = await hash(input.password, 10);
+  const companyType = COMPANY_TYPE_BY_ROLE[input.role];
+  const now = new Date();
+
+  const { user } = await prisma.$transaction(async (tx) => {
+    const company = await tx.company.create({
+      data: { name: input.companyName, type: companyType },
+    });
+    const user = await tx.user.create({
+      data: {
+        companyId: company.id,
+        email: input.email,
+        passwordHash,
+        fullName: input.fullName,
+        companyRole: CompanyRole.ADMIN,
+      },
+    });
+    await tx.invitation.create({
+      data: {
+        email: input.email,
+        role: input.role,
+        token: generateLoginToken(),
+        status: InvitationStatus.ACCEPTED,
+        expiresAt: now,
+        acceptedAt: now,
+        createdByUserId: ctx.userId,
+      },
     });
     return { company, user };
   });

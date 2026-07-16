@@ -221,4 +221,63 @@ describe("invitation-service", () => {
       })
     ).rejects.toThrow(ValidationError);
   });
+
+  it("rejects a non-platform-admin caller creating an account directly", async () => {
+    const ctx = await createCustomerContext();
+    companyIds.push(ctx.companyId);
+
+    await expect(
+      invitationService.createAccountDirectly(ctx, {
+        email: "dogrudan@test.local",
+        role: InvitationRole.SUPPLIER_COMPANY,
+        companyName: "Doğrudan Firma",
+        fullName: "Doğrudan Kullanıcı",
+        password: "SuperSecret1!",
+      })
+    ).rejects.toThrow(UnauthorizedError);
+  });
+
+  it("creates a Company + admin User directly, with no link involved, and lists it as already accepted", async () => {
+    const ctx = await createPlatformAdminContext();
+    companyIds.push(ctx.companyId);
+
+    const result = await invitationService.createAccountDirectly(ctx, {
+      email: "dogrudan-hesap@test.local",
+      role: InvitationRole.CUSTOMER_COMPANY,
+      companyName: "Doğrudan Müşteri A.Ş.",
+      fullName: "Doğrudan Kullanıcı",
+      password: "SuperSecret1!",
+    });
+    expect(result.email).toBe("dogrudan-hesap@test.local");
+
+    const createdUser = await prisma.user.findUniqueOrThrow({
+      where: { email: "dogrudan-hesap@test.local" },
+      include: { company: true },
+    });
+    companyIds.push(createdUser.companyId);
+    expect(createdUser.company.name).toBe("Doğrudan Müşteri A.Ş.");
+    expect(createdUser.company.type).toBe(CompanyType.CUSTOMER);
+    expect(await compare("SuperSecret1!", createdUser.passwordHash)).toBe(true);
+
+    const list = await invitationService.listInvitations(ctx);
+    const record = list.find((i) => i.email === "dogrudan-hesap@test.local");
+    expect(record?.status).toBe(InvitationStatus.ACCEPTED);
+    expect(record?.acceptedAt).not.toBeNull();
+  });
+
+  it("rejects creating a direct account for an email already in use", async () => {
+    const ctx = await createPlatformAdminContext();
+    companyIds.push(ctx.companyId);
+    const existingUser = await createTestUser(ctx.companyId);
+
+    await expect(
+      invitationService.createAccountDirectly(ctx, {
+        email: existingUser.email,
+        role: InvitationRole.SUPPLIER_COMPANY,
+        companyName: "Herhangi Firma",
+        fullName: "Herhangi Kullanıcı",
+        password: "SuperSecret1!",
+      })
+    ).rejects.toThrow(ValidationError);
+  });
 });

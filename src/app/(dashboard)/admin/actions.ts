@@ -34,6 +34,27 @@ export async function createInvitationAction(
   return undefined;
 }
 
+export async function createAccountManuallyAction(
+  _prevState: InvitationFormState,
+  formData: FormData
+): Promise<InvitationFormState> {
+  try {
+    const ctx = await requireTenantContext();
+    const input = {
+      email: formData.get("email"),
+      role: formData.get("role"),
+      companyName: formData.get("companyName"),
+      fullName: formData.get("fullName"),
+      password: formData.get("password"),
+    };
+    await invitationService.createAccountDirectly(ctx, input);
+  } catch (error) {
+    return { error: toActionErrorMessage(error) };
+  }
+  revalidatePath("/admin");
+  return undefined;
+}
+
 export async function revokeInvitationAction(
   invitationId: string
 ): Promise<InvitationFormState> {

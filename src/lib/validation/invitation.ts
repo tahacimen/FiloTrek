@@ -22,3 +22,8 @@ export const invitationAcceptInputSchema = z.object({
   password: z.string().trim().min(8, "Şifre en az 8 karakter olmalı."),
 });
 export type InvitationAcceptInput = z.infer<typeof invitationAcceptInputSchema>;
+
+export const manualAccountInputSchema = invitationInputSchema.extend(
+  invitationAcceptInputSchema.shape
+);
+export type ManualAccountInput = z.infer<typeof manualAccountInputSchema>;

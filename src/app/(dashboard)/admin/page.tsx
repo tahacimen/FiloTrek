@@ -5,6 +5,7 @@ import { listInvitations } from "@/core/invitation/invitation-service";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getRequestOrigin } from "@/lib/request-origin";
 import { InvitationFormDialog } from "@/app/(dashboard)/admin/invitation-form-dialog";
+import { ManualAccountFormDialog } from "@/app/(dashboard)/admin/manual-account-form-dialog";
 import { InvitationTable } from "@/app/(dashboard)/admin/invitation-table";
 
 export default async function AdminPage() {
@@ -38,7 +39,10 @@ export default async function AdminPage() {
             davetleri yönetin.
           </p>
         </div>
-        <InvitationFormDialog />
+        <div className="flex items-center gap-2">
+          <ManualAccountFormDialog />
+          <InvitationFormDialog />
+        </div>
       </div>
       <Card>
         <CardHeader>
