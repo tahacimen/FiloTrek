@@ -5,9 +5,12 @@ import {
   VehicleBedType,
   VehicleType,
 } from "@/generated/prisma/client";
+import { optionalMapsUrlSchema } from "@/lib/validation/shipment";
 
 export const warehouseInputSchema = z.object({
   name: z.string().trim().min(2, "Depo adı en az 2 karakter olmalı.").max(120),
+  address: z.string().trim().max(300).nullable().optional(),
+  mapsUrl: optionalMapsUrlSchema.nullable(),
 });
 export type WarehouseInput = z.infer<typeof warehouseInputSchema>;
 

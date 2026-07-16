@@ -50,7 +50,7 @@ export async function getReservationReport(
   rangeStart: Date,
   rangeEnd: Date
 ): Promise<ReservationReport> {
-  requireCompanyType(ctx, CompanyType.SUPPLIER);
+  requireCompanyType(ctx, CompanyType.CUSTOMER);
 
   const [warehouses, reservations] = await Promise.all([
     warehouseRepository.listWarehousesForTenant(ctx),

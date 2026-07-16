@@ -5,11 +5,7 @@ import { useTransition } from "react";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
-import {
-  cancelReservationAction,
-  markCompletedAction,
-  markVehicleArrivedAction,
-} from "@/app/(dashboard)/warehouses/[warehouseId]/docks/[dockId]/actions";
+import { cancelReservationAction } from "@/app/(dashboard)/warehouses/[warehouseId]/docks/[dockId]/actions";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -70,11 +66,12 @@ export function ReservationDetailDialog({
     });
   }
 
-  const canMarkArrived = reservation.status === DockReservationStatus.CREATED;
-  const canComplete =
+  // Only cancellation lives here — an administrative scheduling decision.
+  // Araç Geldi/Tamamlandı are physical gate events, handled by the gate
+  // guard from the Nizamiye screen (/gate), not from this dashboard view.
+  const canCancel =
     reservation.status === DockReservationStatus.CREATED ||
     reservation.status === DockReservationStatus.VEHICLE_ARRIVED;
-  const canCancel = canComplete;
 
   return (
     <Dialog open onOpenChange={(next) => !next && onClose()}>
@@ -131,42 +128,19 @@ export function ReservationDetailDialog({
           )}
         </div>
 
-        {(canMarkArrived || canComplete || canCancel) && (
+        {canCancel && (
           <DialogFooter className="flex-wrap gap-2 sm:justify-start">
-            {canMarkArrived && (
-              <Button
-                disabled={isPending}
-                onClick={() =>
-                  run(markVehicleArrivedAction, "Aracın vardığını onaylıyor musunuz?")
-                }
-              >
-                {isPending && <Loader2 className="animate-spin" />}
-                Araç Geldi
-              </Button>
-            )}
-            {canComplete && (
-              <Button
-                variant="outline"
-                disabled={isPending}
-                onClick={() =>
-                  run(markCompletedAction, "Rezervasyonu tamamlandı olarak işaretlemek istiyor musunuz?")
-                }
-              >
-                Tamamlandı
-              </Button>
-            )}
-            {canCancel && (
-              <Button
-                variant="outline"
-                className="text-destructive hover:text-destructive"
-                disabled={isPending}
-                onClick={() =>
-                  run(cancelReservationAction, "Bu rezervasyonu iptal etmek istediğinize emin misiniz?")
-                }
-              >
-                İptal Et
-              </Button>
-            )}
+            <Button
+              variant="outline"
+              className="text-destructive hover:text-destructive"
+              disabled={isPending}
+              onClick={() =>
+                run(cancelReservationAction, "Bu rezervasyonu iptal etmek istediğinize emin misiniz?")
+              }
+            >
+              {isPending && <Loader2 className="animate-spin" />}
+              İptal Et
+            </Button>
           </DialogFooter>
         )}
       </DialogContent>

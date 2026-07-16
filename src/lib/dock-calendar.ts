@@ -65,6 +65,29 @@ function minutesToLabel(minutes: number): string {
   return `${h}:${m}`;
 }
 
+/**
+ * Every bookable slot-start time on a single given date, for one dock — the
+ * shipment detail page's "Rampa Rezervasyonu Yap" dialog uses this to
+ * populate a plain time picker (no live-availability check against
+ * existing reservations; the DB exclusion constraint is still the real
+ * guarantee, same as the calendar's own click-to-book flow).
+ */
+export function listOpenSlotsForDate(
+  date: Date,
+  workingHours: DockWorkingHourRow[],
+  slotDurationMinutes: number
+): string[] {
+  const hours = workingHours.find((row) => row.dayOfWeek === date.getDay());
+  if (!hours?.isOpen) return [];
+  const openMin = parseTime(hours.openTime);
+  const closeMin = parseTime(hours.closeTime);
+  const labels: string[] = [];
+  for (let t = openMin; t + slotDurationMinutes <= closeMin; t += slotDurationMinutes) {
+    labels.push(minutesToLabel(t));
+  }
+  return labels;
+}
+
 export function buildWeekGrid(
   weekStart: Date,
   workingHours: DockWorkingHourRow[],

@@ -102,6 +102,11 @@ enum StatusChangeSource {
   SYSTEM_AUTO
   EXTERNAL_WEBHOOK
   DRIVER
+  // A gate guard advancing a shipment's status as a side effect of a linked
+  // dock reservation event (see dock-reservation-status.ts) — distinct from
+  // DRIVER (a different actor) and SYSTEM_AUTO (implies no human involved,
+  // which would misrepresent a gate guard's own real-time action).
+  GATE_GUARD
 }
 
 enum NotificationType {
@@ -359,13 +364,18 @@ model Shipment {
 }
 
 // ---------------------------------------------------------------------------
-// Warehouse / dock reservations — a supplier's own internal tool for
-// scheduling loading/unloading appointments at their own facility, entirely
-// separate from pickupGateInfo (the free-text field a CUSTOMER fills in for
-// their own pickup location) and from GateGuard/GateEvent (a CUSTOMER's own
-// checkpoint logging physical vehicle entry/exit). This module is scoped to
-// a single supplier company managing its own warehouse capacity — not a
-// cross-tenant marketplace where other companies book slots here.
+// Warehouse / dock reservations — a CUSTOMER's own facility and its dock
+// scheduling, structured successor to the free-text pickupGateInfo field
+// (which stays as a fallback for customers who haven't configured a
+// warehouse yet). Companion to GateGuard/GateEvent, which already logs
+// physical vehicle entry/exit at this same customer facility — a linked
+// DockReservation's status (arrived/completed) is advanced by that same
+// GateGuard session, not by the customer's own dashboard user, so the two
+// "is the truck here" signals never diverge. A SUPPLIER only ever reads
+// this data (surfaced once on a shipment it's linked to, read-only) — it
+// never creates or manages a Warehouse/LoadingDock itself. Scoped to a
+// single customer company managing its own facility — not a cross-tenant
+// marketplace where other companies book slots here.
 // ---------------------------------------------------------------------------
 
 model Warehouse {
@@ -373,6 +383,11 @@ model Warehouse {
   companyId String   @map("company_id") @db.Uuid
   company   Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
   name      String
+  // Real physical address/navigation link — what a supplier's driver
+  // actually needs, mirroring Shipment.originAddress/originMapsUrl. Without
+  // this a "warehouse" was just a name, useless to whoever has to drive there.
+  address   String?
+  mapsUrl   String?  @map("maps_url")
   isActive  Boolean  @default(true) @map("is_active")
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -389,9 +404,10 @@ model LoadingDock {
   warehouse   Warehouse @relation(fields: [warehouseId], references: [id], onDelete: Cascade)
   name        String
   // Which reservation types / vehicle types / bed types this dock accepts —
-  // shown in the booking form to keep supplier staff from scheduling
-  // something the dock can't physically handle. Postgres native arrays
-  // (Prisma scalar lists), same as every other enum-based field elsewhere.
+  // shown in the booking form to keep the customer's own staff from
+  // scheduling something the dock can't physically handle. Postgres native
+  // arrays (Prisma scalar lists), same as every other enum-based field
+  // elsewhere.
   supportedReservationTypes DockReservationType[] @map("supported_reservation_types")
   supportedVehicleTypes     VehicleType[]         @map("supported_vehicle_types")
   supportedBedTypes         VehicleBedType[]      @map("supported_bed_types")
@@ -426,12 +442,13 @@ model DockReservation {
   id              String              @id @default(uuid(7)) @db.Uuid
   dockId          String              @map("dock_id") @db.Uuid
   dock            LoadingDock         @relation(fields: [dockId], references: [id], onDelete: Cascade)
-  // Optional link back to one of our own shipments — a dispatcher-chosen,
-  // opt-in reference (never required, since a dock may be booked for a
-  // load that isn't tracked as a Shipment at all) used for autofill,
-  // traceability, and a best-effort shipment-status sync (see
-  // dock-reservation-status.ts: VEHICLE_ARRIVED -> Shipment.LOADING,
-  // COMPLETED -> Shipment.AT_PICKUP_GATE). A partial unique index
+  // Optional link back to one of the customer's own shipments — an opt-in
+  // reference (never required, since a dock may be booked for a load that
+  // isn't tracked as a Shipment at all, e.g. an unrelated inbound delivery)
+  // used for autofill, traceability, and a best-effort shipment-status sync
+  // triggered by the gate guard (see dock-reservation-status.ts:
+  // VEHICLE_ARRIVED -> Shipment.LOADING, COMPLETED -> Shipment.AT_PICKUP_GATE).
+  // A partial unique index
   // (add_dock_reservation_shipment_unique migration, not expressible in
   // Prisma's schema DSL) enforces at most one *active* (non-cancelled)
   // reservation per shipment, so the sync source is never ambiguous.

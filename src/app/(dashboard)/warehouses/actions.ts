@@ -8,6 +8,11 @@ import { toActionErrorMessage } from "@/lib/action-error";
 
 export type WarehouseFormState = { error?: string } | undefined;
 
+function optionalFormString(formData: FormData, key: string) {
+  const value = formData.get(key);
+  return typeof value === "string" && value.length > 0 ? value : undefined;
+}
+
 export async function createWarehouseAction(
   _prevState: WarehouseFormState,
   formData: FormData
@@ -16,6 +21,8 @@ export async function createWarehouseAction(
     const ctx = await requireTenantContext();
     await warehouseService.createWarehouse(ctx, {
       name: formData.get("name"),
+      address: optionalFormString(formData, "address"),
+      mapsUrl: optionalFormString(formData, "mapsUrl"),
     });
   } catch (error) {
     return { error: toActionErrorMessage(error) };

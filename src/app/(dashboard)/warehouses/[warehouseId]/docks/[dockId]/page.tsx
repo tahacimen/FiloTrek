@@ -28,7 +28,7 @@ export default async function DockDetailPage({
   const { warehouseId, dockId } = await params;
   const { week } = await searchParams;
   const ctx = await requireTenantContext();
-  if (ctx.companyType !== "SUPPLIER") {
+  if (ctx.companyType !== "CUSTOMER") {
     redirect("/dashboard");
   }
 

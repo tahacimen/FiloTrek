@@ -1,6 +1,5 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
-import { MapPinned, Navigation, Package, Truck, User, Warehouse } from "lucide-react";
+import { MapPinned, Navigation, Package, Truck, User } from "lucide-react";
 
 import {
   getDeparturePhoto,
@@ -9,6 +8,7 @@ import {
   getStatusHistory,
 } from "@/core/shipment/shipment-service";
 import { getActiveReservationForShipment } from "@/core/warehouse/dock-reservation-service";
+import { listWarehouses } from "@/core/warehouse/warehouse-service";
 import { requireTenantContext } from "@/core/shared/tenant-context";
 import { NotFoundError } from "@/core/shared/errors";
 import { Badge } from "@/components/ui/badge";
@@ -16,8 +16,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import {
   customerShipmentStatusLabels,
-  dockReservationStatusBadgeVariant,
-  dockReservationStatusLabels,
   shipmentStatusLabels,
   statusBadgeVariant,
   vehicleBedTypeLabels,
@@ -30,6 +28,8 @@ import { PickupEtaCard } from "@/app/(dashboard)/shipments/[id]/pickup-eta-card"
 import { PriceApprovalCard } from "@/app/(dashboard)/shipments/[id]/price-approval-card";
 import { IncidentCard } from "@/app/(dashboard)/shipments/[id]/incident-card";
 import { StatusTimelineCard } from "@/app/(dashboard)/shipments/[id]/status-timeline-card";
+import { DockReservationCard } from "@/app/(dashboard)/shipments/[id]/dock-reservation-card";
+import { DockReservationType } from "@/generated/prisma/enums";
 
 function Field({ label, value }: { label: string; value: React.ReactNode }) {
   return (
@@ -75,17 +75,32 @@ export default async function ShipmentDetailPage({
   // Conditional on the denormalized flag — avoids a pointless query in the
   // common (no open incident) case. getDeparturePhoto always runs; it's a
   // single indexed lookup and there's no equivalent cheap flag for it.
-  const [incident, departurePhoto, statusHistory, dockReservation] =
+  // getActiveReservationForShipment is read by BOTH sides (customer manages
+  // it, supplier only ever sees it read-only — see the schema comment above
+  // Warehouse/DockReservation); listWarehouses is CUSTOMER-only (used to
+  // populate the "Rampa Rezervasyonu Yap" dock picker) so it's skipped
+  // entirely on the supplier's view of this same page.
+  const [incident, departurePhoto, statusHistory, dockReservation, warehouses] =
     await Promise.all([
       shipment.hasOpenIncident ? getOpenIncident(ctx, shipment.id) : null,
       getDeparturePhoto(shipment.id),
       getStatusHistory(shipment.id),
-      // Supplier-only tool (see the schema comment above Warehouse/DockReservation) —
-      // never queried on the customer's own view of this same page.
-      ctx.companyType === "SUPPLIER"
-        ? getActiveReservationForShipment(ctx, shipment.id)
-        : null,
+      getActiveReservationForShipment(ctx, shipment.id),
+      ctx.companyType === "CUSTOMER" ? listWarehouses(ctx) : Promise.resolve([]),
     ]);
+
+  const assignableDocks = warehouses.flatMap((warehouse) =>
+    warehouse.docks
+      .filter((dock) => dock.supportedReservationTypes.includes(DockReservationType.LOADING))
+      .map((dock) => ({
+        id: dock.id,
+        name: dock.name,
+        warehouseId: warehouse.id,
+        warehouseName: warehouse.name,
+        slotDurationMinutes: dock.slotDurationMinutes,
+        workingHours: dock.workingHours,
+      }))
+  );
 
   const statusLabels =
     ctx.companyType === "CUSTOMER" ? customerShipmentStatusLabels : shipmentStatusLabels;
@@ -231,42 +246,34 @@ export default async function ShipmentDetailPage({
         </Card>
       )}
 
-      {dockReservation && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base">
-              <Warehouse className="text-muted-foreground size-4" />
-              Depo Rampa Rezervasyonu
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="grid grid-cols-2 gap-4">
-            <Field label="Depo" value={dockReservation.dock.warehouse.name} />
-            <Field label="Rampa" value={dockReservation.dock.name} />
-            <Field
-              label="Planlanan Saat"
-              value={formatDateTime(dockReservation.startAt)}
-            />
-            <Field
-              label="Durum"
-              value={
-                <Badge
-                  variant={dockReservationStatusBadgeVariant[dockReservation.status]}
-                >
-                  {dockReservationStatusLabels[dockReservation.status]}
-                </Badge>
+      <DockReservationCard
+        status={shipment.status}
+        companyType={ctx.companyType}
+        shipmentId={shipment.id}
+        assignableDocks={assignableDocks}
+        vehicle={
+          shipment.vehicle
+            ? { plate: shipment.vehicle.plate, vehicleType: shipment.vehicle.vehicleType }
+            : null
+        }
+        driver={
+          shipment.driver
+            ? { fullName: shipment.driver.fullName, phone: shipment.driver.phone }
+            : null
+        }
+        reservation={
+          dockReservation
+            ? {
+                warehouseId: dockReservation.dock.warehouse.id,
+                warehouseName: dockReservation.dock.warehouse.name,
+                dockId: dockReservation.dock.id,
+                dockName: dockReservation.dock.name,
+                startAt: dockReservation.startAt,
+                status: dockReservation.status,
               }
-            />
-            <div className="col-span-full">
-              <Link
-                href={`/warehouses/${dockReservation.dock.warehouse.id}/docks/${dockReservation.dock.id}`}
-                className="text-primary text-sm underline underline-offset-2"
-              >
-                Rampa Takvimine Git
-              </Link>
-            </div>
-          </CardContent>
-        </Card>
-      )}
+            : null
+        }
+      />
 
       <Card>
         <CardHeader>

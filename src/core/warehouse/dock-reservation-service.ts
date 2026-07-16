@@ -29,7 +29,7 @@ export async function listReservationsForWeek(
   weekStart: Date,
   weekEnd: Date
 ) {
-  requireCompanyType(ctx, CompanyType.SUPPLIER);
+  requireCompanyType(ctx, CompanyType.CUSTOMER);
   return dockReservationRepository.listReservationsForDock(
     ctx,
     dockId,
@@ -43,7 +43,7 @@ export async function createReservation(
   dockId: string,
   rawInput: unknown
 ) {
-  requireCompanyType(ctx, CompanyType.SUPPLIER);
+  requireCompanyType(ctx, CompanyType.CUSTOMER);
   const dock = await warehouseRepository.getDockForTenant(ctx, dockId);
   if (!dock) throw new NotFoundError("Rampa bulunamadı.");
 
@@ -55,7 +55,7 @@ export async function createReservation(
   }
 
   if (input.shipmentId) {
-    const shipment = await shipmentRepository.getShipmentForSupplier(
+    const shipment = await shipmentRepository.getShipmentForCustomer(
       ctx,
       input.shipmentId
     );
@@ -93,12 +93,17 @@ export async function createReservation(
   }
 }
 
-/** For the shipment detail page's read-only "Depo Rampa Rezervasyonu" card. */
+/**
+ * For the shipment detail page's "Depo Rampa Rezervasyonu" card — no
+ * requireCompanyType restriction, since both sides of the shipment can read
+ * it (customer manages it, supplier only ever sees it read-only). The
+ * repository's own OR-scoped query already restricts results to a
+ * reservation this specific ctx.companyId is actually entitled to see.
+ */
 export async function getActiveReservationForShipment(
   ctx: TenantContext,
   shipmentId: string
 ) {
-  requireCompanyType(ctx, CompanyType.SUPPLIER);
   return dockReservationRepository.findActiveReservationForShipment(
     ctx,
     shipmentId

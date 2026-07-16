@@ -64,8 +64,11 @@ export function getReservationForTenant(
  * The one active (non-cancelled) reservation linked to a shipment, if any —
  * at most one can exist, enforced by a partial unique index (see the
  * add_dock_reservation_shipment_unique migration). Used both to reject a
- * second link attempt in createReservation and to show the link on the
- * shipment detail page.
+ * second link attempt in createReservation and to show the (read-only, for
+ * a supplier) link on the shipment detail page. Visible to either side of
+ * the shipment: the customer who owns the warehouse (first OR branch) or
+ * the supplier the reservation's shipment belongs to (second branch,
+ * read-only from their side — see dock-reservation-service.ts).
  */
 export function findActiveReservationForShipment(
   ctx: TenantContext,
@@ -75,7 +78,10 @@ export function findActiveReservationForShipment(
     where: {
       shipmentId,
       status: { not: DockReservationStatus.CANCELLED },
-      dock: { warehouse: { companyId: ctx.companyId } },
+      OR: [
+        { dock: { warehouse: { companyId: ctx.companyId } } },
+        { shipment: { supplierCompanyId: ctx.companyId } },
+      ],
     },
     include: {
       dock: {
@@ -101,9 +107,17 @@ export function createReservationRecord(
   });
 }
 
-/** Atomic guard: only transitions out of `fromStatuses`, mirrors setVehicleMaintenance's findFirst+update-in-transaction shape. */
+/**
+ * Atomic guard: only transitions out of `fromStatuses`, mirrors
+ * setVehicleMaintenance's findFirst+update-in-transaction shape. Scoped by
+ * `companyId` only (accepts either a customer's TenantContext — cancelling
+ * is an administrative scheduling decision — or a gate guard's
+ * GateGuardContext — arriving/completing are physical events; see
+ * dock-reservation-status.ts for which actor calls which transition), both
+ * of which resolve to the same warehouse-owning customer company.
+ */
 export async function transitionReservationStatus(
-  ctx: TenantContext,
+  ctx: { companyId: string },
   reservationId: string,
   fromStatuses: DockReservationStatus[],
   toStatus: DockReservationStatus,

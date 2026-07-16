@@ -42,9 +42,12 @@ export function listShipmentsForTenant(ctx: TenantContext) {
 }
 
 /**
- * Shipments a dispatcher can link a dock reservation to: already has a
- * vehicle/driver (ASSIGNED or later, so the reservation form can autofill
- * plate/driver) and hasn't finished yet — see dock-reservation-service.ts.
+ * Shipments a customer can link a dock reservation to from the standalone
+ * calendar's optional picker: already has a vehicle/driver (ASSIGNED or
+ * later, so the reservation form can autofill plate/driver) and hasn't
+ * finished yet — see dock-reservation-service.ts. The primary reservation
+ * flow is shipment-scoped instead (a "Rampa Rezervasyonu Yap" action on the
+ * shipment's own detail page), where this picker isn't needed at all.
  */
 const DOCK_RESERVATION_ASSIGNABLE_STATUSES = [
   ShipmentStatus.ASSIGNED,
@@ -56,7 +59,7 @@ const DOCK_RESERVATION_ASSIGNABLE_STATUSES = [
 export function listAssignableShipmentsForDockReservation(ctx: TenantContext) {
   return prisma.shipment.findMany({
     where: {
-      supplierCompanyId: ctx.companyId,
+      customerCompanyId: ctx.companyId,
       status: { in: DOCK_RESERVATION_ASSIGNABLE_STATUSES },
     },
     include: shipmentListInclude,
@@ -67,11 +70,11 @@ export function listAssignableShipmentsForDockReservation(ctx: TenantContext) {
 /**
  * Ownership check only (not full visibility) — used before linking a dock
  * reservation to a shipment, distinct from getShipmentForTenant below which
- * also allows the customer side to read it.
+ * also allows the supplier side to read it.
  */
-export function getShipmentForSupplier(ctx: TenantContext, shipmentId: string) {
+export function getShipmentForCustomer(ctx: TenantContext, shipmentId: string) {
   return prisma.shipment.findFirst({
-    where: { id: shipmentId, supplierCompanyId: ctx.companyId },
+    where: { id: shipmentId, customerCompanyId: ctx.companyId },
   });
 }
 

@@ -1,23 +1,22 @@
-import { requireCompanyType } from "@/core/shared/authorization";
 import type { TenantContext } from "@/core/shared/tenant-context";
+import type { GateGuardContext } from "@/core/shared/gate-guard-context";
+import { requireCompanyType } from "@/core/shared/authorization";
 import { InvalidTransitionError, NotFoundError } from "@/core/shared/errors";
 import * as dockReservationRepository from "@/core/warehouse/dock-reservation-repository";
-import { advanceShipmentStatus } from "@/core/shipment/shipment-status";
+import { advanceShipmentStatusAsGateGuard } from "@/core/shipment/shipment-status";
 import {
   CompanyType,
   DockReservationStatus,
   ShipmentStatus,
-  StatusChangeSource,
 } from "@/generated/prisma/client";
 
 async function transition(
-  ctx: TenantContext,
+  ctx: { companyId: string },
   reservationId: string,
   fromStatuses: DockReservationStatus[],
   toStatus: DockReservationStatus,
   timestampField: "arrivedAt" | "completedAt" | "cancelledAt"
 ) {
-  requireCompanyType(ctx, CompanyType.SUPPLIER);
   const result = await dockReservationRepository.transitionReservationStatus(
     ctx,
     reservationId,
@@ -36,8 +35,9 @@ async function transition(
 
 /**
  * Best-effort: advances the reservation's linked shipment (if any) toward
- * the status that corresponds to this dock event. A dispatcher opted into
- * this link explicitly (see dock-reservation-service.ts's createReservation
+ * the status that corresponds to this dock event. The customer opted into
+ * this link explicitly when creating the reservation from the shipment's
+ * own detail page (see dock-reservation-service.ts's createReservation
  * validation), but the shipment might not actually be at the matching step
  * yet — e.g. still ASSIGNED, not yet HEADING_TO_PICKUP — in which case the
  * DAG in shipment-transitions.ts rejects the jump. This never throws and
@@ -46,19 +46,18 @@ async function transition(
  * than forcing the shipment's state machine into an inconsistent jump.
  */
 async function syncShipmentStatus(
-  ctx: TenantContext,
+  gateGuardCtx: GateGuardContext,
   shipmentId: string | null,
   targetStatus: ShipmentStatus,
   reservationId: string
 ) {
   if (!shipmentId) return;
   try {
-    await advanceShipmentStatus(
-      ctx,
-      { shipmentId, targetStatus },
-      StatusChangeSource.SYSTEM_AUTO,
-      reservationId
-    );
+    await advanceShipmentStatusAsGateGuard(gateGuardCtx, {
+      shipmentId,
+      targetStatus,
+      reservationId,
+    });
   } catch {
     // Invalid transition right now, or some other failure — the
     // reservation's own status change already succeeded, so this is
@@ -66,16 +65,19 @@ async function syncShipmentStatus(
   }
 }
 
-export async function markVehicleArrived(ctx: TenantContext, reservationId: string) {
+export async function markVehicleArrived(
+  gateGuardCtx: GateGuardContext,
+  reservationId: string
+) {
   const reservation = await transition(
-    ctx,
+    gateGuardCtx,
     reservationId,
     [DockReservationStatus.CREATED],
     DockReservationStatus.VEHICLE_ARRIVED,
     "arrivedAt"
   );
   await syncShipmentStatus(
-    ctx,
+    gateGuardCtx,
     reservation.shipmentId,
     ShipmentStatus.LOADING,
     reservationId
@@ -83,10 +85,13 @@ export async function markVehicleArrived(ctx: TenantContext, reservationId: stri
   return reservation;
 }
 
-/** Reachable from CREATED directly too — dispatchers don't always log the "vehicle arrived" step separately. */
-export async function markCompleted(ctx: TenantContext, reservationId: string) {
+/** Reachable from CREATED directly too — the gate guard doesn't always log the "vehicle arrived" step separately. */
+export async function markCompleted(
+  gateGuardCtx: GateGuardContext,
+  reservationId: string
+) {
   const reservation = await transition(
-    ctx,
+    gateGuardCtx,
     reservationId,
     [DockReservationStatus.CREATED, DockReservationStatus.VEHICLE_ARRIVED],
     DockReservationStatus.COMPLETED,
@@ -97,13 +102,13 @@ export async function markCompleted(ctx: TenantContext, reservationId: string) {
   // step before AT_PICKUP_GATE is a valid transition — attempt both in
   // sequence, each independently best-effort.
   await syncShipmentStatus(
-    ctx,
+    gateGuardCtx,
     reservation.shipmentId,
     ShipmentStatus.LOADING,
     reservationId
   );
   await syncShipmentStatus(
-    ctx,
+    gateGuardCtx,
     reservation.shipmentId,
     ShipmentStatus.AT_PICKUP_GATE,
     reservationId
@@ -111,8 +116,15 @@ export async function markCompleted(ctx: TenantContext, reservationId: string) {
   return reservation;
 }
 
-/** Deliberately no shipment sync: cancelling a dock slot doesn't mean the shipment itself is cancelled — the dispatcher handles that separately (cancelShipment) if it actually applies. */
+/**
+ * Cancelling is an administrative scheduling decision, not a physical gate
+ * event — the customer's own dashboard user does this (TenantContext),
+ * unlike markVehicleArrived/markCompleted above (GateGuardContext).
+ * Deliberately no shipment sync: cancelling a dock slot doesn't mean the
+ * shipment itself is cancelled.
+ */
 export function cancelReservation(ctx: TenantContext, reservationId: string) {
+  requireCompanyType(ctx, CompanyType.CUSTOMER);
   return transition(
     ctx,
     reservationId,

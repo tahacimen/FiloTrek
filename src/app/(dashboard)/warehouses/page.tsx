@@ -17,7 +17,7 @@ import { DockFormDialog } from "@/app/(dashboard)/warehouses/dock-form-dialog";
 
 export default async function WarehousesPage() {
   const ctx = await requireTenantContext();
-  if (ctx.companyType !== "SUPPLIER") {
+  if (ctx.companyType !== "CUSTOMER") {
     redirect("/dashboard");
   }
   const warehouses = await listWarehouses(ctx);
@@ -53,7 +53,27 @@ export default async function WarehousesPage() {
       {warehouses.map((warehouse) => (
         <Card key={warehouse.id}>
           <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle>{warehouse.name}</CardTitle>
+            <div>
+              <CardTitle>{warehouse.name}</CardTitle>
+              {warehouse.address && (
+                <p className="text-muted-foreground mt-1 text-sm">
+                  {warehouse.address}
+                  {warehouse.mapsUrl && (
+                    <>
+                      {" · "}
+                      <a
+                        href={warehouse.mapsUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-primary underline underline-offset-2"
+                      >
+                        Haritada Gör
+                      </a>
+                    </>
+                  )}
+                </p>
+              )}
+            </div>
             <DockFormDialog warehouseId={warehouse.id} />
           </CardHeader>
           <CardContent className="flex flex-col gap-3">

@@ -9,18 +9,18 @@ import {
 import { CompanyType } from "@/generated/prisma/client";
 
 export async function listWarehouses(ctx: TenantContext) {
-  requireCompanyType(ctx, CompanyType.SUPPLIER);
+  requireCompanyType(ctx, CompanyType.CUSTOMER);
   return warehouseRepository.listWarehousesForTenant(ctx);
 }
 
 export async function createWarehouse(ctx: TenantContext, rawInput: unknown) {
-  requireCompanyType(ctx, CompanyType.SUPPLIER);
+  requireCompanyType(ctx, CompanyType.CUSTOMER);
   const input = warehouseInputSchema.parse(rawInput);
   return warehouseRepository.createWarehouseRecord(ctx, input);
 }
 
 export async function getDock(ctx: TenantContext, dockId: string) {
-  requireCompanyType(ctx, CompanyType.SUPPLIER);
+  requireCompanyType(ctx, CompanyType.CUSTOMER);
   const dock = await warehouseRepository.getDockForTenant(ctx, dockId);
   if (!dock) throw new NotFoundError("Rampa bulunamadı.");
   return dock;
@@ -31,7 +31,7 @@ export async function createDock(
   warehouseId: string,
   rawInput: unknown
 ) {
-  requireCompanyType(ctx, CompanyType.SUPPLIER);
+  requireCompanyType(ctx, CompanyType.CUSTOMER);
   const warehouse = await warehouseRepository.getWarehouseForTenant(
     ctx,
     warehouseId
@@ -47,7 +47,7 @@ export async function updateDock(
   dockId: string,
   rawInput: unknown
 ) {
-  requireCompanyType(ctx, CompanyType.SUPPLIER);
+  requireCompanyType(ctx, CompanyType.CUSTOMER);
   const input = dockInputSchema.parse(rawInput);
   const updated = await warehouseRepository.updateDockRecord(
     ctx,

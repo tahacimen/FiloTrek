@@ -6,7 +6,7 @@ import { cancelReservation } from "@/core/warehouse/dock-reservation-status";
 import { NotFoundError, ValidationError } from "@/core/shared/errors";
 import {
   cleanupCompanies,
-  createSupplierContext,
+  createCustomerContext,
   createTestCompany,
   createTestDock,
   createTestWarehouse,
@@ -27,13 +27,19 @@ const baseReservationInput = {
   driverName: "Test Sürücü",
 };
 
-/** Shipment's own status doesn't matter for these tests — createReservation's shipmentId check is ownership + already-linked only, not status. */
-async function createTestShipment(supplierCompanyId: string) {
-  const customer = await createTestCompany(CompanyType.CUSTOMER);
+/**
+ * Shipment's own status doesn't matter for these tests — createReservation's
+ * shipmentId check is ownership + already-linked only, not status. `customerCompanyId`
+ * is the same company that owns the warehouse in these tests (the reservation-linking
+ * ownership check is customerCompanyId-based, see getShipmentForCustomer);
+ * supplier is a separate ad-hoc company, matching the real ownership split.
+ */
+async function createTestShipment(customerCompanyId: string) {
+  const supplier = await createTestCompany(CompanyType.SUPPLIER);
   const shipment = await prisma.shipment.create({
     data: {
-      customerCompanyId: customer.id,
-      supplierCompanyId,
+      customerCompanyId,
+      supplierCompanyId: supplier.id,
       originAddress: "A",
       destinationAddress: "B",
       distanceKm: 100,
@@ -41,7 +47,7 @@ async function createTestShipment(supplierCompanyId: string) {
       status: "ASSIGNED",
     },
   });
-  return { customer, shipment };
+  return { supplier, shipment };
 }
 
 describe("dock-reservation-service", () => {
@@ -51,7 +57,7 @@ describe("dock-reservation-service", () => {
   });
 
   it("creates a reservation and computes endAt from the dock's slot duration", async () => {
-    const ctx = await createSupplierContext();
+    const ctx = await createCustomerContext();
     companyIds.push(ctx.companyId);
     const warehouse = await createTestWarehouse(ctx.companyId);
     const dock = await createTestDock(warehouse.id, { slotDurationMinutes: 30 });
@@ -67,7 +73,7 @@ describe("dock-reservation-service", () => {
   });
 
   it("rejects a reservation type the dock doesn't support", async () => {
-    const ctx = await createSupplierContext();
+    const ctx = await createCustomerContext();
     companyIds.push(ctx.companyId);
     const warehouse = await createTestWarehouse(ctx.companyId);
     const dock = await createTestDock(warehouse.id, {
@@ -84,7 +90,7 @@ describe("dock-reservation-service", () => {
   });
 
   it("rejects an overlapping reservation on the same dock (DB exclusion constraint)", async () => {
-    const ctx = await createSupplierContext();
+    const ctx = await createCustomerContext();
     companyIds.push(ctx.companyId);
     const warehouse = await createTestWarehouse(ctx.companyId);
     const dock = await createTestDock(warehouse.id, { slotDurationMinutes: 60 });
@@ -115,7 +121,7 @@ describe("dock-reservation-service", () => {
   });
 
   it("allows re-booking the same slot once the original reservation is cancelled", async () => {
-    const ctx = await createSupplierContext();
+    const ctx = await createCustomerContext();
     companyIds.push(ctx.companyId);
     const warehouse = await createTestWarehouse(ctx.companyId);
     const dock = await createTestDock(warehouse.id, { slotDurationMinutes: 60 });
@@ -136,8 +142,8 @@ describe("dock-reservation-service", () => {
   });
 
   it("prevents creating a reservation on another tenant's dock", async () => {
-    const ctxA = await createSupplierContext();
-    const ctxB = await createSupplierContext();
+    const ctxA = await createCustomerContext();
+    const ctxB = await createCustomerContext();
     companyIds.push(ctxA.companyId, ctxB.companyId);
     const warehouseA = await createTestWarehouse(ctxA.companyId);
     const dockA = await createTestDock(warehouseA.id);
@@ -151,10 +157,10 @@ describe("dock-reservation-service", () => {
   });
 
   it("links a reservation to one of the tenant's own shipments", async () => {
-    const ctx = await createSupplierContext();
+    const ctx = await createCustomerContext();
     companyIds.push(ctx.companyId);
-    const { customer, shipment } = await createTestShipment(ctx.companyId);
-    companyIds.push(customer.id);
+    const { supplier, shipment } = await createTestShipment(ctx.companyId);
+    companyIds.push(supplier.id);
     const warehouse = await createTestWarehouse(ctx.companyId);
     const dock = await createTestDock(warehouse.id);
 
@@ -167,11 +173,11 @@ describe("dock-reservation-service", () => {
   });
 
   it("rejects linking a reservation to another tenant's shipment", async () => {
-    const ctxA = await createSupplierContext();
-    const ctxB = await createSupplierContext();
+    const ctxA = await createCustomerContext();
+    const ctxB = await createCustomerContext();
     companyIds.push(ctxA.companyId, ctxB.companyId);
-    const { customer, shipment } = await createTestShipment(ctxA.companyId);
-    companyIds.push(customer.id);
+    const { supplier, shipment } = await createTestShipment(ctxA.companyId);
+    companyIds.push(supplier.id);
     const warehouseB = await createTestWarehouse(ctxB.companyId);
     const dockB = await createTestDock(warehouseB.id);
 
@@ -185,10 +191,10 @@ describe("dock-reservation-service", () => {
   });
 
   it("rejects linking to a shipment that's already linked to another active reservation", async () => {
-    const ctx = await createSupplierContext();
+    const ctx = await createCustomerContext();
     companyIds.push(ctx.companyId);
-    const { customer, shipment } = await createTestShipment(ctx.companyId);
-    companyIds.push(customer.id);
+    const { supplier, shipment } = await createTestShipment(ctx.companyId);
+    companyIds.push(supplier.id);
     const warehouse = await createTestWarehouse(ctx.companyId);
     const dock = await createTestDock(warehouse.id);
 
@@ -209,10 +215,10 @@ describe("dock-reservation-service", () => {
   });
 
   it("allows re-linking a shipment once its previous reservation is cancelled", async () => {
-    const ctx = await createSupplierContext();
+    const ctx = await createCustomerContext();
     companyIds.push(ctx.companyId);
-    const { customer, shipment } = await createTestShipment(ctx.companyId);
-    companyIds.push(customer.id);
+    const { supplier, shipment } = await createTestShipment(ctx.companyId);
+    companyIds.push(supplier.id);
     const warehouse = await createTestWarehouse(ctx.companyId);
     const dock = await createTestDock(warehouse.id);
 

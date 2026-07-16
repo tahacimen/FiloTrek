@@ -5,7 +5,7 @@ import * as dockReservationService from "@/core/warehouse/dock-reservation-servi
 import { cancelReservation } from "@/core/warehouse/dock-reservation-status";
 import {
   cleanupCompanies,
-  createSupplierContext,
+  createCustomerContext,
   createTestDock,
   createTestWarehouse,
 } from "@/test/fixtures";
@@ -31,7 +31,7 @@ describe("dock-reservation-report-service", () => {
   });
 
   it("aggregates status/type counts and occupancy across every dock, excluding cancelled reservations from occupancy", async () => {
-    const ctx = await createSupplierContext();
+    const ctx = await createCustomerContext();
     companyIds.push(ctx.companyId);
     const warehouse = await createTestWarehouse(ctx.companyId);
     // slotDurationMinutes=60, working hours 00:00-23:00 every day (fixture
@@ -69,7 +69,7 @@ describe("dock-reservation-report-service", () => {
   });
 
   it("zero-fills every day in the range for the daily trend, real data only", async () => {
-    const ctx = await createSupplierContext();
+    const ctx = await createCustomerContext();
     companyIds.push(ctx.companyId);
     const warehouse = await createTestWarehouse(ctx.companyId);
     const dock = await createTestDock(warehouse.id, { slotDurationMinutes: 60 });
@@ -90,8 +90,8 @@ describe("dock-reservation-report-service", () => {
   });
 
   it("only includes reservations from the tenant's own warehouses", async () => {
-    const ctxA = await createSupplierContext();
-    const ctxB = await createSupplierContext();
+    const ctxA = await createCustomerContext();
+    const ctxB = await createCustomerContext();
     companyIds.push(ctxA.companyId, ctxB.companyId);
     const warehouseA = await createTestWarehouse(ctxA.companyId);
     const dockA = await createTestDock(warehouseA.id);

@@ -20,13 +20,13 @@ const supplierNavItems = [
   { href: "/drivers", label: "Şoförler", icon: Users },
   { href: "/shipments", label: "Seferler", icon: Package },
   { href: "/assign", label: "Atama", icon: ClipboardList },
-  { href: "/warehouses", label: "Depo & Rampa", icon: Warehouse },
 ];
 
 const customerNavItems = [
   { href: "/dashboard", label: "Gösterge Paneli", icon: LayoutDashboard },
   { href: "/shipments", label: "Seferlerim", icon: Package },
   { href: "/gate-guards", label: "Nizamiye", icon: ShieldCheck },
+  { href: "/warehouses", label: "Depo & Rampa", icon: Warehouse },
 ];
 
 export function DashboardNav({

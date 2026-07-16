@@ -5,7 +5,7 @@ import { z } from "zod";
  * schemes that would otherwise be stored and later rendered as a clickable
  * navigation link.
  */
-const optionalMapsUrlSchema = z
+export const optionalMapsUrlSchema = z
   .httpUrl("Geçerli bir Google Maps linki girin.")
   .max(2000, "Link çok uzun.")
   .optional();

@@ -24,11 +24,11 @@ export async function listShipments(ctx: TenantContext) {
   return shipmentRepository.listShipmentsForTenant(ctx);
 }
 
-/** Picker source for linking a dock reservation to one of the supplier's own shipments — see dock-reservation-service.ts. */
+/** Picker source for linking a dock reservation to one of the customer's own shipments — see dock-reservation-service.ts. */
 export async function listAssignableShipmentsForDockReservation(
   ctx: TenantContext
 ) {
-  requireCompanyType(ctx, CompanyType.SUPPLIER);
+  requireCompanyType(ctx, CompanyType.CUSTOMER);
   return shipmentRepository.listAssignableShipmentsForDockReservation(ctx);
 }
 

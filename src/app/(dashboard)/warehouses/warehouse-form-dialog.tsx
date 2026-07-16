@@ -53,6 +53,23 @@ export function WarehouseFormDialog() {
             <Label htmlFor="name">Depo Adı</Label>
             <Input id="name" name="name" required placeholder="Merkez Depo" />
           </div>
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="address">Adres (opsiyonel)</Label>
+            <Input
+              id="address"
+              name="address"
+              placeholder="Hadımköy, İstanbul"
+            />
+          </div>
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="mapsUrl">Harita Linki (opsiyonel)</Label>
+            <Input
+              id="mapsUrl"
+              name="mapsUrl"
+              type="url"
+              placeholder="https://maps.google.com/..."
+            />
+          </div>
           {state?.error && (
             <p className="text-sm text-destructive" role="alert">
               {state.error}

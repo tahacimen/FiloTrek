@@ -14,14 +14,15 @@ import {
 import { InvalidTransitionError, NotFoundError } from "@/core/shared/errors";
 import {
   cleanupCompanies,
+  createCustomerContext,
+  createGateGuardContext,
   createSupplierContext,
-  createTestCompany,
   createTestDock,
   createTestDriver,
   createTestVehicle,
   createTestWarehouse,
 } from "@/test/fixtures";
-import { CompanyType, ShipmentStatus } from "@/generated/prisma/client";
+import { ShipmentStatus } from "@/generated/prisma/client";
 import type { TenantContext } from "@/core/shared/tenant-context";
 
 function slot(hour: number, dayOffset = 3) {
@@ -38,10 +39,11 @@ const baseReservationInput = {
   driverName: "Test Sürücü",
 };
 
-async function makeReservation(ctx: Awaited<ReturnType<typeof createSupplierContext>>) {
-  const warehouse = await createTestWarehouse(ctx.companyId);
+/** customerCtx owns the warehouse/dock (see the schema comment above Warehouse). */
+async function makeReservation(customerCtx: TenantContext) {
+  const warehouse = await createTestWarehouse(customerCtx.companyId);
   const dock = await createTestDock(warehouse.id);
-  return dockReservationService.createReservation(ctx, dock.id, {
+  return dockReservationService.createReservation(customerCtx, dock.id, {
     ...baseReservationInput,
     startAt: slot(9, Math.floor(Math.random() * 100) + 3),
   });
@@ -56,15 +58,21 @@ function approvePriceDirectly(shipmentId: string) {
   });
 }
 
-/** A shipment with a vehicle/driver but not yet dispatched — used to prove the sync silently no-ops when the shipment isn't at the matching step. */
-async function setupAssignedShipment(ctx: TenantContext) {
-  const customer = await createTestCompany(CompanyType.CUSTOMER);
-  const vehicle = await createTestVehicle(ctx.companyId);
-  const driver = await createTestDriver(ctx.companyId);
+/**
+ * A shipment with a vehicle/driver but not yet dispatched — used to prove
+ * the sync silently no-ops when the shipment isn't at the matching step.
+ * The warehouse-owning customer is the shipment's own customerCompanyId; a
+ * separate ad-hoc supplier company executes it (vehicle/driver/assignment),
+ * matching the real ownership split this whole module was redesigned around.
+ */
+async function setupAssignedShipment(customerCtx: TenantContext) {
+  const supplierCtx = await createSupplierContext();
+  const vehicle = await createTestVehicle(supplierCtx.companyId);
+  const driver = await createTestDriver(supplierCtx.companyId);
   const shipment = await prisma.shipment.create({
     data: {
-      customerCompanyId: customer.id,
-      supplierCompanyId: ctx.companyId,
+      customerCompanyId: customerCtx.companyId,
+      supplierCompanyId: supplierCtx.companyId,
       originAddress: "A",
       destinationAddress: "B",
       distanceKm: 100,
@@ -72,24 +80,24 @@ async function setupAssignedShipment(ctx: TenantContext) {
       status: ShipmentStatus.PENDING,
     },
   });
-  await assignVehicleAndDriver(ctx, {
+  await assignVehicleAndDriver(supplierCtx, {
     shipmentId: shipment.id,
     vehicleId: vehicle.id,
     driverId: driver.id,
     agreedPrice: AGREED_PRICE,
   });
-  return { customer, shipmentId: shipment.id };
+  return { supplierCtx, shipmentId: shipment.id };
 }
 
 /** A shipment already HEADING_TO_PICKUP — the natural state for the dock-reservation sync's first hop (-> LOADING) to succeed. */
-async function setupHeadingToPickupShipment(ctx: TenantContext) {
-  const { customer, shipmentId } = await setupAssignedShipment(ctx);
+async function setupHeadingToPickupShipment(customerCtx: TenantContext) {
+  const { supplierCtx, shipmentId } = await setupAssignedShipment(customerCtx);
   await approvePriceDirectly(shipmentId);
-  await advanceShipmentStatus(ctx, {
+  await advanceShipmentStatus(supplierCtx, {
     shipmentId,
     targetStatus: ShipmentStatus.HEADING_TO_PICKUP,
   });
-  return { customer, shipmentId };
+  return { supplierCtx, shipmentId };
 }
 
 describe("dock-reservation-status", () => {
@@ -99,83 +107,99 @@ describe("dock-reservation-status", () => {
   });
 
   it("advances CREATED -> VEHICLE_ARRIVED -> COMPLETED, stamping real timestamps", async () => {
-    const ctx = await createSupplierContext();
-    companyIds.push(ctx.companyId);
-    const reservation = await makeReservation(ctx);
+    const customerCtx = await createCustomerContext();
+    companyIds.push(customerCtx.companyId);
+    const gateGuardCtx = await createGateGuardContext(customerCtx.companyId);
+    const reservation = await makeReservation(customerCtx);
 
-    const arrived = await markVehicleArrived(ctx, reservation.id);
+    const arrived = await markVehicleArrived(gateGuardCtx, reservation.id);
     expect(arrived.status).toBe("VEHICLE_ARRIVED");
     expect(arrived.arrivedAt).not.toBeNull();
 
-    const completed = await markCompleted(ctx, reservation.id);
+    const completed = await markCompleted(gateGuardCtx, reservation.id);
     expect(completed.status).toBe("COMPLETED");
     expect(completed.completedAt).not.toBeNull();
   });
 
   it("allows completing directly from CREATED, skipping VEHICLE_ARRIVED", async () => {
-    const ctx = await createSupplierContext();
-    companyIds.push(ctx.companyId);
-    const reservation = await makeReservation(ctx);
+    const customerCtx = await createCustomerContext();
+    companyIds.push(customerCtx.companyId);
+    const gateGuardCtx = await createGateGuardContext(customerCtx.companyId);
+    const reservation = await makeReservation(customerCtx);
 
-    const completed = await markCompleted(ctx, reservation.id);
+    const completed = await markCompleted(gateGuardCtx, reservation.id);
     expect(completed.status).toBe("COMPLETED");
     expect(completed.arrivedAt).toBeNull();
     expect(completed.completedAt).not.toBeNull();
   });
 
   it("rejects transitions out of a terminal status", async () => {
-    const ctx = await createSupplierContext();
-    companyIds.push(ctx.companyId);
-    const reservation = await makeReservation(ctx);
+    const customerCtx = await createCustomerContext();
+    companyIds.push(customerCtx.companyId);
+    const gateGuardCtx = await createGateGuardContext(customerCtx.companyId);
+    const reservation = await makeReservation(customerCtx);
 
-    await cancelReservation(ctx, reservation.id);
+    await cancelReservation(customerCtx, reservation.id);
 
-    await expect(markVehicleArrived(ctx, reservation.id)).rejects.toThrow(
+    await expect(markVehicleArrived(gateGuardCtx, reservation.id)).rejects.toThrow(
       InvalidTransitionError
     );
-    await expect(markCompleted(ctx, reservation.id)).rejects.toThrow(
+    await expect(markCompleted(gateGuardCtx, reservation.id)).rejects.toThrow(
       InvalidTransitionError
     );
-    await expect(cancelReservation(ctx, reservation.id)).rejects.toThrow(
+    await expect(cancelReservation(customerCtx, reservation.id)).rejects.toThrow(
       InvalidTransitionError
     );
   });
 
   it("sets cancelledAt when a reservation is cancelled", async () => {
-    const ctx = await createSupplierContext();
-    companyIds.push(ctx.companyId);
-    const reservation = await makeReservation(ctx);
+    const customerCtx = await createCustomerContext();
+    companyIds.push(customerCtx.companyId);
+    const reservation = await makeReservation(customerCtx);
 
-    const cancelled = await cancelReservation(ctx, reservation.id);
+    const cancelled = await cancelReservation(customerCtx, reservation.id);
     expect(cancelled.status).toBe("CANCELLED");
     expect(cancelled.cancelledAt).not.toBeNull();
   });
 
-  it("prevents transitioning a reservation belonging to another tenant", async () => {
-    const ctxA = await createSupplierContext();
-    const ctxB = await createSupplierContext();
-    companyIds.push(ctxA.companyId, ctxB.companyId);
-    const reservation = await makeReservation(ctxA);
+  it("prevents a gate guard from transitioning a reservation belonging to another customer", async () => {
+    const customerCtxA = await createCustomerContext();
+    const customerCtxB = await createCustomerContext();
+    companyIds.push(customerCtxA.companyId, customerCtxB.companyId);
+    const reservation = await makeReservation(customerCtxA);
+    const gateGuardCtxB = await createGateGuardContext(customerCtxB.companyId);
 
-    await expect(markVehicleArrived(ctxB, reservation.id)).rejects.toThrow(
+    await expect(markVehicleArrived(gateGuardCtxB, reservation.id)).rejects.toThrow(
+      NotFoundError
+    );
+  });
+
+  it("prevents a customer from cancelling another customer's reservation", async () => {
+    const customerCtxA = await createCustomerContext();
+    const customerCtxB = await createCustomerContext();
+    companyIds.push(customerCtxA.companyId, customerCtxB.companyId);
+    const reservation = await makeReservation(customerCtxA);
+
+    await expect(cancelReservation(customerCtxB, reservation.id)).rejects.toThrow(
       NotFoundError
     );
   });
 
   it("advances a linked shipment to LOADING when its dock reservation's vehicle arrives", async () => {
-    const ctx = await createSupplierContext();
-    companyIds.push(ctx.companyId);
-    const { customer, shipmentId } = await setupHeadingToPickupShipment(ctx);
-    companyIds.push(customer.id);
-    const warehouse = await createTestWarehouse(ctx.companyId);
+    const customerCtx = await createCustomerContext();
+    companyIds.push(customerCtx.companyId);
+    const gateGuardCtx = await createGateGuardContext(customerCtx.companyId);
+    const { supplierCtx, shipmentId } = await setupHeadingToPickupShipment(customerCtx);
+    companyIds.push(supplierCtx.companyId);
+    const warehouse = await createTestWarehouse(customerCtx.companyId);
     const dock = await createTestDock(warehouse.id);
-    const reservation = await dockReservationService.createReservation(ctx, dock.id, {
+    const reservation = await dockReservationService.createReservation(customerCtx, dock.id, {
       ...baseReservationInput,
       startAt: slot(9, 50),
       shipmentId,
     });
 
-    await markVehicleArrived(ctx, reservation.id);
+    await markVehicleArrived(gateGuardCtx, reservation.id);
 
     const shipment = await prisma.shipment.findUniqueOrThrow({
       where: { id: shipmentId },
@@ -184,19 +208,20 @@ describe("dock-reservation-status", () => {
   });
 
   it("chains a linked shipment through LOADING to AT_PICKUP_GATE when the reservation completes directly from CREATED", async () => {
-    const ctx = await createSupplierContext();
-    companyIds.push(ctx.companyId);
-    const { customer, shipmentId } = await setupHeadingToPickupShipment(ctx);
-    companyIds.push(customer.id);
-    const warehouse = await createTestWarehouse(ctx.companyId);
+    const customerCtx = await createCustomerContext();
+    companyIds.push(customerCtx.companyId);
+    const gateGuardCtx = await createGateGuardContext(customerCtx.companyId);
+    const { supplierCtx, shipmentId } = await setupHeadingToPickupShipment(customerCtx);
+    companyIds.push(supplierCtx.companyId);
+    const warehouse = await createTestWarehouse(customerCtx.companyId);
     const dock = await createTestDock(warehouse.id);
-    const reservation = await dockReservationService.createReservation(ctx, dock.id, {
+    const reservation = await dockReservationService.createReservation(customerCtx, dock.id, {
       ...baseReservationInput,
       startAt: slot(10, 51),
       shipmentId,
     });
 
-    await markCompleted(ctx, reservation.id);
+    await markCompleted(gateGuardCtx, reservation.id);
 
     const shipment = await prisma.shipment.findUniqueOrThrow({
       where: { id: shipmentId },
@@ -205,23 +230,24 @@ describe("dock-reservation-status", () => {
   });
 
   it("leaves the linked shipment's status untouched when it isn't ready for the matching transition yet", async () => {
-    const ctx = await createSupplierContext();
-    companyIds.push(ctx.companyId);
+    const customerCtx = await createCustomerContext();
+    companyIds.push(customerCtx.companyId);
+    const gateGuardCtx = await createGateGuardContext(customerCtx.companyId);
     // Still ASSIGNED, not yet HEADING_TO_PICKUP — LOADING isn't a valid
     // transition from here, so the sync must silently no-op rather than
     // corrupting the shipment's own state machine, while the reservation's
     // own status change still succeeds.
-    const { customer, shipmentId } = await setupAssignedShipment(ctx);
-    companyIds.push(customer.id);
-    const warehouse = await createTestWarehouse(ctx.companyId);
+    const { supplierCtx, shipmentId } = await setupAssignedShipment(customerCtx);
+    companyIds.push(supplierCtx.companyId);
+    const warehouse = await createTestWarehouse(customerCtx.companyId);
     const dock = await createTestDock(warehouse.id);
-    const reservation = await dockReservationService.createReservation(ctx, dock.id, {
+    const reservation = await dockReservationService.createReservation(customerCtx, dock.id, {
       ...baseReservationInput,
       startAt: slot(11, 52),
       shipmentId,
     });
 
-    const arrived = await markVehicleArrived(ctx, reservation.id);
+    const arrived = await markVehicleArrived(gateGuardCtx, reservation.id);
     expect(arrived.status).toBe("VEHICLE_ARRIVED");
 
     const shipment = await prisma.shipment.findUniqueOrThrow({
@@ -231,19 +257,19 @@ describe("dock-reservation-status", () => {
   });
 
   it("does not touch the linked shipment's status when the reservation is cancelled", async () => {
-    const ctx = await createSupplierContext();
-    companyIds.push(ctx.companyId);
-    const { customer, shipmentId } = await setupHeadingToPickupShipment(ctx);
-    companyIds.push(customer.id);
-    const warehouse = await createTestWarehouse(ctx.companyId);
+    const customerCtx = await createCustomerContext();
+    companyIds.push(customerCtx.companyId);
+    const { supplierCtx, shipmentId } = await setupHeadingToPickupShipment(customerCtx);
+    companyIds.push(supplierCtx.companyId);
+    const warehouse = await createTestWarehouse(customerCtx.companyId);
     const dock = await createTestDock(warehouse.id);
-    const reservation = await dockReservationService.createReservation(ctx, dock.id, {
+    const reservation = await dockReservationService.createReservation(customerCtx, dock.id, {
       ...baseReservationInput,
       startAt: slot(12, 53),
       shipmentId,
     });
 
-    await cancelReservation(ctx, reservation.id);
+    await cancelReservation(customerCtx, reservation.id);
 
     const shipment = await prisma.shipment.findUniqueOrThrow({
       where: { id: shipmentId },

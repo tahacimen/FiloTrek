@@ -4,7 +4,9 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatDateTime } from "@/lib/format";
 import { GateEventActions } from "@/app/(gate)/gate/gate-event-actions";
+import { DockReservationGateActions } from "@/app/(gate)/gate/dock-reservation-gate-actions";
 import { GateEventType } from "@/generated/prisma/enums";
+import type { DockReservationStatus } from "@/generated/prisma/enums";
 
 function Field({ label, value }: { label: string; value: React.ReactNode }) {
   return (
@@ -25,6 +27,11 @@ function GateShipmentCard({
     vehicle: { plate: string } | null;
     driver: { fullName: string } | null;
     gateEvents: { eventType: GateEventType; occurredAt: Date }[];
+    dockReservations: {
+      id: string;
+      status: DockReservationStatus;
+      dock: { name: string; warehouse: { name: string } };
+    }[];
   };
 }) {
   const latestEvent = shipment.gateEvents[0] ?? null;
@@ -70,6 +77,15 @@ function GateShipmentCard({
           isInside={isInside}
           isDone={isDone}
         />
+
+        {shipment.dockReservations[0] && (
+          <DockReservationGateActions
+            reservationId={shipment.dockReservations[0].id}
+            status={shipment.dockReservations[0].status}
+            warehouseName={shipment.dockReservations[0].dock.warehouse.name}
+            dockName={shipment.dockReservations[0].dock.name}
+          />
+        )}
       </CardContent>
     </Card>
   );

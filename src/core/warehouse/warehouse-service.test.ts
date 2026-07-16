@@ -4,7 +4,7 @@ import * as warehouseService from "@/core/warehouse/warehouse-service";
 import { NotFoundError } from "@/core/shared/errors";
 import {
   cleanupCompanies,
-  createSupplierContext,
+  createCustomerContext,
   createTestDock,
   createTestWarehouse,
 } from "@/test/fixtures";
@@ -16,7 +16,7 @@ describe("warehouse-service", () => {
   });
 
   it("creates a warehouse and a dock with working hours end-to-end", async () => {
-    const ctx = await createSupplierContext();
+    const ctx = await createCustomerContext();
     companyIds.push(ctx.companyId);
 
     const warehouse = await warehouseService.createWarehouse(ctx, {
@@ -64,8 +64,8 @@ describe("warehouse-service", () => {
   });
 
   it("prevents a tenant from reading or modifying another tenant's warehouse/dock", async () => {
-    const ctxA = await createSupplierContext();
-    const ctxB = await createSupplierContext();
+    const ctxA = await createCustomerContext();
+    const ctxB = await createCustomerContext();
     companyIds.push(ctxA.companyId, ctxB.companyId);
 
     const warehouseA = await createTestWarehouse(ctxA.companyId);

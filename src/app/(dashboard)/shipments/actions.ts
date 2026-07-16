@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 
 import { requireTenantContext } from "@/core/shared/tenant-context";
 import * as shipmentService from "@/core/shipment/shipment-service";
+import * as dockReservationService from "@/core/warehouse/dock-reservation-service";
 import {
   advanceShipmentStatus,
   cancelShipment,
@@ -94,6 +95,34 @@ export async function markLoadReadyAction(
   revalidatePath(`/shipments/${shipmentId}`);
   revalidatePath("/shipments");
   revalidatePath("/dashboard");
+  return undefined;
+}
+
+/**
+ * The "sefer üzerinden" reservation flow: unlike the general dock calendar's
+ * click-a-cell form, plate/driver/vehicleType are never collected here —
+ * they come straight from this shipment's own already-assigned vehicle and
+ * driver (see dock-reservation-dialog.tsx), so the payload only carries
+ * what the customer actually chooses (dock, date, time, reason).
+ */
+export async function createDockReservationForShipmentAction(
+  shipmentId: string,
+  dockId: string,
+  _prevState: ShipmentFormState,
+  formData: FormData
+): Promise<ShipmentFormState> {
+  try {
+    const ctx = await requireTenantContext();
+    const raw = formData.get("payload");
+    const payload = typeof raw === "string" ? JSON.parse(raw) : {};
+    await dockReservationService.createReservation(ctx, dockId, {
+      ...payload,
+      shipmentId,
+    });
+  } catch (error) {
+    return { error: toActionErrorMessage(error) };
+  }
+  revalidatePath(`/shipments/${shipmentId}`);
   return undefined;
 }
 

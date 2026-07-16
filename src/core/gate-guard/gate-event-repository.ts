@@ -1,6 +1,10 @@
 import { prisma } from "@/lib/db";
 import type { GateGuardContext } from "@/core/shared/gate-guard-context";
-import { GateEventType, ShipmentStatus } from "@/generated/prisma/client";
+import {
+  DockReservationStatus,
+  GateEventType,
+  ShipmentStatus,
+} from "@/generated/prisma/client";
 
 const shipmentWithLatestGateEventInclude = {
   vehicle: { select: { id: true, plate: true } },
@@ -9,6 +13,15 @@ const shipmentWithLatestGateEventInclude = {
   // whatever its last logged event says (see the GateEvent model comment).
   gateEvents: {
     orderBy: { occurredAt: "desc" as const },
+    take: 1,
+  },
+  // At most one active reservation can ever be linked (partial unique
+  // index, see add_dock_reservation_shipment_unique) — surfaced here so the
+  // gate guard can advance its status (Araç Geldi/Tamamlandı) right from
+  // this same screen, alongside their own gate entry/exit log.
+  dockReservations: {
+    where: { status: { not: DockReservationStatus.CANCELLED } },
+    include: { dock: { select: { name: true, warehouse: { select: { name: true } } } } },
     take: 1,
   },
 } as const;

@@ -4,11 +4,7 @@ import { revalidatePath } from "next/cache";
 
 import { requireTenantContext } from "@/core/shared/tenant-context";
 import * as dockReservationService from "@/core/warehouse/dock-reservation-service";
-import {
-  cancelReservation,
-  markCompleted,
-  markVehicleArrived,
-} from "@/core/warehouse/dock-reservation-status";
+import { cancelReservation } from "@/core/warehouse/dock-reservation-status";
 import { toActionErrorMessage } from "@/lib/action-error";
 
 export type ReservationFormState = { error?: string } | undefined;
@@ -36,36 +32,6 @@ export async function createReservationAction(
       dockId,
       readReservationPayload(formData)
     );
-  } catch (error) {
-    return { error: toActionErrorMessage(error) };
-  }
-  revalidatePath(`/warehouses/${warehouseId}/docks/${dockId}`);
-  return undefined;
-}
-
-export async function markVehicleArrivedAction(
-  warehouseId: string,
-  dockId: string,
-  reservationId: string
-): Promise<ReservationFormState> {
-  try {
-    const ctx = await requireTenantContext();
-    await markVehicleArrived(ctx, reservationId);
-  } catch (error) {
-    return { error: toActionErrorMessage(error) };
-  }
-  revalidatePath(`/warehouses/${warehouseId}/docks/${dockId}`);
-  return undefined;
-}
-
-export async function markCompletedAction(
-  warehouseId: string,
-  dockId: string,
-  reservationId: string
-): Promise<ReservationFormState> {
-  try {
-    const ctx = await requireTenantContext();
-    await markCompleted(ctx, reservationId);
   } catch (error) {
     return { error: toActionErrorMessage(error) };
   }

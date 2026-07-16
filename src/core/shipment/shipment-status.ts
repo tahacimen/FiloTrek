@@ -17,6 +17,7 @@ import {
 import { requireCompanyType } from "@/core/shared/authorization";
 import type { TenantContext } from "@/core/shared/tenant-context";
 import type { DriverContext } from "@/core/shared/driver-context";
+import type { GateGuardContext } from "@/core/shared/gate-guard-context";
 import {
   SHIPMENT_ALLOWED_TRANSITIONS,
   SHIPMENT_TO_VEHICLE_STATUS,
@@ -462,6 +463,79 @@ export async function advanceShipmentStatusAsDriver(
       });
     } catch (error) {
       console.error("Şoför bildirimi oluşturulamadı:", error);
+    }
+  }
+
+  return updatedShipment;
+}
+
+/**
+ * The only two steps a dock reservation event can ever drive (see
+ * dock-reservation-status.ts): the gate guard's own facility only accounts
+ * for the customer's pickup dock, never the destination or completion —
+ * jumping straight to AT_DELIVERY_POINT/COMPLETED from here would be
+ * physically impossible for them to actually know.
+ */
+const GATE_GUARD_ALLOWED_TARGET_STATUSES: ReadonlySet<ShipmentStatus> = new Set([
+  ShipmentStatus.LOADING,
+  ShipmentStatus.AT_PICKUP_GATE,
+]);
+
+/**
+ * Best-effort caller from dock-reservation-status.ts: a gate guard marking
+ * a linked dock reservation's "Araç Geldi"/"Tamamlandı" advances the
+ * shipment the same way a driver's own report would (LOADING/AT_PICKUP_GATE),
+ * scoped to the gate guard's own (CUSTOMER) company via customerCompanyId —
+ * same ownership-doubles-as-scope reasoning as advanceShipmentStatusAsDriver.
+ * `reservationId` is threaded through as sourceReference purely for
+ * StatusHistory traceability, same spirit as the driver's own `note`.
+ */
+export async function advanceShipmentStatusAsGateGuard(
+  gateGuardCtx: GateGuardContext,
+  params: { shipmentId: string; targetStatus: ShipmentStatus; reservationId: string }
+) {
+  if (!GATE_GUARD_ALLOWED_TARGET_STATUSES.has(params.targetStatus)) {
+    throw new InvalidTransitionError("Nizamiye bu durum değişikliğini yapamaz.");
+  }
+
+  const updatedShipment = await advanceShipmentStatusCore({
+    targetStatus: params.targetStatus,
+    findShipment: (tx) =>
+      tx.shipment.findFirst({
+        where: { id: params.shipmentId, customerCompanyId: gateGuardCtx.companyId },
+      }),
+    source: StatusChangeSource.GATE_GUARD,
+    sourceReference: params.reservationId,
+  });
+
+  const notify = DRIVER_NOTIFY_BY_STATUS[params.targetStatus];
+  if (notify) {
+    try {
+      const [customerCompany, supplierCompany, driver] = await Promise.all([
+        companyRepository.getCompanyById(updatedShipment.customerCompanyId),
+        updatedShipment.supplierCompanyId
+          ? companyRepository.getCompanyById(updatedShipment.supplierCompanyId)
+          : null,
+        updatedShipment.driverId
+          ? prisma.driver.findUnique({
+              where: { id: updatedShipment.driverId },
+              select: { fullName: true },
+            })
+          : null,
+      ]);
+      await notify({
+        customerCompanyId: updatedShipment.customerCompanyId,
+        customerCompanyName: customerCompany?.name ?? "Müşteri",
+        // Guaranteed non-null: reaching LOADING/AT_PICKUP_GATE requires
+        // having already passed through ASSIGNED, which only ever sets
+        // supplierCompanyId (see assignVehicleAndDriver above).
+        supplierCompanyId: updatedShipment.supplierCompanyId!,
+        supplierCompanyName: supplierCompany?.name ?? "Tedarikçi",
+        driverName: driver?.fullName ?? "Şoför",
+        shipment: updatedShipment,
+      });
+    } catch (error) {
+      console.error("Nizamiye rampa bildirimi oluşturulamadı:", error);
     }
   }
 
