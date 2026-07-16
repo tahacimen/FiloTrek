@@ -41,6 +41,40 @@ export function listShipmentsForTenant(ctx: TenantContext) {
   });
 }
 
+/**
+ * Shipments a dispatcher can link a dock reservation to: already has a
+ * vehicle/driver (ASSIGNED or later, so the reservation form can autofill
+ * plate/driver) and hasn't finished yet — see dock-reservation-service.ts.
+ */
+const DOCK_RESERVATION_ASSIGNABLE_STATUSES = [
+  ShipmentStatus.ASSIGNED,
+  ShipmentStatus.HEADING_TO_PICKUP,
+  ShipmentStatus.LOADING,
+  ShipmentStatus.AT_PICKUP_GATE,
+];
+
+export function listAssignableShipmentsForDockReservation(ctx: TenantContext) {
+  return prisma.shipment.findMany({
+    where: {
+      supplierCompanyId: ctx.companyId,
+      status: { in: DOCK_RESERVATION_ASSIGNABLE_STATUSES },
+    },
+    include: shipmentListInclude,
+    orderBy: { createdAt: "desc" },
+  });
+}
+
+/**
+ * Ownership check only (not full visibility) — used before linking a dock
+ * reservation to a shipment, distinct from getShipmentForTenant below which
+ * also allows the customer side to read it.
+ */
+export function getShipmentForSupplier(ctx: TenantContext, shipmentId: string) {
+  return prisma.shipment.findFirst({
+    where: { id: shipmentId, supplierCompanyId: ctx.companyId },
+  });
+}
+
 export function getShipmentForTenant(ctx: TenantContext, shipmentId: string) {
   return prisma.shipment.findFirst({
     where: { id: shipmentId, ...tenantVisibilityFilter(ctx) },

@@ -6,13 +6,17 @@ import { requireTenantContext } from "@/core/shared/tenant-context";
 import { NotFoundError } from "@/core/shared/errors";
 import { getDock } from "@/core/warehouse/warehouse-service";
 import { listReservationsForWeek } from "@/core/warehouse/dock-reservation-service";
+import { listAssignableShipmentsForDockReservation } from "@/core/shipment/shipment-service";
 import { addDays, buildWeekGrid, parseWeekParam, toWeekParam } from "@/lib/dock-calendar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { StatusBreakdownChart } from "@/components/dashboard/status-breakdown-chart";
 import { dockReservationStatusLabels } from "@/lib/labels";
 import { DockCalendar } from "@/app/(dashboard)/warehouses/[warehouseId]/docks/[dockId]/dock-calendar";
-import { toSerializableReservation } from "@/app/(dashboard)/warehouses/[warehouseId]/docks/[dockId]/types";
+import {
+  toAssignableShipmentOption,
+  toSerializableReservation,
+} from "@/app/(dashboard)/warehouses/[warehouseId]/docks/[dockId]/types";
 
 export default async function DockDetailPage({
   params,
@@ -38,9 +42,14 @@ export default async function DockDetailPage({
 
   const weekStart = parseWeekParam(week);
   const weekEnd = addDays(weekStart, 7);
-  const reservations = (
-    await listReservationsForWeek(ctx, dockId, weekStart, weekEnd)
-  ).map(toSerializableReservation);
+  const [reservationRows, assignableShipmentRows] = await Promise.all([
+    listReservationsForWeek(ctx, dockId, weekStart, weekEnd),
+    listAssignableShipmentsForDockReservation(ctx),
+  ]);
+  const reservations = reservationRows.map(toSerializableReservation);
+  const assignableShipments = assignableShipmentRows.map(
+    toAssignableShipmentOption
+  );
 
   const grid = buildWeekGrid(weekStart, dock.workingHours, dock.slotDurationMinutes);
 
@@ -103,6 +112,7 @@ export default async function DockDetailPage({
               dockId={dockId}
               supportedReservationTypes={dock.supportedReservationTypes}
               supportedVehicleTypes={dock.supportedVehicleTypes}
+              assignableShipments={assignableShipments}
               grid={grid}
               reservations={reservations}
             />

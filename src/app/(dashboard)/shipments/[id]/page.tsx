@@ -1,5 +1,6 @@
+import Link from "next/link";
 import { notFound } from "next/navigation";
-import { MapPinned, Navigation, Package, Truck, User } from "lucide-react";
+import { MapPinned, Navigation, Package, Truck, User, Warehouse } from "lucide-react";
 
 import {
   getDeparturePhoto,
@@ -7,6 +8,7 @@ import {
   getShipment,
   getStatusHistory,
 } from "@/core/shipment/shipment-service";
+import { getActiveReservationForShipment } from "@/core/warehouse/dock-reservation-service";
 import { requireTenantContext } from "@/core/shared/tenant-context";
 import { NotFoundError } from "@/core/shared/errors";
 import { Badge } from "@/components/ui/badge";
@@ -14,6 +16,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import {
   customerShipmentStatusLabels,
+  dockReservationStatusBadgeVariant,
+  dockReservationStatusLabels,
   shipmentStatusLabels,
   statusBadgeVariant,
   vehicleBedTypeLabels,
@@ -71,11 +75,17 @@ export default async function ShipmentDetailPage({
   // Conditional on the denormalized flag — avoids a pointless query in the
   // common (no open incident) case. getDeparturePhoto always runs; it's a
   // single indexed lookup and there's no equivalent cheap flag for it.
-  const [incident, departurePhoto, statusHistory] = await Promise.all([
-    shipment.hasOpenIncident ? getOpenIncident(ctx, shipment.id) : null,
-    getDeparturePhoto(shipment.id),
-    getStatusHistory(shipment.id),
-  ]);
+  const [incident, departurePhoto, statusHistory, dockReservation] =
+    await Promise.all([
+      shipment.hasOpenIncident ? getOpenIncident(ctx, shipment.id) : null,
+      getDeparturePhoto(shipment.id),
+      getStatusHistory(shipment.id),
+      // Supplier-only tool (see the schema comment above Warehouse/DockReservation) —
+      // never queried on the customer's own view of this same page.
+      ctx.companyType === "SUPPLIER"
+        ? getActiveReservationForShipment(ctx, shipment.id)
+        : null,
+    ]);
 
   const statusLabels =
     ctx.companyType === "CUSTOMER" ? customerShipmentStatusLabels : shipmentStatusLabels;
@@ -217,6 +227,43 @@ export default async function ShipmentDetailPage({
               label="Teslimat Noktası"
               value={<NavigationLink url={shipment.destinationMapsUrl} />}
             />
+          </CardContent>
+        </Card>
+      )}
+
+      {dockReservation && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Warehouse className="text-muted-foreground size-4" />
+              Depo Rampa Rezervasyonu
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="grid grid-cols-2 gap-4">
+            <Field label="Depo" value={dockReservation.dock.warehouse.name} />
+            <Field label="Rampa" value={dockReservation.dock.name} />
+            <Field
+              label="Planlanan Saat"
+              value={formatDateTime(dockReservation.startAt)}
+            />
+            <Field
+              label="Durum"
+              value={
+                <Badge
+                  variant={dockReservationStatusBadgeVariant[dockReservation.status]}
+                >
+                  {dockReservationStatusLabels[dockReservation.status]}
+                </Badge>
+              }
+            />
+            <div className="col-span-full">
+              <Link
+                href={`/warehouses/${dockReservation.dock.warehouse.id}/docks/${dockReservation.dock.id}`}
+                className="text-primary text-sm underline underline-offset-2"
+              >
+                Rampa Takvimine Git
+              </Link>
+            </div>
           </CardContent>
         </Card>
       )}

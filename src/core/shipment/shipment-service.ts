@@ -24,6 +24,14 @@ export async function listShipments(ctx: TenantContext) {
   return shipmentRepository.listShipmentsForTenant(ctx);
 }
 
+/** Picker source for linking a dock reservation to one of the supplier's own shipments — see dock-reservation-service.ts. */
+export async function listAssignableShipmentsForDockReservation(
+  ctx: TenantContext
+) {
+  requireCompanyType(ctx, CompanyType.SUPPLIER);
+  return shipmentRepository.listAssignableShipmentsForDockReservation(ctx);
+}
+
 /** No requireCompanyType-style guard needed — DriverContext is only ever obtainable via requireDriverContext(). */
 export async function listActiveShipmentsForDriver(driverCtx: DriverContext) {
   return shipmentRepository.listActiveShipmentsForDriver(driverCtx.driverId);

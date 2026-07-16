@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useTransition } from "react";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
@@ -110,6 +111,19 @@ export function ReservationDetailDialog({
           />
           <Field label="Sürücü Adı" value={reservation.driverName} />
           <Field label="Sürücü Telefon" value={reservation.driverPhone ?? "Belirtilmedi"} />
+          {reservation.shipmentId && (
+            <Field
+              label="Bağlı Sefer"
+              value={
+                <Link
+                  href={`/shipments/${reservation.shipmentId}`}
+                  className="text-primary underline underline-offset-2"
+                >
+                  Sefer Detayına Git
+                </Link>
+              }
+            />
+          )}
           {reservation.notes && (
             <div className="col-span-full">
               <Field label="Ek Notlar" value={reservation.notes} />

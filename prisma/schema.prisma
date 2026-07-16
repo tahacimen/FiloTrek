@@ -426,10 +426,15 @@ model DockReservation {
   id              String              @id @default(uuid(7)) @db.Uuid
   dockId          String              @map("dock_id") @db.Uuid
   dock            LoadingDock         @relation(fields: [dockId], references: [id], onDelete: Cascade)
-  // Optional link back to one of our own shipments, purely for convenience
-  // (autofill vehicle/driver) and traceability — a reservation never
-  // requires one, since a dock may be booked for a vehicle/load that isn't
-  // tracked as a Shipment in this system at all.
+  // Optional link back to one of our own shipments — a dispatcher-chosen,
+  // opt-in reference (never required, since a dock may be booked for a
+  // load that isn't tracked as a Shipment at all) used for autofill,
+  // traceability, and a best-effort shipment-status sync (see
+  // dock-reservation-status.ts: VEHICLE_ARRIVED -> Shipment.LOADING,
+  // COMPLETED -> Shipment.AT_PICKUP_GATE). A partial unique index
+  // (add_dock_reservation_shipment_unique migration, not expressible in
+  // Prisma's schema DSL) enforces at most one *active* (non-cancelled)
+  // reservation per shipment, so the sync source is never ambiguous.
   shipmentId      String?             @map("shipment_id") @db.Uuid
   shipment        Shipment?           @relation(fields: [shipmentId], references: [id], onDelete: SetNull)
   reservationType DockReservationType @map("reservation_type")

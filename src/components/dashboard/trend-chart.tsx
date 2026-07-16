@@ -12,8 +12,11 @@ import {
 
 export function TrendChart({
   data,
+  seriesLabel = "Tamamlanan Sefer",
 }: {
   data: { date: string; count: number }[];
+  /** Series name shown in the tooltip/legend — e.g. "Rezervasyon" for the warehouse report. */
+  seriesLabel?: string;
 }) {
   const chartData = data.map((row) => ({
     ...row,
@@ -41,12 +44,12 @@ export function TrendChart({
             border: "1px solid var(--border)",
             fontSize: 12,
           }}
-          labelFormatter={(label) => `${label} tarihinde tamamlanan sefer`}
+          labelFormatter={(label) => `${label} tarihinde ${seriesLabel.toLocaleLowerCase("tr-TR")}`}
         />
         <Area
           type="monotone"
           dataKey="count"
-          name="Tamamlanan Sefer"
+          name={seriesLabel}
           stroke="var(--color-chart-1)"
           fill="url(#trendFill)"
           strokeWidth={2}

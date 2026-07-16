@@ -1,14 +1,17 @@
 import { afterAll, describe, expect, it } from "vitest";
 
+import { prisma } from "@/lib/db";
 import * as dockReservationService from "@/core/warehouse/dock-reservation-service";
 import { cancelReservation } from "@/core/warehouse/dock-reservation-status";
 import { NotFoundError, ValidationError } from "@/core/shared/errors";
 import {
   cleanupCompanies,
   createSupplierContext,
+  createTestCompany,
   createTestDock,
   createTestWarehouse,
 } from "@/test/fixtures";
+import { CompanyType } from "@/generated/prisma/client";
 
 function slot(hour: number) {
   const d = new Date();
@@ -23,6 +26,23 @@ const baseReservationInput = {
   plate: "34 TST 001",
   driverName: "Test Sürücü",
 };
+
+/** Shipment's own status doesn't matter for these tests — createReservation's shipmentId check is ownership + already-linked only, not status. */
+async function createTestShipment(supplierCompanyId: string) {
+  const customer = await createTestCompany(CompanyType.CUSTOMER);
+  const shipment = await prisma.shipment.create({
+    data: {
+      customerCompanyId: customer.id,
+      supplierCompanyId,
+      originAddress: "A",
+      destinationAddress: "B",
+      distanceKm: 100,
+      tonnage: 5,
+      status: "ASSIGNED",
+    },
+  });
+  return { customer, shipment };
+}
 
 describe("dock-reservation-service", () => {
   const companyIds: string[] = [];
@@ -128,5 +148,87 @@ describe("dock-reservation-service", () => {
         startAt: slot(15),
       })
     ).rejects.toThrow(NotFoundError);
+  });
+
+  it("links a reservation to one of the tenant's own shipments", async () => {
+    const ctx = await createSupplierContext();
+    companyIds.push(ctx.companyId);
+    const { customer, shipment } = await createTestShipment(ctx.companyId);
+    companyIds.push(customer.id);
+    const warehouse = await createTestWarehouse(ctx.companyId);
+    const dock = await createTestDock(warehouse.id);
+
+    const reservation = await dockReservationService.createReservation(ctx, dock.id, {
+      ...baseReservationInput,
+      startAt: slot(16),
+      shipmentId: shipment.id,
+    });
+    expect(reservation.shipmentId).toBe(shipment.id);
+  });
+
+  it("rejects linking a reservation to another tenant's shipment", async () => {
+    const ctxA = await createSupplierContext();
+    const ctxB = await createSupplierContext();
+    companyIds.push(ctxA.companyId, ctxB.companyId);
+    const { customer, shipment } = await createTestShipment(ctxA.companyId);
+    companyIds.push(customer.id);
+    const warehouseB = await createTestWarehouse(ctxB.companyId);
+    const dockB = await createTestDock(warehouseB.id);
+
+    await expect(
+      dockReservationService.createReservation(ctxB, dockB.id, {
+        ...baseReservationInput,
+        startAt: slot(17),
+        shipmentId: shipment.id,
+      })
+    ).rejects.toThrow(NotFoundError);
+  });
+
+  it("rejects linking to a shipment that's already linked to another active reservation", async () => {
+    const ctx = await createSupplierContext();
+    companyIds.push(ctx.companyId);
+    const { customer, shipment } = await createTestShipment(ctx.companyId);
+    companyIds.push(customer.id);
+    const warehouse = await createTestWarehouse(ctx.companyId);
+    const dock = await createTestDock(warehouse.id);
+
+    await dockReservationService.createReservation(ctx, dock.id, {
+      ...baseReservationInput,
+      startAt: slot(18),
+      shipmentId: shipment.id,
+    });
+
+    await expect(
+      dockReservationService.createReservation(ctx, dock.id, {
+        ...baseReservationInput,
+        plate: "34 TST 005",
+        startAt: slot(19),
+        shipmentId: shipment.id,
+      })
+    ).rejects.toThrow(ValidationError);
+  });
+
+  it("allows re-linking a shipment once its previous reservation is cancelled", async () => {
+    const ctx = await createSupplierContext();
+    companyIds.push(ctx.companyId);
+    const { customer, shipment } = await createTestShipment(ctx.companyId);
+    companyIds.push(customer.id);
+    const warehouse = await createTestWarehouse(ctx.companyId);
+    const dock = await createTestDock(warehouse.id);
+
+    const first = await dockReservationService.createReservation(ctx, dock.id, {
+      ...baseReservationInput,
+      startAt: slot(20),
+      shipmentId: shipment.id,
+    });
+    await cancelReservation(ctx, first.id);
+
+    const second = await dockReservationService.createReservation(ctx, dock.id, {
+      ...baseReservationInput,
+      plate: "34 TST 006",
+      startAt: slot(21),
+      shipmentId: shipment.id,
+    });
+    expect(second.shipmentId).toBe(shipment.id);
   });
 });

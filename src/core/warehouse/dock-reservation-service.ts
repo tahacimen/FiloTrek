@@ -3,6 +3,7 @@ import type { TenantContext } from "@/core/shared/tenant-context";
 import { NotFoundError, ValidationError } from "@/core/shared/errors";
 import * as warehouseRepository from "@/core/warehouse/warehouse-repository";
 import * as dockReservationRepository from "@/core/warehouse/dock-reservation-repository";
+import * as shipmentRepository from "@/core/shipment/shipment-repository";
 import { reservationInputSchema } from "@/lib/validation/warehouse";
 import { CompanyType } from "@/generated/prisma/client";
 
@@ -53,6 +54,25 @@ export async function createReservation(
     );
   }
 
+  if (input.shipmentId) {
+    const shipment = await shipmentRepository.getShipmentForSupplier(
+      ctx,
+      input.shipmentId
+    );
+    if (!shipment) throw new NotFoundError("Sefer bulunamadı.");
+
+    const alreadyLinked =
+      await dockReservationRepository.findActiveReservationForShipment(
+        ctx,
+        input.shipmentId
+      );
+    if (alreadyLinked) {
+      throw new ValidationError(
+        "Bu sefer zaten başka bir aktif rampa rezervasyonuna bağlı."
+      );
+    }
+  }
+
   const endAt = new Date(
     input.startAt.getTime() + dock.slotDurationMinutes * 60_000
   );
@@ -71,4 +91,16 @@ export async function createReservation(
     }
     throw error;
   }
+}
+
+/** For the shipment detail page's read-only "Depo Rampa Rezervasyonu" card. */
+export async function getActiveReservationForShipment(
+  ctx: TenantContext,
+  shipmentId: string
+) {
+  requireCompanyType(ctx, CompanyType.SUPPLIER);
+  return dockReservationRepository.findActiveReservationForShipment(
+    ctx,
+    shipmentId
+  );
 }

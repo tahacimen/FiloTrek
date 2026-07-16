@@ -1,7 +1,7 @@
 "use client";
 
 import { Fragment, useState } from "react";
-import { Plus } from "lucide-react";
+import { Link2, Plus } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import {
@@ -16,13 +16,17 @@ import type {
 } from "@/generated/prisma/client";
 import { ReservationFormDialog } from "@/app/(dashboard)/warehouses/[warehouseId]/docks/[dockId]/reservation-form-dialog";
 import { ReservationDetailDialog } from "@/app/(dashboard)/warehouses/[warehouseId]/docks/[dockId]/reservation-detail-dialog";
-import type { SerializableReservation } from "@/app/(dashboard)/warehouses/[warehouseId]/docks/[dockId]/types";
+import type {
+  AssignableShipmentOption,
+  SerializableReservation,
+} from "@/app/(dashboard)/warehouses/[warehouseId]/docks/[dockId]/types";
 
 export function DockCalendar({
   warehouseId,
   dockId,
   supportedReservationTypes,
   supportedVehicleTypes,
+  assignableShipments,
   grid,
   reservations,
 }: {
@@ -30,6 +34,7 @@ export function DockCalendar({
   dockId: string;
   supportedReservationTypes: DockReservationType[];
   supportedVehicleTypes: VehicleType[];
+  assignableShipments: AssignableShipmentOption[];
   grid: { days: WeekDay[]; timeRows: string[]; cells: WeekGridCell[] };
   reservations: SerializableReservation[];
 }) {
@@ -99,7 +104,12 @@ export function DockCalendar({
                     >
                       {dockReservationTypeLabels[reservation.reservationType]}
                     </Badge>
-                    <span className="truncate font-medium">{reservation.plate}</span>
+                    <span className="flex items-center gap-1 truncate font-medium">
+                      {reservation.shipmentId && (
+                        <Link2 className="size-3 shrink-0" aria-label="Sefere bağlı" />
+                      )}
+                      {reservation.plate}
+                    </span>
                   </button>
                 );
               }
@@ -125,6 +135,7 @@ export function DockCalendar({
           cell={selectedCell}
           supportedReservationTypes={supportedReservationTypes}
           supportedVehicleTypes={supportedVehicleTypes}
+          assignableShipments={assignableShipments}
           onClose={() => setSelectedCell(null)}
         />
       )}

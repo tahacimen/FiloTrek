@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { BarChart3 } from "lucide-react";
 
 import { requireTenantContext } from "@/core/shared/tenant-context";
 import { listWarehouses } from "@/core/warehouse/warehouse-service";
@@ -30,7 +31,15 @@ export default async function WarehousesPage() {
             Depolarınızı, rampalarınızı ve kapı rezervasyonlarını yönetin.
           </p>
         </div>
-        <WarehouseFormDialog />
+        <div className="flex items-center gap-2">
+          <Button asChild variant="outline" size="sm">
+            <Link href="/warehouses/report">
+              <BarChart3 />
+              Rapor
+            </Link>
+          </Button>
+          <WarehouseFormDialog />
+        </div>
       </div>
 
       {warehouses.length === 0 && (

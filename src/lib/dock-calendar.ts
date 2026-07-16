@@ -114,6 +114,39 @@ export function buildWeekGrid(
   return { days, timeRows, cells };
 }
 
+/**
+ * Total number of bookable slots across [rangeStart, rangeEnd) — the
+ * report page's denominator for occupancy %. Same day-by-day open/close
+ * math as buildWeekGrid above, generalized to an arbitrary span (a report's
+ * date range, not necessarily aligned to a week) rather than exactly 7 days.
+ */
+export function countOpenSlotsInRange(
+  workingHours: DockWorkingHourRow[],
+  slotDurationMinutes: number,
+  rangeStart: Date,
+  rangeEnd: Date
+): number {
+  const hoursByDay = new Map(workingHours.map((row) => [row.dayOfWeek, row]));
+  let count = 0;
+  let cursor = new Date(
+    rangeStart.getFullYear(),
+    rangeStart.getMonth(),
+    rangeStart.getDate()
+  );
+  while (cursor < rangeEnd) {
+    const hours = hoursByDay.get(cursor.getDay());
+    if (hours?.isOpen) {
+      const openMin = parseTime(hours.openTime);
+      const closeMin = parseTime(hours.closeTime);
+      for (let t = openMin; t + slotDurationMinutes <= closeMin; t += slotDurationMinutes) {
+        count++;
+      }
+    }
+    cursor = addDays(cursor, 1);
+  }
+  return count;
+}
+
 /** "2026-08-03" (local date, no time) — used as the ?week= search param. */
 export function toWeekParam(date: Date): string {
   const y = date.getFullYear();

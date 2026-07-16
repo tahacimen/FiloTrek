@@ -29,6 +29,7 @@ import { confirmSubmit } from "@/lib/confirm-submit";
 import { dockReservationTypeLabels, vehicleTypeLabels } from "@/lib/labels";
 import type { WeekGridCell } from "@/lib/dock-calendar";
 import type { DockReservationType, VehicleType } from "@/generated/prisma/client";
+import type { AssignableShipmentOption } from "@/app/(dashboard)/warehouses/[warehouseId]/docks/[dockId]/types";
 
 const NONE = "__none__";
 
@@ -38,6 +39,7 @@ export function ReservationFormDialog({
   cell,
   supportedReservationTypes,
   supportedVehicleTypes,
+  assignableShipments,
   onClose,
 }: {
   warehouseId: string;
@@ -45,6 +47,7 @@ export function ReservationFormDialog({
   cell: WeekGridCell;
   supportedReservationTypes: DockReservationType[];
   supportedVehicleTypes: VehicleType[];
+  assignableShipments: AssignableShipmentOption[];
   onClose: () => void;
 }) {
   const action = createReservationAction.bind(null, warehouseId, dockId);
@@ -73,6 +76,27 @@ export function ReservationFormDialog({
   const [driverName, setDriverName] = useState("");
   const [driverPhone, setDriverPhone] = useState("");
   const [notes, setNotes] = useState("");
+  const [shipmentId, setShipmentId] = useState<string>(NONE);
+
+  // Selecting a shipment autofills the vehicle/driver fields below (still
+  // editable afterward) — the link itself is what drives the best-effort
+  // shipment-status sync server-side (dock-reservation-status.ts), this is
+  // just a convenience so the dispatcher doesn't retype what's already known.
+  function handleShipmentChange(value: string) {
+    setShipmentId(value);
+    const shipment = assignableShipments.find((s) => s.id === value);
+    if (!shipment) return;
+    if (shipment.vehicle) {
+      setPlate(shipment.vehicle.plate);
+      if (supportedVehicleTypes.includes(shipment.vehicle.vehicleType)) {
+        setVehicleType(shipment.vehicle.vehicleType);
+      }
+    }
+    if (shipment.driver) {
+      setDriverName(shipment.driver.fullName);
+      setDriverPhone(shipment.driver.phone);
+    }
+  }
 
   const payload = JSON.stringify({
     reservationType,
@@ -86,6 +110,7 @@ export function ReservationFormDialog({
     driverName,
     driverPhone: driverPhone.trim() === "" ? null : driverPhone,
     notes: notes.trim() === "" ? null : notes,
+    shipmentId: shipmentId === NONE ? null : shipmentId,
   });
 
   return (
@@ -142,6 +167,26 @@ export function ReservationFormDialog({
               </Select>
             </div>
           </div>
+
+          {assignableShipments.length > 0 && (
+            <div className="flex flex-col gap-2">
+              <Label>Bağlı Sefer (opsiyonel)</Label>
+              <Select value={shipmentId} onValueChange={handleShipmentChange}>
+                <SelectTrigger className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={NONE}>Yok</SelectItem>
+                  {assignableShipments.map((shipment) => (
+                    <SelectItem key={shipment.id} value={shipment.id}>
+                      #{shipment.trackingNumber} · {shipment.originAddress} →{" "}
+                      {shipment.destinationAddress}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
 
           <div className="flex flex-col gap-2">
             <Label htmlFor="reason">Rezervasyon Gerekçesi</Label>
