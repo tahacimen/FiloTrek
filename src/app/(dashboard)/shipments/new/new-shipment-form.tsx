@@ -7,6 +7,7 @@ import {
   createShipmentAction,
   type ShipmentFormState,
 } from "@/app/(dashboard)/shipments/actions";
+import { DangerousGoodsFields } from "@/app/(dashboard)/shipments/dangerous-goods-fields";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -94,6 +95,8 @@ export function NewShipmentForm({ customers }: { customers: Company[] }) {
         <Label htmlFor="cargoDescription">Yük Açıklaması (opsiyonel)</Label>
         <Textarea id="cargoDescription" name="cargoDescription" rows={3} />
       </div>
+
+      <DangerousGoodsFields />
 
       {state?.error && (
         <p className="text-sm text-destructive" role="alert">

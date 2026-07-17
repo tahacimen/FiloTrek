@@ -720,3 +720,99 @@ describe("shipment-service: departure/delivery photos", () => {
     expect(departurePhoto?.photoUrl).not.toBe(deliveryPhoto?.photoUrl);
   });
 });
+
+describe("shipment-service: dangerous goods / cold chain classification", () => {
+  const companyIds: string[] = [];
+  afterAll(async () => {
+    await cleanupCompanies(companyIds);
+  });
+
+  it("defaults both flags to false when omitted", async () => {
+    const customerCtx = await createCustomerContext();
+    const supplierCtx = await createSupplierContext();
+    companyIds.push(customerCtx.companyId, supplierCtx.companyId);
+
+    const shipment = await shipmentService.createShipmentRequest(customerCtx, {
+      ...baseFields,
+      supplierCompanyId: supplierCtx.companyId,
+    });
+
+    expect(shipment.isDangerousGoods).toBe(false);
+    expect(shipment.adrClass).toBeNull();
+    expect(shipment.requiresColdChain).toBe(false);
+  });
+
+  it("stores the ADR class and cold chain temperature range when provided", async () => {
+    const customerCtx = await createCustomerContext();
+    const supplierCtx = await createSupplierContext();
+    companyIds.push(customerCtx.companyId, supplierCtx.companyId);
+
+    const shipment = await shipmentService.createShipmentRequest(customerCtx, {
+      ...baseFields,
+      supplierCompanyId: supplierCtx.companyId,
+      isDangerousGoods: true,
+      adrClass: "Sınıf 3 - Yanıcı Sıvılar",
+      requiresColdChain: true,
+      temperatureMinC: -2,
+      temperatureMaxC: 4,
+    });
+
+    expect(shipment.isDangerousGoods).toBe(true);
+    expect(shipment.adrClass).toBe("Sınıf 3 - Yanıcı Sıvılar");
+    expect(shipment.requiresColdChain).toBe(true);
+    expect(shipment.temperatureMinC?.toNumber()).toBe(-2);
+    expect(shipment.temperatureMaxC?.toNumber()).toBe(4);
+  });
+
+  it("rejects isDangerousGoods without an adrClass", async () => {
+    const customerCtx = await createCustomerContext();
+    const supplierCtx = await createSupplierContext();
+    companyIds.push(customerCtx.companyId, supplierCtx.companyId);
+
+    await expect(
+      shipmentService.createShipmentRequest(customerCtx, {
+        ...baseFields,
+        supplierCompanyId: supplierCtx.companyId,
+        isDangerousGoods: true,
+      })
+    ).rejects.toThrow();
+  });
+
+  it("rejects a cold chain temperature range where min > max", async () => {
+    const customerCtx = await createCustomerContext();
+    const supplierCtx = await createSupplierContext();
+    companyIds.push(customerCtx.companyId, supplierCtx.companyId);
+
+    await expect(
+      shipmentService.createShipmentRequest(customerCtx, {
+        ...baseFields,
+        supplierCompanyId: supplierCtx.companyId,
+        requiresColdChain: true,
+        temperatureMinC: 10,
+        temperatureMaxC: 2,
+      })
+    ).rejects.toThrow();
+  });
+
+  it("also validates the supplier-initiated creation path (shipmentInputSchema)", async () => {
+    const supplierCtx = await createSupplierContext();
+    const customerCtx = await createCustomerContext();
+    companyIds.push(supplierCtx.companyId, customerCtx.companyId);
+
+    await expect(
+      shipmentService.createShipment(supplierCtx, {
+        ...baseFields,
+        customerCompanyId: customerCtx.companyId,
+        isDangerousGoods: true,
+      })
+    ).rejects.toThrow();
+
+    const shipment = await shipmentService.createShipment(supplierCtx, {
+      ...baseFields,
+      customerCompanyId: customerCtx.companyId,
+      isDangerousGoods: true,
+      adrClass: "Sınıf 9 - Diğer",
+    });
+    expect(shipment.adrClass).toBe("Sınıf 9 - Diğer");
+  });
+});

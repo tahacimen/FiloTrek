@@ -407,6 +407,17 @@ model Shipment {
   lastKnownLat             Decimal?       @map("last_known_lat") @db.Decimal(9, 6)
   lastKnownLng             Decimal?       @map("last_known_lng") @db.Decimal(9, 6)
   lastLocationAt           DateTime?      @map("last_location_at")
+  // Simple classification, not a temperature-logging-over-time feature —
+  // just enough for dispatchers/drivers to know a shipment needs special
+  // handling and for it to show as a badge. adrClass is free text (the
+  // full ADR class/subdivision taxonomy is too granular to justify a rigid
+  // enum here) rather than required only when isDangerousGoods is true
+  // (enforced in validation/shipment.ts, not the DB).
+  isDangerousGoods         Boolean        @default(false) @map("is_dangerous_goods")
+  adrClass                 String?        @map("adr_class")
+  requiresColdChain        Boolean        @default(false) @map("requires_cold_chain")
+  temperatureMinC          Decimal?       @map("temperature_min_c") @db.Decimal(5, 2)
+  temperatureMaxC          Decimal?       @map("temperature_max_c") @db.Decimal(5, 2)
   createdAt                DateTime       @default(now()) @map("created_at")
   updatedAt                DateTime       @updatedAt @map("updated_at")
   completedAt              DateTime?      @map("completed_at")

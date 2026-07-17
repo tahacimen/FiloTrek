@@ -70,7 +70,25 @@ export function ShipmentTable({
                 : (shipment.supplierCompany?.name ?? "Henüz atanmadı")}
             </TableCell>
             <TableCell>
-              {shipment.originAddress} → {shipment.destinationAddress}
+              <div className="flex flex-col gap-1">
+                <span>
+                  {shipment.originAddress} → {shipment.destinationAddress}
+                </span>
+                {(shipment.isDangerousGoods || shipment.requiresColdChain) && (
+                  <div className="flex gap-1.5">
+                    {shipment.isDangerousGoods && (
+                      <Badge variant="destructive" className="text-[11px]">
+                        Tehlikeli Madde
+                      </Badge>
+                    )}
+                    {shipment.requiresColdChain && (
+                      <Badge variant="outline" className="text-[11px]">
+                        Soğuk Zincir
+                      </Badge>
+                    )}
+                  </div>
+                )}
+              </div>
             </TableCell>
             <TableCell>{shipment.tonnage.toString()} ton</TableCell>
             <TableCell>{shipment.vehicle?.plate ?? "—"}</TableCell>

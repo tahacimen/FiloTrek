@@ -151,6 +151,16 @@ export default async function ShipmentDetailPage({
           </p>
         </div>
         <div className="flex items-center gap-2">
+          {shipment.isDangerousGoods && (
+            <Badge variant="destructive" className="text-sm">
+              Tehlikeli Madde
+            </Badge>
+          )}
+          {shipment.requiresColdChain && (
+            <Badge variant="outline" className="text-sm">
+              Soğuk Zincir
+            </Badge>
+          )}
           {shipment.hasOpenIncident && (
             <Badge variant="destructive" className="text-sm">
               Arıza
@@ -260,6 +270,16 @@ export default async function ShipmentDetailPage({
                 ).toLocaleString("tr-TR", { maximumFractionDigits: 0 })} kg`}
               />
             )}
+            {shipment.isDangerousGoods && (
+              <Field label="ADR Sınıfı" value={shipment.adrClass ?? "Belirtilmedi"} />
+            )}
+            {shipment.requiresColdChain &&
+              (shipment.temperatureMinC != null || shipment.temperatureMaxC != null) && (
+                <Field
+                  label="Sıcaklık Aralığı"
+                  value={`${shipment.temperatureMinC?.toString() ?? "?"}°C — ${shipment.temperatureMaxC?.toString() ?? "?"}°C`}
+                />
+              )}
             {shipment.cargoDescription && (
               <div className="col-span-full">
                 <Field label="Yük Açıklaması" value={shipment.cargoDescription} />

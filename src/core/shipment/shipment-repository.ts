@@ -124,6 +124,11 @@ type CreateShipmentRecordInput = {
   tonnage: number;
   cargoDescription?: string;
   documentTrackingNumber?: string;
+  isDangerousGoods?: boolean;
+  adrClass?: string;
+  requiresColdChain?: boolean;
+  temperatureMinC?: number;
+  temperatureMaxC?: number;
 };
 
 /**

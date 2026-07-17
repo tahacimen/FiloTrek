@@ -23,6 +23,17 @@ function optionalFormString(formData: FormData, key: string) {
   return typeof value === "string" && value.length > 0 ? value : undefined;
 }
 
+/** Shared by both creation actions — see the DangerousGoodsFields component for the hidden-input encoding. */
+function dangerousGoodsFieldsFromForm(formData: FormData) {
+  return {
+    isDangerousGoods: formData.get("isDangerousGoods") === "true",
+    adrClass: optionalFormString(formData, "adrClass"),
+    requiresColdChain: formData.get("requiresColdChain") === "true",
+    temperatureMinC: optionalFormString(formData, "temperatureMinC"),
+    temperatureMaxC: optionalFormString(formData, "temperatureMaxC"),
+  };
+}
+
 export async function createShipmentAction(
   _prevState: ShipmentFormState,
   formData: FormData
@@ -37,6 +48,7 @@ export async function createShipmentAction(
       distanceKm: formData.get("distanceKm"),
       tonnage: formData.get("tonnage"),
       cargoDescription: optionalFormString(formData, "cargoDescription"),
+      ...dangerousGoodsFieldsFromForm(formData),
     });
     shipmentId = shipment.id;
   } catch (error) {
@@ -68,6 +80,7 @@ export async function createShipmentRequestAction(
       ),
       originMapsUrl: optionalFormString(formData, "originMapsUrl"),
       destinationMapsUrl: optionalFormString(formData, "destinationMapsUrl"),
+      ...dangerousGoodsFieldsFromForm(formData),
     });
     shipmentId = shipment.id;
   } catch (error) {

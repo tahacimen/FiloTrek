@@ -36,10 +36,47 @@ const shipmentCoreFieldsSchema = z.object({
     .optional(),
 });
 
+/**
+ * Simple classification only — no temperature-logging-over-time feature.
+ * adrClass is free text (the full ADR class/subdivision taxonomy is too
+ * granular for a rigid enum here) but required once isDangerousGoods is
+ * checked; temperatureMinC/MaxC are optional even under cold chain (a
+ * range isn't always known up front) but must be consistent if both given.
+ */
+const dangerousGoodsFieldsSchema = {
+  isDangerousGoods: z.boolean().default(false),
+  adrClass: z.string().trim().max(50, "ADR sınıfı çok uzun.").optional(),
+  requiresColdChain: z.boolean().default(false),
+  temperatureMinC: z.coerce.number("Sıcaklık sayısal bir değer olmalı.").optional(),
+  temperatureMaxC: z.coerce.number("Sıcaklık sayısal bir değer olmalı.").optional(),
+};
+
+function withDangerousGoodsValidation<T extends z.ZodObject>(schema: T) {
+  return schema
+    .refine((data) => !data.isDangerousGoods || !!data.adrClass, {
+      message: "Tehlikeli madde işaretliyken ADR sınıfı girilmelidir.",
+      path: ["adrClass"],
+    })
+    .refine(
+      (data) =>
+        !data.requiresColdChain ||
+        data.temperatureMinC == null ||
+        data.temperatureMaxC == null ||
+        data.temperatureMinC <= data.temperatureMaxC,
+      {
+        message: "Minimum sıcaklık, maksimum sıcaklıktan büyük olamaz.",
+        path: ["temperatureMaxC"],
+      }
+    );
+}
+
 /** Supplier dispatcher creating a shipment for a chosen customer. */
-export const shipmentInputSchema = shipmentCoreFieldsSchema.extend({
-  customerCompanyId: z.uuid("Geçerli bir müşteri firma seçin."),
-});
+export const shipmentInputSchema = withDangerousGoodsValidation(
+  shipmentCoreFieldsSchema.extend({
+    customerCompanyId: z.uuid("Geçerli bir müşteri firma seçin."),
+    ...dangerousGoodsFieldsSchema,
+  })
+);
 export type ShipmentInput = z.infer<typeof shipmentInputSchema>;
 
 /**
@@ -49,22 +86,25 @@ export type ShipmentInput = z.infer<typeof shipmentInputSchema>;
  * — they're the customer's own request-time reference info, entered once
  * and never editable afterward by either side.
  */
-export const shipmentRequestInputSchema = shipmentCoreFieldsSchema.extend({
-  // Omitted/undefined means "açık pazara aç" — createShipmentRequest leaves
-  // supplierCompanyId null and the shipment becomes biddable by any
-  // supplier (see dock-reservation-service.ts's sibling pattern of a
-  // nullable ownership column already existing before this feature needed
-  // it). The existing "send to one specific supplier" flow is otherwise
-  // completely unchanged.
-  supplierCompanyId: z.uuid("Geçerli bir tedarikçi firma seçin.").optional(),
-  documentTrackingNumber: z
-    .string()
-    .trim()
-    .max(100, "Belge takip numarası çok uzun.")
-    .optional(),
-  originMapsUrl: optionalMapsUrlSchema,
-  destinationMapsUrl: optionalMapsUrlSchema,
-});
+export const shipmentRequestInputSchema = withDangerousGoodsValidation(
+  shipmentCoreFieldsSchema.extend({
+    // Omitted/undefined means "açık pazara aç" — createShipmentRequest leaves
+    // supplierCompanyId null and the shipment becomes biddable by any
+    // supplier (see dock-reservation-service.ts's sibling pattern of a
+    // nullable ownership column already existing before this feature needed
+    // it). The existing "send to one specific supplier" flow is otherwise
+    // completely unchanged.
+    supplierCompanyId: z.uuid("Geçerli bir tedarikçi firma seçin.").optional(),
+    documentTrackingNumber: z
+      .string()
+      .trim()
+      .max(100, "Belge takip numarası çok uzun.")
+      .optional(),
+    originMapsUrl: optionalMapsUrlSchema,
+    destinationMapsUrl: optionalMapsUrlSchema,
+    ...dangerousGoodsFieldsSchema,
+  })
+);
 export type ShipmentRequestInput = z.infer<typeof shipmentRequestInputSchema>;
 
 /** Customer marking a shipment's cargo as ready ("Yük Hazır, Aracı Gönder"). */
