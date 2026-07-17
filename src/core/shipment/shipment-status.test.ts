@@ -499,6 +499,73 @@ describe("advanceShipmentStatusAsDriver", () => {
     expect(vehicleHistory?.photoUrl).toBeNull();
   });
 
+  it("rejects AT_DELIVERY_POINT -> COMPLETED with no photo attached (proof of delivery)", async () => {
+    const { driverCtx, shipment } = await setupHeadingToPickupShipment();
+    for (const targetStatus of [
+      ShipmentStatus.LOADING,
+      ShipmentStatus.AT_PICKUP_GATE,
+    ]) {
+      await advanceShipmentStatusAsDriver(driverCtx, { shipmentId: shipment.id, targetStatus });
+    }
+    await advanceShipmentStatusAsDriver(driverCtx, {
+      shipmentId: shipment.id,
+      targetStatus: ShipmentStatus.EN_ROUTE,
+      photo: createTestPhotoFile(),
+    });
+    await advanceShipmentStatusAsDriver(driverCtx, {
+      shipmentId: shipment.id,
+      targetStatus: ShipmentStatus.AT_DELIVERY_POINT,
+    });
+
+    await expect(
+      advanceShipmentStatusAsDriver(driverCtx, {
+        shipmentId: shipment.id,
+        targetStatus: ShipmentStatus.COMPLETED,
+      })
+    ).rejects.toThrow(ValidationError);
+
+    const untouched = await prisma.shipment.findUniqueOrThrow({
+      where: { id: shipment.id },
+    });
+    expect(untouched.status).toBe(ShipmentStatus.AT_DELIVERY_POINT);
+  });
+
+  it("accepts AT_DELIVERY_POINT -> COMPLETED with a real photo, recording it as the delivery (POD) photo distinct from the departure one", async () => {
+    const { driverCtx, shipment } = await setupHeadingToPickupShipment();
+    for (const targetStatus of [
+      ShipmentStatus.LOADING,
+      ShipmentStatus.AT_PICKUP_GATE,
+    ]) {
+      await advanceShipmentStatusAsDriver(driverCtx, { shipmentId: shipment.id, targetStatus });
+    }
+    await advanceShipmentStatusAsDriver(driverCtx, {
+      shipmentId: shipment.id,
+      targetStatus: ShipmentStatus.EN_ROUTE,
+      photo: createTestPhotoFile(),
+    });
+    await advanceShipmentStatusAsDriver(driverCtx, {
+      shipmentId: shipment.id,
+      targetStatus: ShipmentStatus.AT_DELIVERY_POINT,
+    });
+
+    const advanced = await advanceShipmentStatusAsDriver(driverCtx, {
+      shipmentId: shipment.id,
+      targetStatus: ShipmentStatus.COMPLETED,
+      photo: createTestPhotoFile(),
+    });
+    expect(advanced.status).toBe(ShipmentStatus.COMPLETED);
+
+    const departureRow = await prisma.statusHistory.findFirst({
+      where: { entityType: "SHIPMENT", entityId: shipment.id, toStatus: "EN_ROUTE" },
+    });
+    const deliveryRow = await prisma.statusHistory.findFirst({
+      where: { entityType: "SHIPMENT", entityId: shipment.id, toStatus: "COMPLETED" },
+    });
+    expect(departureRow?.photoUrl).toMatch(new RegExp(`^${shipment.id}/`));
+    expect(deliveryRow?.photoUrl).toMatch(new RegExp(`^${shipment.id}/`));
+    expect(deliveryRow?.photoUrl).not.toBe(departureRow?.photoUrl);
+  });
+
   it("lets the assigned driver advance through to completion, notifying both sides and recording the driver (not a user) in the audit trail", async () => {
     const { ctx, customer, vehicle, driver, driverCtx, shipment } =
       await setupHeadingToPickupShipment();
@@ -524,6 +591,7 @@ describe("advanceShipmentStatusAsDriver", () => {
     const completed = await advanceShipmentStatusAsDriver(driverCtx, {
       shipmentId: shipment.id,
       targetStatus: ShipmentStatus.COMPLETED,
+      photo: createTestPhotoFile(),
     });
 
     expect(completed.status).toBe(ShipmentStatus.COMPLETED);

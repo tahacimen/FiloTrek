@@ -31,11 +31,13 @@ export function DriverShipmentActions({
     undefined
   );
 
-  // Mandatory only for leaving the pickup point after loading — the server
-  // (advanceShipmentStatusAsDriver) independently enforces this too, this
+  // Mandatory for leaving the pickup point (departure proof) and for
+  // completing delivery (proof of delivery / POD) — the server
+  // (advanceShipmentStatusAsDriver) independently enforces both too, this
   // `required` is just so a well-behaved browser catches it before a round
   // trip, not the actual guarantee.
   const isDeparture = targetStatus === ShipmentStatus.EN_ROUTE;
+  const isDelivery = targetStatus === ShipmentStatus.COMPLETED;
 
   return (
     <form
@@ -43,10 +45,10 @@ export function DriverShipmentActions({
       onSubmit={confirmSubmit(`"${label}" bildirmek istediğinize emin misiniz?`)}
       className="flex flex-col gap-2"
     >
-      {isDeparture && (
+      {(isDeparture || isDelivery) && (
         <div className="flex flex-col gap-1.5">
           <Label htmlFor={`photo-${shipmentId}`}>
-            Yükleme Fotoğrafı (zorunlu)
+            {isDeparture ? "Yükleme Fotoğrafı (zorunlu)" : "Teslimat Fotoğrafı (zorunlu)"}
           </Label>
           <Input
             id={`photo-${shipmentId}`}

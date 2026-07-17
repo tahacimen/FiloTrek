@@ -61,6 +61,11 @@ export async function getDeparturePhoto(shipmentId: string) {
 }
 
 /** Same no-tenant-filter caveat as getDeparturePhoto above. */
+export async function getDeliveryPhoto(shipmentId: string) {
+  return shipmentRepository.getShipmentDeliveryPhoto(shipmentId);
+}
+
+/** Same no-tenant-filter caveat as getDeparturePhoto above. */
 export async function getStatusHistory(shipmentId: string) {
   return shipmentRepository.getShipmentStatusHistory(shipmentId);
 }

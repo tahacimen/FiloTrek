@@ -390,15 +390,21 @@ const DRIVER_NOTIFY_BY_STATUS: Partial<
  * ever carries a webhook event id, since both are "context about how this
  * change happened" in spirit and this avoids a schema-only-for-this field.
  *
- * `photo` is mandatory specifically for the LOADING -> EN_ROUTE transition
- * (leaving the pickup point after loading) — enforced here, NOT in the UI
- * alone: an `<input required>` only stops a well-behaved browser, and a
- * Server Action is directly reachable via a forged POST regardless of what
- * the bound form renders. This guarantee only covers this driver-specific
- * entry point — the dispatcher's own advanceShipmentStatus can still drive
- * a shipment through the same transition unphotographed via their own
- * override screen, exactly as it already bypasses the note field today.
+ * `photo` is mandatory for two transitions — EN_ROUTE (leaving the pickup
+ * point after loading — proof of departure) and COMPLETED (proof of
+ * delivery, POD) — enforced here, NOT in the UI alone: an `<input
+ * required>` only stops a well-behaved browser, and a Server Action is
+ * directly reachable via a forged POST regardless of what the bound form
+ * renders. This guarantee only covers this driver-specific entry point —
+ * the dispatcher's own advanceShipmentStatus can still drive a shipment
+ * through either transition unphotographed via their own override screen,
+ * exactly as it already bypasses the note field today.
  */
+const PHOTO_REQUIRED_TARGET_STATUSES: ReadonlySet<ShipmentStatus> = new Set([
+  ShipmentStatus.EN_ROUTE,
+  ShipmentStatus.COMPLETED,
+]);
+
 export async function advanceShipmentStatusAsDriver(
   driverCtx: DriverContext,
   params: {
@@ -413,9 +419,11 @@ export async function advanceShipmentStatusAsDriver(
   }
 
   const hasRealPhoto = params.photo instanceof File && params.photo.size > 0;
-  if (params.targetStatus === ShipmentStatus.EN_ROUTE && !hasRealPhoto) {
+  if (PHOTO_REQUIRED_TARGET_STATUSES.has(params.targetStatus) && !hasRealPhoto) {
     throw new ValidationError(
-      "Yükleme noktasından çıkarken bir fotoğraf eklemeniz zorunludur."
+      params.targetStatus === ShipmentStatus.EN_ROUTE
+        ? "Yükleme noktasından çıkarken bir fotoğraf eklemeniz zorunludur."
+        : "Teslimatı tamamlarken bir fotoğraf eklemeniz zorunludur."
     );
   }
 

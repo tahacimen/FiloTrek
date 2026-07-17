@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db";
 import * as shipmentService from "@/core/shipment/shipment-service";
 import {
   advanceShipmentStatus,
+  advanceShipmentStatusAsDriver,
   assignVehicleAndDriver,
 } from "@/core/shipment/shipment-status";
 import * as emailService from "@/core/notification/email-service";
@@ -17,8 +18,10 @@ import {
   createCustomerContext,
   createSupplierContext,
   createTestDriver,
+  createTestPhotoFile,
   createTestVehicle,
 } from "@/test/fixtures";
+import type { DriverContext } from "@/core/shared/driver-context";
 
 const baseFields = {
   originAddress: "İstanbul",
@@ -651,5 +654,69 @@ describe("shipment-service: proposePrice / rejectPrice (negotiation)", () => {
 
     expect(updated.agreedPrice?.toNumber()).toBe(17500);
     expect(updated.priceProposedBy).toBe("SUPPLIER");
+  });
+});
+
+describe("shipment-service: departure/delivery photos", () => {
+  const companyIds: string[] = [];
+  afterAll(async () => {
+    await cleanupCompanies(companyIds);
+  });
+
+  it("keeps the departure and delivery photos distinct — getDeparturePhoto never shadows getDeliveryPhoto's row", async () => {
+    const customerCtx = await createCustomerContext();
+    const supplierCtx = await createSupplierContext();
+    companyIds.push(customerCtx.companyId, supplierCtx.companyId);
+
+    const vehicle = await createTestVehicle(supplierCtx.companyId);
+    const driver = await createTestDriver(supplierCtx.companyId);
+    const driverCtx: DriverContext = {
+      driverId: driver.id,
+      companyId: supplierCtx.companyId,
+      fullName: driver.fullName,
+    };
+
+    const shipment = await shipmentService.createShipmentRequest(customerCtx, {
+      ...baseFields,
+      supplierCompanyId: supplierCtx.companyId,
+    });
+    await assignVehicleAndDriver(supplierCtx, {
+      shipmentId: shipment.id,
+      vehicleId: vehicle.id,
+      driverId: driver.id,
+      agreedPrice: 15000,
+    });
+    await shipmentService.approvePrice(customerCtx, shipment.id);
+    await advanceShipmentStatus(supplierCtx, {
+      shipmentId: shipment.id,
+      targetStatus: "HEADING_TO_PICKUP" as const,
+    });
+    for (const targetStatus of ["LOADING", "AT_PICKUP_GATE"] as const) {
+      await advanceShipmentStatusAsDriver(driverCtx, {
+        shipmentId: shipment.id,
+        targetStatus,
+      });
+    }
+    await advanceShipmentStatusAsDriver(driverCtx, {
+      shipmentId: shipment.id,
+      targetStatus: "EN_ROUTE",
+      photo: createTestPhotoFile("departure.jpg"),
+    });
+    await advanceShipmentStatusAsDriver(driverCtx, {
+      shipmentId: shipment.id,
+      targetStatus: "AT_DELIVERY_POINT",
+    });
+    await advanceShipmentStatusAsDriver(driverCtx, {
+      shipmentId: shipment.id,
+      targetStatus: "COMPLETED",
+      photo: createTestPhotoFile("delivery.jpg"),
+    });
+
+    const departurePhoto = await shipmentService.getDeparturePhoto(shipment.id);
+    const deliveryPhoto = await shipmentService.getDeliveryPhoto(shipment.id);
+
+    expect(departurePhoto?.photoUrl).toBeTruthy();
+    expect(deliveryPhoto?.photoUrl).toBeTruthy();
+    expect(departurePhoto?.photoUrl).not.toBe(deliveryPhoto?.photoUrl);
   });
 });

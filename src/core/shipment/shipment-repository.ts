@@ -264,11 +264,13 @@ export function getOpenShipmentIncidentForTenant(
 }
 
 /**
- * The evidence photo attached to a routine transition (currently: only the
- * mandatory LOADING -> EN_ROUTE departure photo) — most recent first, in
- * case this ever expands beyond a single photographed transition. Distinct
- * from getOpenShipmentIncidentForTenant's photo, which is breakdown
- * evidence, not a routine-transition one.
+ * The evidence photo attached to the mandatory LOADING -> EN_ROUTE
+ * departure transition. Filtered on `toStatus` (not just "most recent
+ * photoUrl") since the EN_ROUTE -> COMPLETED delivery transition is now
+ * also photographed (see getShipmentDeliveryPhoto below) — without this
+ * filter, a completed shipment would have its delivery photo shadow the
+ * departure one here. Distinct from getOpenShipmentIncidentForTenant's
+ * photo, which is breakdown evidence, not a routine-transition one.
  *
  * No tenant filter of its own: StatusHistory.entityId is a raw polymorphic
  * UUID column with no real FK to Shipment (see the model comment in
@@ -282,6 +284,25 @@ export function getShipmentDeparturePhoto(shipmentId: string) {
     where: {
       entityType: StatusEntityType.SHIPMENT,
       entityId: shipmentId,
+      toStatus: ShipmentStatus.EN_ROUTE,
+      photoUrl: { not: null },
+    },
+    select: { photoUrl: true, createdAt: true },
+    orderBy: { createdAt: "desc" },
+  });
+}
+
+/**
+ * The proof-of-delivery photo attached to the mandatory
+ * EN_ROUTE/AT_DELIVERY_POINT -> COMPLETED transition. Same no-tenant-filter
+ * caveat as getShipmentDeparturePhoto above.
+ */
+export function getShipmentDeliveryPhoto(shipmentId: string) {
+  return prisma.statusHistory.findFirst({
+    where: {
+      entityType: StatusEntityType.SHIPMENT,
+      entityId: shipmentId,
+      toStatus: ShipmentStatus.COMPLETED,
       photoUrl: { not: null },
     },
     select: { photoUrl: true, createdAt: true },

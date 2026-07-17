@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { MapPinned, Navigation, Package, Truck, User } from "lucide-react";
 
 import {
+  getDeliveryPhoto,
   getDeparturePhoto,
   getOpenIncident,
   getShipment,
@@ -73,21 +74,29 @@ export default async function ShipmentDetailPage({
   }
 
   // Conditional on the denormalized flag — avoids a pointless query in the
-  // common (no open incident) case. getDeparturePhoto always runs; it's a
-  // single indexed lookup and there's no equivalent cheap flag for it.
-  // getActiveReservationForShipment is read by BOTH sides (customer manages
-  // it, supplier only ever sees it read-only — see the schema comment above
-  // Warehouse/DockReservation); listWarehouses is CUSTOMER-only (used to
-  // populate the "Rampa Rezervasyonu Yap" dock picker) so it's skipped
-  // entirely on the supplier's view of this same page.
-  const [incident, departurePhoto, statusHistory, dockReservation, warehouses] =
-    await Promise.all([
-      shipment.hasOpenIncident ? getOpenIncident(ctx, shipment.id) : null,
-      getDeparturePhoto(shipment.id),
-      getStatusHistory(shipment.id),
-      getActiveReservationForShipment(ctx, shipment.id),
-      ctx.companyType === "CUSTOMER" ? listWarehouses(ctx) : Promise.resolve([]),
-    ]);
+  // common (no open incident) case. getDeparturePhoto/getDeliveryPhoto
+  // always run; each is a single indexed lookup and there's no equivalent
+  // cheap flag for either. getActiveReservationForShipment is read by BOTH
+  // sides (customer manages it, supplier only ever sees it read-only — see
+  // the schema comment above Warehouse/DockReservation); listWarehouses is
+  // CUSTOMER-only (used to populate the "Rampa Rezervasyonu Yap" dock
+  // picker) so it's skipped entirely on the supplier's view of this same
+  // page.
+  const [
+    incident,
+    departurePhoto,
+    deliveryPhoto,
+    statusHistory,
+    dockReservation,
+    warehouses,
+  ] = await Promise.all([
+    shipment.hasOpenIncident ? getOpenIncident(ctx, shipment.id) : null,
+    getDeparturePhoto(shipment.id),
+    getDeliveryPhoto(shipment.id),
+    getStatusHistory(shipment.id),
+    getActiveReservationForShipment(ctx, shipment.id),
+    ctx.companyType === "CUSTOMER" ? listWarehouses(ctx) : Promise.resolve([]),
+  ]);
 
   const assignableDocks = warehouses.flatMap((warehouse) =>
     warehouse.docks
@@ -327,6 +336,23 @@ export default async function ShipmentDetailPage({
                 value={
                   <a
                     href={`/api/uploads/${departurePhoto.photoUrl}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-primary underline underline-offset-2"
+                  >
+                    Fotoğrafı Görüntüle
+                  </a>
+                }
+              />
+            </div>
+          )}
+          {deliveryPhoto?.photoUrl && (
+            <div className="col-span-full">
+              <Field
+                label="Teslimat Fotoğrafı"
+                value={
+                  <a
+                    href={`/api/uploads/${deliveryPhoto.photoUrl}`}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="text-primary underline underline-offset-2"
