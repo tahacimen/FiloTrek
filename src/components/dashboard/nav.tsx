@@ -11,6 +11,7 @@ import {
   Settings,
   ShieldCheck,
   Warehouse,
+  HandCoins,
 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
@@ -21,6 +22,7 @@ const supplierNavItems = [
   { href: "/drivers", label: "Şoförler", icon: Users },
   { href: "/shipments", label: "Seferler", icon: Package },
   { href: "/assign", label: "Atama", icon: ClipboardList },
+  { href: "/pazaryeri", label: "Pazaryeri", icon: HandCoins },
 ];
 
 const customerNavItems = [

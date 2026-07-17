@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import { Loader2, Truck } from "lucide-react";
 
 import {
@@ -18,6 +18,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { confirmSubmit } from "@/lib/confirm-submit";
 import type { Company } from "@/generated/prisma/client";
@@ -27,28 +28,50 @@ export function RequestShipmentForm({ suppliers }: { suppliers: Company[] }) {
     ShipmentFormState,
     FormData
   >(createShipmentRequestAction, undefined);
+  const [mode, setMode] = useState<"specific" | "market">("specific");
 
   return (
     <form
       action={formAction}
-      onSubmit={confirmSubmit("Araç çağırmak istediğinize emin misiniz?")}
+      onSubmit={confirmSubmit(
+        mode === "specific"
+          ? "Araç çağırmak istediğinize emin misiniz?"
+          : "Bu seferi pazara açıp tedarikçilerden teklif toplamak istediğinize emin misiniz?"
+      )}
       className="flex flex-col gap-4"
     >
       <div className="flex flex-col gap-2">
-        <Label htmlFor="supplierCompanyId">Tedarikçi Firma</Label>
-        <Select name="supplierCompanyId" required>
-          <SelectTrigger id="supplierCompanyId" className="w-full">
-            <SelectValue placeholder="Bir tedarikçi seçin" />
-          </SelectTrigger>
-          <SelectContent>
-            {suppliers.map((supplier) => (
-              <SelectItem key={supplier.id} value={supplier.id}>
-                {supplier.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <Label>Nasıl bir tedarikçi bulmak istiyorsunuz?</Label>
+        <Tabs value={mode} onValueChange={(v) => setMode(v as "specific" | "market")}>
+          <TabsList>
+            <TabsTrigger value="specific">Belirli Bir Tedarikçiye Gönder</TabsTrigger>
+            <TabsTrigger value="market">Pazara Aç, Teklif Topla</TabsTrigger>
+          </TabsList>
+        </Tabs>
       </div>
+
+      {mode === "specific" ? (
+        <div className="flex flex-col gap-2">
+          <Label htmlFor="supplierCompanyId">Tedarikçi Firma</Label>
+          <Select name="supplierCompanyId" required>
+            <SelectTrigger id="supplierCompanyId" className="w-full">
+              <SelectValue placeholder="Bir tedarikçi seçin" />
+            </SelectTrigger>
+            <SelectContent>
+              {suppliers.map((supplier) => (
+                <SelectItem key={supplier.id} value={supplier.id}>
+                  {supplier.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      ) : (
+        <p className="text-muted-foreground text-sm">
+          Bu sefer, kayıtlı tüm tedarikçilerin görüp teklif verebileceği açık
+          pazara eklenecek — istediğiniz teklifi kabul edersiniz.
+        </p>
+      )}
 
       <div className="grid grid-cols-2 gap-4">
         <div className="flex flex-col gap-2">
@@ -154,7 +177,7 @@ export function RequestShipmentForm({ suppliers }: { suppliers: Company[] }) {
 
       <Button type="submit" disabled={isPending} className="self-start">
         {isPending ? <Loader2 className="animate-spin" /> : <Truck />}
-        Araç Çağır
+        {mode === "specific" ? "Araç Çağır" : "Pazara Aç"}
       </Button>
     </form>
   );

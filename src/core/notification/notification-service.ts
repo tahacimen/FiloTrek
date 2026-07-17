@@ -294,6 +294,57 @@ export async function notifyPriceRejected(params: {
   });
 }
 
+/**
+ * Best-effort, in-app only — the customer already opted into the "many
+ * suppliers may bid" flow, so a new bid is informational, not a
+ * needs-attention-now event like a direct price proposal on an assigned
+ * shipment.
+ */
+export async function notifyNewBid(params: {
+  customerCompanyId: string;
+  bidderCompanyName: string;
+  amount: number;
+  shipment: { id: string; originAddress: string; destinationAddress: string };
+}) {
+  const price = params.amount.toLocaleString("tr-TR");
+  const message = `${params.bidderCompanyName} firması ${params.shipment.originAddress} → ${params.shipment.destinationAddress} seferi için ${price} ₺ teklif verdi.`;
+  return notificationRepository.createNotification({
+    companyId: params.customerCompanyId,
+    type: NotificationType.BID_SUBMITTED,
+    message,
+    relatedShipmentId: params.shipment.id,
+  });
+}
+
+/** The winning bidder — this IS their assignment notice, same weight as notifyShipmentRequested. */
+export async function notifyBidAccepted(params: {
+  supplierCompanyId: string;
+  customerCompanyName: string;
+  shipment: { id: string; originAddress: string; destinationAddress: string };
+}) {
+  const message = `${params.customerCompanyName} firmasından ${params.shipment.originAddress} → ${params.shipment.destinationAddress} seferi için teklifiniz kabul edildi.`;
+  return notificationRepository.createNotification({
+    companyId: params.supplierCompanyId,
+    type: NotificationType.BID_ACCEPTED,
+    message,
+    relatedShipmentId: params.shipment.id,
+  });
+}
+
+/** Every other bidder on the same shipment, once one of them wins. */
+export async function notifyBidRejected(params: {
+  supplierCompanyId: string;
+  shipment: { id: string; originAddress: string; destinationAddress: string };
+}) {
+  const message = `${params.shipment.originAddress} → ${params.shipment.destinationAddress} seferi için verdiğiniz teklif kabul edilmedi — sefer başka bir tedarikçiye verildi.`;
+  return notificationRepository.createNotification({
+    companyId: params.supplierCompanyId,
+    type: NotificationType.BID_REJECTED,
+    message,
+    relatedShipmentId: params.shipment.id,
+  });
+}
+
 type GateEventNotifyParams = {
   customerCompanyId: string;
   gateGuardName: string;

@@ -112,7 +112,10 @@ export function getShipmentOwnedByCustomer(
 
 type CreateShipmentRecordInput = {
   customerCompanyId: string;
-  supplierCompanyId: string;
+  // Null means "açık pazara aç" (open to bids) — see createShipmentRequest
+  // and marketplace-service.ts::acceptBid, which is the only thing that
+  // ever sets this after the fact.
+  supplierCompanyId: string | null;
   originAddress: string;
   originMapsUrl?: string;
   destinationAddress: string;

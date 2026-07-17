@@ -3,6 +3,7 @@ import { Truck } from "lucide-react";
 
 import { requireTenantContext } from "@/core/shared/tenant-context";
 import { getDashboardData } from "@/core/dashboard/dashboard-service";
+import { getSupplierScorecard } from "@/core/scorecard/scorecard-service";
 import { listShipments } from "@/core/shipment/shipment-service";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -13,6 +14,7 @@ import { TrendChart } from "@/components/dashboard/trend-chart";
 import { StatusBreakdownChart } from "@/components/dashboard/status-breakdown-chart";
 import { ActivityFeed } from "@/components/dashboard/activity-feed";
 import { FeaturedShipmentPanel } from "@/components/dashboard/featured-shipment-panel";
+import { ScorecardCard } from "@/components/dashboard/scorecard-card";
 import {
   customerShipmentStatusLabels,
   driverStatusLabels,
@@ -74,7 +76,10 @@ export default async function DashboardPage() {
     );
   }
 
-  const data = await getDashboardData(ctx);
+  const [data, scorecard] = await Promise.all([
+    getDashboardData(ctx),
+    getSupplierScorecard(ctx.companyId),
+  ]);
 
   return (
     <div className="flex flex-col gap-6">
@@ -84,6 +89,8 @@ export default async function DashboardPage() {
           Filonuzun anlık durumuna genel bakış.
         </p>
       </div>
+
+      <ScorecardCard scorecard={scorecard} />
 
       <KpiCards
         totalVehicles={data.totalVehicles}

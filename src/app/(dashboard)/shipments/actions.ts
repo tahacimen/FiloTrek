@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 
 import { requireTenantContext } from "@/core/shared/tenant-context";
 import * as shipmentService from "@/core/shipment/shipment-service";
+import * as ratingService from "@/core/rating/rating-service";
 import * as dockReservationService from "@/core/warehouse/dock-reservation-service";
 import {
   advanceShipmentStatus,
@@ -55,7 +56,7 @@ export async function createShipmentRequestAction(
   try {
     const ctx = await requireTenantContext();
     const shipment = await shipmentService.createShipmentRequest(ctx, {
-      supplierCompanyId: formData.get("supplierCompanyId"),
+      supplierCompanyId: optionalFormString(formData, "supplierCompanyId"),
       originAddress: formData.get("originAddress"),
       destinationAddress: formData.get("destinationAddress"),
       distanceKm: formData.get("distanceKm"),
@@ -226,6 +227,24 @@ export async function cancelShipmentAction(
   revalidatePath("/vehicles");
   revalidatePath("/drivers");
   revalidatePath("/dashboard");
+  return undefined;
+}
+
+export async function rateShipmentAction(
+  shipmentId: string,
+  _prevState: ShipmentFormState,
+  formData: FormData
+): Promise<ShipmentFormState> {
+  try {
+    const ctx = await requireTenantContext();
+    await ratingService.rateShipment(ctx, shipmentId, {
+      score: formData.get("score"),
+      comment: optionalFormString(formData, "comment"),
+    });
+  } catch (error) {
+    return { error: toActionErrorMessage(error) };
+  }
+  revalidatePath(`/shipments/${shipmentId}`);
   return undefined;
 }
 

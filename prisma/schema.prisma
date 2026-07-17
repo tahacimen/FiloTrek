@@ -125,6 +125,9 @@ enum NotificationType {
   INCIDENT_RESOLVED
   VEHICLE_ENTERED_GATE
   VEHICLE_EXITED_GATE
+  BID_SUBMITTED
+  BID_ACCEPTED
+  BID_REJECTED
 }
 
 // ---------------------------------------------------------------------------
@@ -150,33 +153,36 @@ model Company {
   shipmentsAsCustomer Shipment[]     @relation("CustomerShipments")
   shipmentsAsSupplier Shipment[]     @relation("SupplierShipments")
   notifications       Notification[]
+  bids                ShipmentBid[]
+  ratingsGiven        Rating[]       @relation("CustomerRatings")
+  ratingsReceived     Rating[]       @relation("SupplierRatings")
 
   @@map("companies")
 }
 
 model User {
-  id           String      @id @default(uuid(7)) @db.Uuid
-  companyId    String      @map("company_id") @db.Uuid
-  company      Company     @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  email        String      @unique
-  passwordHash String      @map("password_hash")
-  fullName     String      @map("full_name")
-  phone        String?
-  companyRole  CompanyRole @default(MEMBER) @map("company_role")
-  isActive     Boolean     @default(true) @map("is_active")
-  lastLoginAt  DateTime?   @map("last_login_at")
+  id                  String      @id @default(uuid(7)) @db.Uuid
+  companyId           String      @map("company_id") @db.Uuid
+  company             Company     @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  email               String      @unique
+  passwordHash        String      @map("password_hash")
+  fullName            String      @map("full_name")
+  phone               String?
+  companyRole         CompanyRole @default(MEMBER) @map("company_role")
+  isActive            Boolean     @default(true) @map("is_active")
+  lastLoginAt         DateTime?   @map("last_login_at")
   // Brute-force lockout — see recordFailedLogin/clearFailedLogins in
   // src/lib/login-attempts.ts, shared across User/Driver/GateGuard.
-  failedLoginAttempts Int       @default(0) @map("failed_login_attempts")
-  lockedUntil         DateTime? @map("locked_until")
+  failedLoginAttempts Int         @default(0) @map("failed_login_attempts")
+  lockedUntil         DateTime?   @map("locked_until")
   // Platform-wide (not per-company) capability: only lets this User manage
   // /admin invitations. There is no in-app way to set this — it's flipped
   // directly in the DB by the site owner, deliberately, since deciding who
   // gets to invite new tenant companies is not a decision any UI should
   // expose (see the schema comment above Invitation).
-  isPlatformAdmin     Boolean   @default(false) @map("is_platform_admin")
-  createdAt    DateTime    @default(now()) @map("created_at")
-  updatedAt    DateTime    @updatedAt @map("updated_at")
+  isPlatformAdmin     Boolean     @default(false) @map("is_platform_admin")
+  createdAt           DateTime    @default(now()) @map("created_at")
+  updatedAt           DateTime    @updatedAt @map("updated_at")
 
   statusChanges      StatusHistory[]
   resolvedIncidents  ShipmentIncident[]
@@ -205,20 +211,20 @@ enum InvitationStatus {
  * password) at /davet/[token] without ever choosing their own role.
  */
 model Invitation {
-  id              String            @id @default(uuid(7)) @db.Uuid
+  id              String           @id @default(uuid(7)) @db.Uuid
   email           String
   role            InvitationRole
-  token           String            @unique
-  status          InvitationStatus  @default(PENDING)
-  expiresAt       DateTime          @map("expires_at")
-  acceptedAt      DateTime?         @map("accepted_at")
-  createdByUserId String            @map("created_by_user_id") @db.Uuid
+  token           String           @unique
+  status          InvitationStatus @default(PENDING)
+  expiresAt       DateTime         @map("expires_at")
+  acceptedAt      DateTime?        @map("accepted_at")
+  createdByUserId String           @map("created_by_user_id") @db.Uuid
   // Cascade: an Invitation is throwaway audit trail tied to its creator, not
   // load-bearing business data — deleting the platform admin User who sent
   // it shouldn't be blocked by (or orphan) the invitations they created.
-  createdBy       User              @relation(fields: [createdByUserId], references: [id], onDelete: Cascade)
-  createdAt       DateTime          @default(now()) @map("created_at")
-  updatedAt       DateTime          @updatedAt @map("updated_at")
+  createdBy       User             @relation(fields: [createdByUserId], references: [id], onDelete: Cascade)
+  createdAt       DateTime         @default(now()) @map("created_at")
+  updatedAt       DateTime         @updatedAt @map("updated_at")
 
   @@index([token])
   @@map("invitations")
@@ -243,18 +249,18 @@ model Vehicle {
 }
 
 model Driver {
-  id              String       @id @default(uuid(7)) @db.Uuid
-  companyId       String       @map("company_id") @db.Uuid
-  company         Company      @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  fullName        String       @map("full_name")
-  phone           String
-  licenseNumber   String       @unique @map("license_number")
-  status          DriverStatus @default(AVAILABLE)
+  id                  String       @id @default(uuid(7)) @db.Uuid
+  companyId           String       @map("company_id") @db.Uuid
+  company             Company      @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  fullName            String       @map("full_name")
+  phone               String
+  licenseNumber       String       @unique @map("license_number")
+  status              DriverStatus @default(AVAILABLE)
   // Login is opt-in — a Driver row can exist with both null, meaning no
   // login capability (matches pre-existing behavior). Set together by the
   // dispatcher via the driver create/edit form.
-  email           String?      @unique
-  passwordHash    String?      @map("password_hash")
+  email               String?      @unique
+  passwordHash        String?      @map("password_hash")
   // Bearer token for the "send login link" flow — drivers who can't
   // reliably type an email+password on a phone can instead tap an emailed
   // link straight into an authenticated session. Deliberately has no
@@ -262,21 +268,22 @@ model Driver {
   // bookmarkable link, not a one-time magic link. Cleared whenever email
   // login is revoked (email cleared on the driver edit form) so the two
   // login paths share one revocation point.
-  loginToken      String?      @unique @map("login_token")
-  tcNumber        String?      @map("tc_number")
-  experienceYears Int?         @map("experience_years")
-  lastLoginAt     DateTime?    @map("last_login_at")
+  loginToken          String?      @unique @map("login_token")
+  tcNumber            String?      @map("tc_number")
+  experienceYears     Int?         @map("experience_years")
+  lastLoginAt         DateTime?    @map("last_login_at")
   // Brute-force lockout for the email+password path only — the driver-token
   // link isn't password-guessable, so it doesn't touch these fields.
-  failedLoginAttempts Int       @default(0) @map("failed_login_attempts")
-  lockedUntil         DateTime? @map("locked_until")
-  createdAt       DateTime     @default(now()) @map("created_at")
-  updatedAt       DateTime     @updatedAt @map("updated_at")
+  failedLoginAttempts Int          @default(0) @map("failed_login_attempts")
+  lockedUntil         DateTime?    @map("locked_until")
+  createdAt           DateTime     @default(now()) @map("created_at")
+  updatedAt           DateTime     @updatedAt @map("updated_at")
 
   shipments         Shipment[]
   statusChanges     StatusHistory[]
   reportedIncidents ShipmentIncident[] @relation("ReportedIncidents")
   resolvedIncidents ShipmentIncident[] @relation("ResolvedIncidents")
+  ratingsReceived   Rating[]
 
   @@index([companyId, status])
   @@map("drivers")
@@ -293,18 +300,18 @@ model Driver {
 // opt-in — the whole point of this account is to log in and record gate
 // events, so email/passwordHash are required, not nullable.
 model GateGuard {
-  id           String   @id @default(uuid(7)) @db.Uuid
-  companyId    String   @map("company_id") @db.Uuid
-  company      Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  fullName     String   @map("full_name")
-  email        String   @unique
-  passwordHash String   @map("password_hash")
-  isActive     Boolean  @default(true) @map("is_active")
-  lastLoginAt  DateTime? @map("last_login_at")
+  id                  String    @id @default(uuid(7)) @db.Uuid
+  companyId           String    @map("company_id") @db.Uuid
+  company             Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  fullName            String    @map("full_name")
+  email               String    @unique
+  passwordHash        String    @map("password_hash")
+  isActive            Boolean   @default(true) @map("is_active")
+  lastLoginAt         DateTime? @map("last_login_at")
   failedLoginAttempts Int       @default(0) @map("failed_login_attempts")
   lockedUntil         DateTime? @map("locked_until")
-  createdAt    DateTime @default(now()) @map("created_at")
-  updatedAt    DateTime @updatedAt @map("updated_at")
+  createdAt           DateTime  @default(now()) @map("created_at")
+  updatedAt           DateTime  @updatedAt @map("updated_at")
 
   gateEvents GateEvent[]
 
@@ -336,30 +343,30 @@ enum GateEventType {
 }
 
 model Shipment {
-  id                  String         @id @default(uuid(7)) @db.Uuid
+  id                       String         @id @default(uuid(7)) @db.Uuid
   // Human-friendly 8-digit tracking number (10000000+) surfaced to end
   // users and usable on the public /track page. Backed by a DB sequence
   // starting at 10000000 (see the add_shipment_tracking_number migration);
   // autoincrement keeps it out of create() calls so the DB assigns it.
-  trackingNumber      Int            @unique @default(autoincrement()) @map("tracking_number")
-  customerCompanyId   String         @map("customer_company_id") @db.Uuid
-  customerCompany     Company        @relation("CustomerShipments", fields: [customerCompanyId], references: [id])
-  supplierCompanyId   String?        @map("supplier_company_id") @db.Uuid
-  supplierCompany     Company?       @relation("SupplierShipments", fields: [supplierCompanyId], references: [id])
-  originAddress       String         @map("origin_address")
-  originMapsUrl       String?        @map("origin_maps_url")
-  destinationAddress  String         @map("destination_address")
-  destinationMapsUrl  String?        @map("destination_maps_url")
-  distanceKm          Decimal        @map("distance_km") @db.Decimal(10, 2)
-  tonnage             Decimal        @db.Decimal(10, 2)
-  cargoDescription    String?        @map("cargo_description")
-  documentTrackingNumber String?     @map("document_tracking_number")
-  vehicleId           String?        @map("vehicle_id") @db.Uuid
-  vehicle             Vehicle?       @relation(fields: [vehicleId], references: [id])
-  driverId            String?        @map("driver_id") @db.Uuid
-  driver              Driver?        @relation(fields: [driverId], references: [id])
-  status              ShipmentStatus @default(PENDING)
-  agreedPrice         Decimal?       @map("agreed_price") @db.Decimal(12, 2)
+  trackingNumber           Int            @unique @default(autoincrement()) @map("tracking_number")
+  customerCompanyId        String         @map("customer_company_id") @db.Uuid
+  customerCompany          Company        @relation("CustomerShipments", fields: [customerCompanyId], references: [id])
+  supplierCompanyId        String?        @map("supplier_company_id") @db.Uuid
+  supplierCompany          Company?       @relation("SupplierShipments", fields: [supplierCompanyId], references: [id])
+  originAddress            String         @map("origin_address")
+  originMapsUrl            String?        @map("origin_maps_url")
+  destinationAddress       String         @map("destination_address")
+  destinationMapsUrl       String?        @map("destination_maps_url")
+  distanceKm               Decimal        @map("distance_km") @db.Decimal(10, 2)
+  tonnage                  Decimal        @db.Decimal(10, 2)
+  cargoDescription         String?        @map("cargo_description")
+  documentTrackingNumber   String?        @map("document_tracking_number")
+  vehicleId                String?        @map("vehicle_id") @db.Uuid
+  vehicle                  Vehicle?       @relation(fields: [vehicleId], references: [id])
+  driverId                 String?        @map("driver_id") @db.Uuid
+  driver                   Driver?        @relation(fields: [driverId], references: [id])
+  status                   ShipmentStatus @default(PENDING)
+  agreedPrice              Decimal?       @map("agreed_price") @db.Decimal(12, 2)
   // Who put the CURRENT agreedPrice on the table — the other side is the
   // only one who can approve or reject it. Set to SUPPLIER at assignment
   // time; flips whenever either side counters via proposePrice. Together
@@ -367,54 +374,119 @@ model Shipment {
   // negotiation state — no separate offer-history table, since nothing in
   // the product ask needs a past-offers log, only "what's on the table now
   // and whose turn is it."
-  priceProposedBy     CompanyType?   @map("price_proposed_by")
-  priceApprovedAt     DateTime?      @map("price_approved_at")
+  priceProposedBy          CompanyType?   @map("price_proposed_by")
+  priceApprovedAt          DateTime?      @map("price_approved_at")
   // Set when the receiving side rejects the current agreedPrice WITHOUT a
   // counter-offer (a bare "no") — distinguishes "rejected, waiting on the
   // proposer for a new number" from "freshly proposed, awaiting first
   // review" in the UI. Cleared by any new proposePrice call (a counter IS
   // a new proposal, whether it came via rejectPrice's optional amount or a
   // standalone re-propose) and by approvePrice.
-  priceRejectedAt     DateTime?      @map("price_rejected_at")
-  pickupGateInfo      String?        @map("pickup_gate_info")
-  pickupMapsUrl       String?        @map("pickup_maps_url")
-  loadReadyAt         DateTime?      @map("load_ready_at")
+  priceRejectedAt          DateTime?      @map("price_rejected_at")
+  pickupGateInfo           String?        @map("pickup_gate_info")
+  pickupMapsUrl            String?        @map("pickup_maps_url")
+  loadReadyAt              DateTime?      @map("load_ready_at")
   // Supplier's own estimate of when the vehicle will reach the pickup
   // point — set any time while ASSIGNED or HEADING_TO_PICKUP, re-settable
   // to reflect delays (same "overwrite rather than lock" reasoning as
   // pickupGateInfo above). Distinct from loadReadyAt (customer confirming
   // cargo is ready) and from the real arrival, which is simply the
   // HEADING_TO_PICKUP -> LOADING transition timestamp in StatusHistory.
-  estimatedPickupArrivalAt DateTime? @map("estimated_pickup_arrival_at")
+  estimatedPickupArrivalAt DateTime?      @map("estimated_pickup_arrival_at")
   // Denormalized: true while a driver-reported breakdown is unresolved.
   // Deliberately orthogonal to `status` — a breakdown doesn't change what
   // stage the shipment is in (see ShipmentIncident below), it's a warning
   // overlay so list views can badge it without joining shipment_incidents.
-  hasOpenIncident     Boolean        @default(false) @map("has_open_incident")
+  hasOpenIncident          Boolean        @default(false) @map("has_open_incident")
   // Live GPS position, driver-reported (browser Geolocation API, free — no
   // third-party service or API key). Deliberately just "where is it right
   // now", not a location-history table — overwritten on every update, no
   // route trail is kept. Cleared implicitly by simply going stale once the
   // shipment completes (nothing deletes these columns, callers just stop
   // showing the live map once status is COMPLETED/CANCELLED).
-  lastKnownLat        Decimal?       @map("last_known_lat") @db.Decimal(9, 6)
-  lastKnownLng        Decimal?       @map("last_known_lng") @db.Decimal(9, 6)
-  lastLocationAt      DateTime?      @map("last_location_at")
-  createdAt           DateTime       @default(now()) @map("created_at")
-  updatedAt           DateTime       @updatedAt @map("updated_at")
-  completedAt         DateTime?      @map("completed_at")
-  cancelledAt         DateTime?      @map("cancelled_at")
+  lastKnownLat             Decimal?       @map("last_known_lat") @db.Decimal(9, 6)
+  lastKnownLng             Decimal?       @map("last_known_lng") @db.Decimal(9, 6)
+  lastLocationAt           DateTime?      @map("last_location_at")
+  createdAt                DateTime       @default(now()) @map("created_at")
+  updatedAt                DateTime       @updatedAt @map("updated_at")
+  completedAt              DateTime?      @map("completed_at")
+  cancelledAt              DateTime?      @map("cancelled_at")
 
   notifications    Notification[]
   incidents        ShipmentIncident[]
   gateEvents       GateEvent[]
   dockReservations DockReservation[]
+  bids             ShipmentBid[]
+  rating           Rating?
 
   @@index([customerCompanyId, status])
   @@index([supplierCompanyId, status])
   @@index([vehicleId])
   @@index([driverId])
   @@map("shipments")
+}
+
+enum ShipmentBidStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+  WITHDRAWN
+}
+
+/**
+ * A supplier's price offer on a shipment the customer left unassigned
+ * (Shipment.supplierCompanyId null — see createShipmentRequest's "Pazara
+ * Aç" mode) — the open-marketplace alternative to the customer picking one
+ * specific supplier up front. Any SUPPLIER can see and bid on such a
+ * shipment; the customer accepts one, which sets supplierCompanyId +
+ * agreedPrice on the shipment and rejects every other bid, after which the
+ * winning supplier proceeds through the completely unchanged
+ * assignVehicleAndDriver flow (see shipment-status.ts) — bidding only ever
+ * decides *who*, never how the rest of the shipment lifecycle works.
+ */
+model ShipmentBid {
+  id                String            @id @default(uuid(7)) @db.Uuid
+  shipmentId        String            @map("shipment_id") @db.Uuid
+  shipment          Shipment          @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
+  supplierCompanyId String            @map("supplier_company_id") @db.Uuid
+  supplierCompany   Company           @relation(fields: [supplierCompanyId], references: [id], onDelete: Cascade)
+  price             Decimal           @db.Decimal(12, 2)
+  message           String?
+  status            ShipmentBidStatus @default(PENDING)
+  createdAt         DateTime          @default(now()) @map("created_at")
+  updatedAt         DateTime          @updatedAt @map("updated_at")
+
+  // One active bid per supplier per shipment — resubmitting updates the
+  // same row (see submitBid in marketplace-service.ts) rather than piling
+  // up duplicates.
+  @@unique([shipmentId, supplierCompanyId])
+  @@index([shipmentId])
+  @@map("shipment_bids")
+}
+
+/**
+ * One-directional: the customer rates the supplier (and, optionally, the
+ * driver who ran the shipment) — never the reverse, per product decision.
+ * Exactly one rating per shipment (@@unique on shipmentId), only once the
+ * shipment is COMPLETED (enforced in rateShipment, not at the DB level,
+ * same pattern as every other status-gated action in this codebase).
+ */
+model Rating {
+  id                String   @id @default(uuid(7)) @db.Uuid
+  shipmentId        String   @unique @map("shipment_id") @db.Uuid
+  shipment          Shipment @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
+  customerCompanyId String   @map("customer_company_id") @db.Uuid
+  customerCompany   Company  @relation("CustomerRatings", fields: [customerCompanyId], references: [id], onDelete: Cascade)
+  supplierCompanyId String   @map("supplier_company_id") @db.Uuid
+  supplierCompany   Company  @relation("SupplierRatings", fields: [supplierCompanyId], references: [id], onDelete: Cascade)
+  driverId          String?  @map("driver_id") @db.Uuid
+  driver            Driver?  @relation(fields: [driverId], references: [id])
+  score             Int
+  comment           String?
+  createdAt         DateTime @default(now()) @map("created_at")
+
+  @@index([supplierCompanyId])
+  @@map("ratings")
 }
 
 // ---------------------------------------------------------------------------
@@ -453,10 +525,10 @@ model Warehouse {
 }
 
 model LoadingDock {
-  id          String    @id @default(uuid(7)) @db.Uuid
-  warehouseId String    @map("warehouse_id") @db.Uuid
-  warehouse   Warehouse @relation(fields: [warehouseId], references: [id], onDelete: Cascade)
-  name        String
+  id                        String                @id @default(uuid(7)) @db.Uuid
+  warehouseId               String                @map("warehouse_id") @db.Uuid
+  warehouse                 Warehouse             @relation(fields: [warehouseId], references: [id], onDelete: Cascade)
+  name                      String
   // Which reservation types / vehicle types / bed types this dock accepts —
   // shown in the booking form to keep the customer's own staff from
   // scheduling something the dock can't physically handle. Postgres native
@@ -493,9 +565,9 @@ model DockWorkingHours {
 }
 
 model DockReservation {
-  id              String              @id @default(uuid(7)) @db.Uuid
-  dockId          String              @map("dock_id") @db.Uuid
-  dock            LoadingDock         @relation(fields: [dockId], references: [id], onDelete: Cascade)
+  id              String                @id @default(uuid(7)) @db.Uuid
+  dockId          String                @map("dock_id") @db.Uuid
+  dock            LoadingDock           @relation(fields: [dockId], references: [id], onDelete: Cascade)
   // Optional link back to one of the customer's own shipments — an opt-in
   // reference (never required, since a dock may be booked for a load that
   // isn't tracked as a Shipment at all, e.g. an unrelated inbound delivery)
@@ -506,33 +578,33 @@ model DockReservation {
   // (add_dock_reservation_shipment_unique migration, not expressible in
   // Prisma's schema DSL) enforces at most one *active* (non-cancelled)
   // reservation per shipment, so the sync source is never ambiguous.
-  shipmentId      String?             @map("shipment_id") @db.Uuid
-  shipment        Shipment?           @relation(fields: [shipmentId], references: [id], onDelete: SetNull)
-  reservationType DockReservationType @map("reservation_type")
-  startAt         DateTime            @map("start_at")
-  endAt           DateTime            @map("end_at")
+  shipmentId      String?               @map("shipment_id") @db.Uuid
+  shipment        Shipment?             @relation(fields: [shipmentId], references: [id], onDelete: SetNull)
+  reservationType DockReservationType   @map("reservation_type")
+  startAt         DateTime              @map("start_at")
+  endAt           DateTime              @map("end_at")
   reason          String
-  vehicleType     VehicleType?        @map("vehicle_type")
+  vehicleType     VehicleType?          @map("vehicle_type")
   // Free text, deliberately not VehicleBedType — this describes what the
   // CARGO is (matches Shipment.cargoDescription's own free-text choice),
   // not the vehicle's physical bed structure, a different concept.
-  cargoType       String?             @map("cargo_type")
+  cargoType       String?               @map("cargo_type")
   quantity        Int?
-  totalWeightKg   Decimal?            @map("total_weight_kg") @db.Decimal(10, 2)
+  totalWeightKg   Decimal?              @map("total_weight_kg") @db.Decimal(10, 2)
   plate           String
-  driverName      String              @map("driver_name")
-  driverPhone     String?             @map("driver_phone")
+  driverName      String                @map("driver_name")
+  driverPhone     String?               @map("driver_phone")
   notes           String?
   status          DockReservationStatus @default(CREATED)
   // Real timestamps per transition — required for any honest "on time vs.
   // delayed" reporting later; without these, a delay metric would be
   // fabricated rather than derived from actual data. Mirrors Shipment's own
   // completedAt/cancelledAt pattern.
-  arrivedAt       DateTime?           @map("arrived_at")
-  completedAt     DateTime?           @map("completed_at")
-  cancelledAt     DateTime?           @map("cancelled_at")
-  createdAt       DateTime            @default(now()) @map("created_at")
-  updatedAt       DateTime            @updatedAt @map("updated_at")
+  arrivedAt       DateTime?             @map("arrived_at")
+  completedAt     DateTime?             @map("completed_at")
+  cancelledAt     DateTime?             @map("cancelled_at")
+  createdAt       DateTime              @default(now()) @map("created_at")
+  updatedAt       DateTime              @updatedAt @map("updated_at")
 
   @@index([dockId, startAt])
   @@map("dock_reservations")
@@ -542,26 +614,26 @@ model DockReservation {
 // transitions. entityType + entityId identify the record instead of separate
 // per-entity history tables, since all three follow the same shape.
 model StatusHistory {
-  id                String              @id @default(uuid(7)) @db.Uuid
-  entityType        StatusEntityType    @map("entity_type")
-  entityId          String              @map("entity_id") @db.Uuid
-  fromStatus        String?             @map("from_status")
-  toStatus          String              @map("to_status")
-  changedByUserId   String?             @map("changed_by_user_id") @db.Uuid
-  changedByUser     User?               @relation(fields: [changedByUserId], references: [id])
+  id                String             @id @default(uuid(7)) @db.Uuid
+  entityType        StatusEntityType   @map("entity_type")
+  entityId          String             @map("entity_id") @db.Uuid
+  fromStatus        String?            @map("from_status")
+  toStatus          String             @map("to_status")
+  changedByUserId   String?            @map("changed_by_user_id") @db.Uuid
+  changedByUser     User?              @relation(fields: [changedByUserId], references: [id])
   // Exactly one of changedByUserId/changedByDriverId is ever set (enforced by
   // a CHECK constraint in the migration) — a driver's id can't be stored in
   // changedByUserId since that column is FK'd specifically to User.
-  changedByDriverId String?             @map("changed_by_driver_id") @db.Uuid
-  changedByDriver   Driver?             @relation(fields: [changedByDriverId], references: [id])
+  changedByDriverId String?            @map("changed_by_driver_id") @db.Uuid
+  changedByDriver   Driver?            @relation(fields: [changedByDriverId], references: [id])
   source            StatusChangeSource
-  sourceReference   String?             @map("source_reference")
+  sourceReference   String?            @map("source_reference")
   // Evidence photo for a routine transition (currently: the mandatory
   // pickup-departure photo on SHIPMENT LOADING -> EN_ROUTE). Distinct from
   // ShipmentIncident.photoUrl, which is breakdown evidence attached to an
   // out-of-band event that doesn't correspond to any transition here.
-  photoUrl          String?             @map("photo_url")
-  createdAt         DateTime            @default(now()) @map("created_at")
+  photoUrl          String?            @map("photo_url")
+  createdAt         DateTime           @default(now()) @map("created_at")
 
   @@index([entityType, entityId, createdAt])
   @@map("status_history")

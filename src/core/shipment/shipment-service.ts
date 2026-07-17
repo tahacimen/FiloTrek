@@ -105,7 +105,11 @@ export async function createShipment(ctx: TenantContext, rawInput: unknown) {
 }
 
 /**
- * Customer requests a vehicle ("Araç Çağır"), picking an existing supplier.
+ * Customer requests a vehicle ("Araç Çağır"), either picking one specific
+ * supplier (notified directly, as before) or leaving `supplierCompanyId`
+ * unset to open the shipment to the marketplace (see
+ * marketplace-service.ts) — any supplier can then bid on it, and no one
+ * gets a targeted notification since there's no specific recipient yet.
  * Symmetric to createShipment above. Notifies the chosen supplier as a
  * best-effort side effect — a notification failure must never fail the
  * shipment request itself (the shipment is the source of truth; a retry
@@ -118,17 +122,21 @@ export async function createShipmentRequest(
   requireCompanyType(ctx, CompanyType.CUSTOMER);
   const input = shipmentRequestInputSchema.parse(rawInput);
 
-  const supplier = await resolveCounterparty(
-    input.supplierCompanyId,
-    CompanyType.SUPPLIER,
-    "Geçersiz tedarikçi firma seçimi."
-  );
+  const supplier = input.supplierCompanyId
+    ? await resolveCounterparty(
+        input.supplierCompanyId,
+        CompanyType.SUPPLIER,
+        "Geçersiz tedarikçi firma seçimi."
+      )
+    : null;
 
   const shipment = await shipmentRepository.createShipmentRecord({
     ...input,
     customerCompanyId: ctx.companyId,
-    supplierCompanyId: supplier.id,
+    supplierCompanyId: supplier?.id ?? null,
   });
+
+  if (!supplier) return shipment;
 
   try {
     const customerCompany = await companyRepository.getCompanyById(

@@ -85,6 +85,14 @@ export async function assignVehicleAndDriver(
         driverId: driver.id,
         agreedPrice: params.agreedPrice,
         priceProposedBy: CompanyType.SUPPLIER,
+        // Always a fresh proposal awaiting the customer's approval — this
+        // was already implicitly true pre-bidding (agreedPrice/
+        // priceApprovedAt were always null going into this call), but an
+        // accepted marketplace bid now sets priceApprovedAt *before*
+        // assignment (see acceptBid in marketplace-service.ts), so without
+        // this the customer's original bid-acceptance approval would stick
+        // around even if the supplier enters a different price here.
+        priceApprovedAt: null,
       },
     });
     await tx.vehicle.update({

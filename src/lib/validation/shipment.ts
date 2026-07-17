@@ -50,7 +50,13 @@ export type ShipmentInput = z.infer<typeof shipmentInputSchema>;
  * and never editable afterward by either side.
  */
 export const shipmentRequestInputSchema = shipmentCoreFieldsSchema.extend({
-  supplierCompanyId: z.uuid("Geçerli bir tedarikçi firma seçin."),
+  // Omitted/undefined means "açık pazara aç" — createShipmentRequest leaves
+  // supplierCompanyId null and the shipment becomes biddable by any
+  // supplier (see dock-reservation-service.ts's sibling pattern of a
+  // nullable ownership column already existing before this feature needed
+  // it). The existing "send to one specific supplier" flow is otherwise
+  // completely unchanged.
+  supplierCompanyId: z.uuid("Geçerli bir tedarikçi firma seçin.").optional(),
   documentTrackingNumber: z
     .string()
     .trim()

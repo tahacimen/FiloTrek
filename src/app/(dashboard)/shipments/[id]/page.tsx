@@ -30,7 +30,12 @@ import { PriceApprovalCard } from "@/app/(dashboard)/shipments/[id]/price-approv
 import { IncidentCard } from "@/app/(dashboard)/shipments/[id]/incident-card";
 import { StatusTimelineCard } from "@/app/(dashboard)/shipments/[id]/status-timeline-card";
 import { DockReservationCard } from "@/app/(dashboard)/shipments/[id]/dock-reservation-card";
+import { BidListCard } from "@/app/(dashboard)/shipments/[id]/bid-list-card";
+import { RatingCard } from "@/app/(dashboard)/shipments/[id]/rating-card";
 import { ShipmentLiveMap } from "@/components/shipment-live-map-loader";
+import * as marketplaceService from "@/core/marketplace/marketplace-service";
+import * as ratingService from "@/core/rating/rating-service";
+import { getSupplierScorecard } from "@/core/scorecard/scorecard-service";
 import { DockReservationType } from "@/generated/prisma/enums";
 
 function Field({ label, value }: { label: string; value: React.ReactNode }) {
@@ -90,6 +95,8 @@ export default async function ShipmentDetailPage({
     statusHistory,
     dockReservation,
     warehouses,
+    bids,
+    rating,
   ] = await Promise.all([
     shipment.hasOpenIncident ? getOpenIncident(ctx, shipment.id) : null,
     getDeparturePhoto(shipment.id),
@@ -97,7 +104,20 @@ export default async function ShipmentDetailPage({
     getStatusHistory(shipment.id),
     getActiveReservationForShipment(ctx, shipment.id),
     ctx.companyType === "CUSTOMER" ? listWarehouses(ctx) : Promise.resolve([]),
+    ctx.companyType === "CUSTOMER" && shipment.supplierCompanyId === null
+      ? marketplaceService.listBidsForShipment(ctx, shipment.id)
+      : Promise.resolve([]),
+    shipment.status === "COMPLETED"
+      ? ratingService.getRatingForShipment(shipment.id)
+      : null,
   ]);
+
+  const bidsWithScorecard = await Promise.all(
+    bids.map(async (bid) => ({
+      ...bid,
+      scorecard: await getSupplierScorecard(bid.supplierCompanyId),
+    }))
+  );
 
   const assignableDocks = warehouses.flatMap((warehouse) =>
     warehouse.docks
@@ -237,6 +257,19 @@ export default async function ShipmentDetailPage({
           </CardContent>
         </Card>
       </div>
+
+      {ctx.companyType === "CUSTOMER" && shipment.supplierCompanyId === null && (
+        <BidListCard
+          shipmentId={shipment.id}
+          bids={bidsWithScorecard.map((bid) => ({
+            id: bid.id,
+            price: bid.price.toNumber(),
+            message: bid.message,
+            supplierCompany: bid.supplierCompany,
+            scorecard: bid.scorecard,
+          }))}
+        />
+      )}
 
       {(shipment.originMapsUrl || shipment.destinationMapsUrl) && (
         <Card>
@@ -419,6 +452,16 @@ export default async function ShipmentDetailPage({
         pickupMapsUrl={shipment.pickupMapsUrl}
         loadReadyAt={shipment.loadReadyAt}
       />
+
+      {shipment.status === "COMPLETED" && (
+        <RatingCard
+          shipmentId={shipment.id}
+          companyType={ctx.companyType}
+          existingRating={
+            rating ? { score: rating.score, comment: rating.comment } : null
+          }
+        />
+      )}
 
       <Separator />
       <p className="text-muted-foreground text-xs">
