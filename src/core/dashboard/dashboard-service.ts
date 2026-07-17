@@ -22,6 +22,51 @@ function emptyCountsByStatus<T extends string>(statuses: T[]) {
   );
 }
 
+/** Buckets a list of dates into a trailing TREND_WINDOW_DAYS series of {date, count}, zero-filled for days with no rows. */
+function bucketByDay(dates: Date[]) {
+  const trendByDate = new Map<string, number>();
+  for (let i = TREND_WINDOW_DAYS - 1; i >= 0; i--) {
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    trendByDate.set(d.toISOString().slice(0, 10), 0);
+  }
+  for (const date of dates) {
+    const key = date.toISOString().slice(0, 10);
+    if (trendByDate.has(key)) {
+      trendByDate.set(key, (trendByDate.get(key) ?? 0) + 1);
+    }
+  }
+  return Array.from(trendByDate.entries()).map(([date, count]) => ({ date, count }));
+}
+
+/**
+ * The "derin operasyonel KPI'lar" (deep operational KPIs) — usable by
+ * either dashboard branch (getDashboardData below is SUPPLIER-only, but
+ * this itself has no role restriction; the CUSTOMER dashboard page calls
+ * it directly for its own, smaller KPI card).
+ */
+export async function getOperationalKpis(ctx: TenantContext) {
+  const [onTimePickupRate, averagePricePerKm, volumeRows, incidentRate] =
+    await Promise.all([
+      shipmentRepository.getOnTimePickupRate(ctx),
+      shipmentRepository.getAveragePricePerKm(ctx),
+      shipmentRepository.getShipmentVolumeTrend(
+        ctx,
+        new Date(Date.now() - TREND_WINDOW_DAYS * 24 * 60 * 60 * 1000)
+      ),
+      shipmentRepository.getIncidentRate(ctx),
+    ]);
+
+  return {
+    onTimePickupRate,
+    averagePricePerKm,
+    incidentRate,
+    shipmentVolumeTrend: bucketByDay(volumeRows.map((r) => r.createdAt)),
+  };
+}
+
+export type OperationalKpis = Awaited<ReturnType<typeof getOperationalKpis>>;
+
 export async function getDashboardData(ctx: TenantContext) {
   requireCompanyType(ctx, CompanyType.SUPPLIER);
 
@@ -54,29 +99,18 @@ export async function getDashboardData(ctx: TenantContext) {
     return { vehicleType, total, available, inUse, maintenance };
   });
 
-  const [completedRows, recentActivity, featuredShipment] = await Promise.all([
-    shipmentRepository.getCompletedShipmentsPerDay(ctx, sinceDate),
-    shipmentRepository.listRecentActivity(ctx, 6),
-    shipmentRepository.getFeaturedShipmentForSupplier(ctx),
-  ]);
+  const [completedRows, recentActivity, featuredShipment, operationalKpis] =
+    await Promise.all([
+      shipmentRepository.getCompletedShipmentsPerDay(ctx, sinceDate),
+      shipmentRepository.listRecentActivity(ctx, 6),
+      shipmentRepository.getFeaturedShipmentForSupplier(ctx),
+      getOperationalKpis(ctx),
+    ]);
   const featuredShipmentHistory = featuredShipment
     ? await shipmentRepository.getShipmentStatusHistory(featuredShipment.id)
     : [];
-  const trendByDate = new Map<string, number>();
-  for (let i = TREND_WINDOW_DAYS - 1; i >= 0; i--) {
-    const d = new Date();
-    d.setDate(d.getDate() - i);
-    trendByDate.set(d.toISOString().slice(0, 10), 0);
-  }
-  for (const row of completedRows) {
-    if (!row.completedAt) continue;
-    const key = row.completedAt.toISOString().slice(0, 10);
-    if (trendByDate.has(key)) {
-      trendByDate.set(key, (trendByDate.get(key) ?? 0) + 1);
-    }
-  }
-  const completedShipmentsTrend = Array.from(trendByDate.entries()).map(
-    ([date, count]) => ({ date, count })
+  const completedShipmentsTrend = bucketByDay(
+    completedRows.flatMap((row) => (row.completedAt ? [row.completedAt] : []))
   );
 
   return {
@@ -88,6 +122,7 @@ export async function getDashboardData(ctx: TenantContext) {
     driversByStatus,
     occupancyByType,
     completedShipmentsTrend,
+    operationalKpis,
     recentActivity,
     featuredShipment,
     featuredShipmentHistory,

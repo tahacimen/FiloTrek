@@ -2,7 +2,7 @@ import Link from "next/link";
 import { Truck } from "lucide-react";
 
 import { requireTenantContext } from "@/core/shared/tenant-context";
-import { getDashboardData } from "@/core/dashboard/dashboard-service";
+import { getDashboardData, getOperationalKpis } from "@/core/dashboard/dashboard-service";
 import { getSupplierScorecard } from "@/core/scorecard/scorecard-service";
 import { listShipments } from "@/core/shipment/shipment-service";
 import { Button } from "@/components/ui/button";
@@ -15,6 +15,7 @@ import { StatusBreakdownChart } from "@/components/dashboard/status-breakdown-ch
 import { ActivityFeed } from "@/components/dashboard/activity-feed";
 import { FeaturedShipmentPanel } from "@/components/dashboard/featured-shipment-panel";
 import { ScorecardCard } from "@/components/dashboard/scorecard-card";
+import { OperationalKpiCard } from "@/components/dashboard/operational-kpi-card";
 import {
   customerShipmentStatusLabels,
   driverStatusLabels,
@@ -25,7 +26,10 @@ export default async function DashboardPage() {
   const ctx = await requireTenantContext();
 
   if (ctx.companyType === "CUSTOMER") {
-    const shipments = await listShipments(ctx);
+    const [shipments, operationalKpis] = await Promise.all([
+      listShipments(ctx),
+      getOperationalKpis(ctx),
+    ]);
     const counts = shipments.reduce(
       (acc, s) => {
         acc[s.status] = (acc[s.status] ?? 0) + 1;
@@ -72,6 +76,8 @@ export default async function DashboardPage() {
             />
           </CardContent>
         </Card>
+
+        <OperationalKpiCard kpis={operationalKpis} />
       </div>
     );
   }
@@ -150,6 +156,8 @@ export default async function DashboardPage() {
           </CardContent>
         </Card>
       </div>
+
+      <OperationalKpiCard kpis={data.operationalKpis} />
 
       <ActivityFeed rows={data.recentActivity} />
     </div>

@@ -435,3 +435,83 @@ export async function getFeaturedShipmentForSupplier(ctx: TenantContext) {
     include: shipmentListInclude,
   });
 }
+
+/** A company is only ever a customer or a supplier, never both — so this is the whole "my shipments" scope for either dashboard. */
+function roleScopedShipmentFilter(ctx: TenantContext) {
+  return ctx.companyType === CompanyType.SUPPLIER
+    ? { supplierCompanyId: ctx.companyId }
+    : { customerCompanyId: ctx.companyId };
+}
+
+/**
+ * Among shipments with an ETA set (estimatedPickupArrivalAt) that actually
+ * reached LOADING, the fraction that did so at or before that ETA. Null
+ * when there's nothing eligible yet (too new a company, or no ETAs ever
+ * recorded) rather than a misleading 0%. StatusHistory is keyed by a
+ * generic (entityType, entityId) pair rather than a direct FK, so this
+ * joins the two in application code — a shipment only ever moves forward
+ * through LOADING once, so there's at most one matching history row.
+ */
+export async function getOnTimePickupRate(ctx: TenantContext) {
+  const shipments = await prisma.shipment.findMany({
+    where: { ...roleScopedShipmentFilter(ctx), estimatedPickupArrivalAt: { not: null } },
+    select: { id: true, estimatedPickupArrivalAt: true },
+  });
+  if (shipments.length === 0) return null;
+
+  const histories = await prisma.statusHistory.findMany({
+    where: {
+      entityType: StatusEntityType.SHIPMENT,
+      entityId: { in: shipments.map((s) => s.id) },
+      toStatus: ShipmentStatus.LOADING,
+    },
+    select: { entityId: true, createdAt: true },
+  });
+  const arrivedAtByShipmentId = new Map(
+    histories.map((h) => [h.entityId, h.createdAt])
+  );
+
+  let eligible = 0;
+  let onTime = 0;
+  for (const shipment of shipments) {
+    const arrivedAt = arrivedAtByShipmentId.get(shipment.id);
+    if (!arrivedAt) continue;
+    eligible += 1;
+    if (arrivedAt <= shipment.estimatedPickupArrivalAt!) onTime += 1;
+  }
+  return eligible === 0 ? null : onTime / eligible;
+}
+
+/** Average price-per-km across priced shipments — a basic pricing-health signal, not a benchmark against any external rate. */
+export async function getAveragePricePerKm(ctx: TenantContext) {
+  const rows = await prisma.shipment.findMany({
+    where: { ...roleScopedShipmentFilter(ctx), agreedPrice: { not: null } },
+    select: { agreedPrice: true, distanceKm: true },
+  });
+  const priced = rows.filter((r) => r.distanceKm.toNumber() > 0);
+  if (priced.length === 0) return null;
+
+  const total = priced.reduce(
+    (sum, r) => sum + r.agreedPrice!.toNumber() / r.distanceKm.toNumber(),
+    0
+  );
+  return total / priced.length;
+}
+
+/** Shipment creation dates over the trailing window, for a volume-trend chart (bucketing is the caller's job — see completedShipmentsTrend in dashboard-service.ts for the established pattern). */
+export async function getShipmentVolumeTrend(ctx: TenantContext, sinceDate: Date) {
+  return prisma.shipment.findMany({
+    where: { ...roleScopedShipmentFilter(ctx), createdAt: { gte: sinceDate } },
+    select: { createdAt: true },
+  });
+}
+
+/** Fraction of shipments with at least one reported breakdown/incident. Null (not 0%) when the company has no shipments yet. */
+export async function getIncidentRate(ctx: TenantContext) {
+  const filter = roleScopedShipmentFilter(ctx);
+  const [totalShipments, incidentedShipments] = await Promise.all([
+    prisma.shipment.count({ where: filter }),
+    prisma.shipment.count({ where: { ...filter, incidents: { some: {} } } }),
+  ]);
+  return totalShipments === 0 ? null : incidentedShipments / totalShipments;
+}
