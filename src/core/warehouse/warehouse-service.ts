@@ -19,6 +19,19 @@ export async function createWarehouse(ctx: TenantContext, rawInput: unknown) {
   return warehouseRepository.createWarehouseRecord(ctx, input);
 }
 
+export async function setDefaultWarehouse(
+  ctx: TenantContext,
+  warehouseId: string
+) {
+  requireCompanyType(ctx, CompanyType.CUSTOMER);
+  const updated = await warehouseRepository.setDefaultWarehouseRecord(
+    ctx,
+    warehouseId
+  );
+  if (!updated) throw new NotFoundError("Depo bulunamadı.");
+  return updated;
+}
+
 export async function getDock(ctx: TenantContext, dockId: string) {
   requireCompanyType(ctx, CompanyType.CUSTOMER);
   const dock = await warehouseRepository.getDockForTenant(ctx, dockId);

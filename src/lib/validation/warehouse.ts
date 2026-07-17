@@ -11,6 +11,7 @@ export const warehouseInputSchema = z.object({
   name: z.string().trim().min(2, "Depo adı en az 2 karakter olmalı.").max(120),
   address: z.string().trim().max(300).nullable().optional(),
   mapsUrl: optionalMapsUrlSchema.nullable(),
+  isDefault: z.boolean().default(false),
 });
 export type WarehouseInput = z.infer<typeof warehouseInputSchema>;
 

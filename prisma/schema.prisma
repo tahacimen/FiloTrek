@@ -536,6 +536,13 @@ model Warehouse {
   // this a "warehouse" was just a name, useless to whoever has to drive there.
   address   String?
   mapsUrl   String?  @map("maps_url")
+  // Doubles a warehouse as a reusable "loading point" for the customer's
+  // "Araç Çağır" form — the default one is pre-selected so the pickup
+  // location isn't re-typed every time. At most one default per company is
+  // enforced by a partial unique index (add_warehouse_is_default migration,
+  // not expressible in Prisma's DSL); setDefaultWarehouse unsets the prior
+  // default in the same transaction so the index never conflicts.
+  isDefault Boolean  @default(false) @map("is_default")
   isActive  Boolean  @default(true) @map("is_active")
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")

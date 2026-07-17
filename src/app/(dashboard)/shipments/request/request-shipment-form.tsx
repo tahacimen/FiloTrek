@@ -24,12 +24,39 @@ import { Textarea } from "@/components/ui/textarea";
 import { confirmSubmit } from "@/lib/confirm-submit";
 import type { Company } from "@/generated/prisma/client";
 
-export function RequestShipmentForm({ suppliers }: { suppliers: Company[] }) {
+type LoadingPoint = {
+  id: string;
+  name: string;
+  address: string | null;
+  mapsUrl: string | null;
+  isDefault: boolean;
+};
+
+const MANUAL_LOADING_POINT = "manual";
+
+export function RequestShipmentForm({
+  suppliers,
+  loadingPoints,
+}: {
+  suppliers: Company[];
+  loadingPoints: LoadingPoint[];
+}) {
   const [state, formAction, isPending] = useActionState<
     ShipmentFormState,
     FormData
   >(createShipmentRequestAction, undefined);
   const [mode, setMode] = useState<"specific" | "market">("specific");
+
+  // Pre-select the default loading point (or the first saved one) so the
+  // customer doesn't re-type the pickup address every time; fall back to
+  // manual entry when there are no saved warehouses at all.
+  const [loadingSource, setLoadingSource] = useState<string>(
+    loadingPoints.find((p) => p.isDefault)?.id ??
+      loadingPoints[0]?.id ??
+      MANUAL_LOADING_POINT
+  );
+  const selectedPoint = loadingPoints.find((p) => p.id === loadingSource);
+  const isManual = loadingSource === MANUAL_LOADING_POINT || !selectedPoint;
 
   return (
     <form
@@ -74,57 +101,95 @@ export function RequestShipmentForm({ suppliers }: { suppliers: Company[] }) {
         </p>
       )}
 
-      <div className="grid grid-cols-2 gap-4">
-        <div className="flex flex-col gap-2">
-          <Label htmlFor="originAddress">Yükleme Noktası</Label>
-          <Input id="originAddress" name="originAddress" required placeholder="İstanbul" />
-        </div>
-        <div className="flex flex-col gap-2">
-          <Label htmlFor="destinationAddress">Teslimat Noktası</Label>
-          <Input
-            id="destinationAddress"
-            name="destinationAddress"
-            required
-            placeholder="İzmir"
-          />
-        </div>
-      </div>
+      <div className="flex flex-col gap-2">
+        <Label htmlFor="loadingSource">Yükleme Noktası</Label>
+        {loadingPoints.length > 0 && (
+          <Select value={loadingSource} onValueChange={setLoadingSource}>
+            <SelectTrigger id="loadingSource" className="w-full">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {loadingPoints.map((point) => (
+                <SelectItem key={point.id} value={point.id}>
+                  {point.name}
+                  {point.address ? ` — ${point.address}` : ""}
+                  {point.isDefault ? " (varsayılan)" : ""}
+                </SelectItem>
+              ))}
+              <SelectItem value={MANUAL_LOADING_POINT}>
+                Başka bir adres gir…
+              </SelectItem>
+            </SelectContent>
+          </Select>
+        )}
 
-      <Separator />
-
-      <div className="flex flex-col gap-3">
-        <div>
-          <h3 className="text-sm font-medium">Kapı Rezervasyonu</h3>
-          <p className="text-muted-foreground text-xs">
-            Yükleme ve teslimat noktaları için Google Maps konum linki
-            paylaşabilirsiniz — tedarikçi bu linkleri görebilir ama
-            değiştiremez.
-          </p>
-        </div>
-        <div className="grid grid-cols-2 gap-4">
-          <div className="flex flex-col gap-2">
-            <Label htmlFor="originMapsUrl">
-              Yükleme Noktası Linki (opsiyonel)
-            </Label>
+        {isManual ? (
+          <div className="flex flex-col gap-3">
             <Input
-              id="originMapsUrl"
+              id="originAddress"
+              name="originAddress"
+              required
+              placeholder="Yükleme adresi (örn. İstanbul, Tuzla OSB)"
+            />
+            <Input
               name="originMapsUrl"
               type="url"
-              placeholder="https://maps.google.com/..."
+              placeholder="Google Maps linki (opsiyonel)"
             />
+            {loadingPoints.length === 0 && (
+              <p className="text-muted-foreground text-xs">
+                İpucu: sık kullandığınız yükleme noktalarını{" "}
+                <span className="font-medium">Depo &amp; Rampa</span>{" "}
+                sayfasından kaydedip burada hazır seçebilirsiniz.
+              </p>
+            )}
           </div>
-          <div className="flex flex-col gap-2">
-            <Label htmlFor="destinationMapsUrl">
-              Teslimat Noktası Linki (opsiyonel)
-            </Label>
-            <Input
-              id="destinationMapsUrl"
-              name="destinationMapsUrl"
-              type="url"
-              placeholder="https://maps.google.com/..."
+        ) : (
+          <div className="bg-muted/40 rounded-lg border p-3 text-sm">
+            {/* Selected saved warehouse — its address + link travel with the
+                shipment via these hidden inputs, so the pickup point isn't
+                re-typed. */}
+            <input
+              type="hidden"
+              name="originAddress"
+              value={selectedPoint!.address ?? selectedPoint!.name}
             />
+            <input
+              type="hidden"
+              name="originMapsUrl"
+              value={selectedPoint!.mapsUrl ?? ""}
+            />
+            <p className="font-medium">{selectedPoint!.name}</p>
+            {selectedPoint!.address && (
+              <p className="text-muted-foreground">{selectedPoint!.address}</p>
+            )}
+            {selectedPoint!.mapsUrl && (
+              <a
+                href={selectedPoint!.mapsUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-primary underline underline-offset-2"
+              >
+                Haritada Gör
+              </a>
+            )}
           </div>
-        </div>
+        )}
+      </div>
+
+      <div className="flex flex-col gap-2">
+        <Label htmlFor="destinationAddress">Teslimat Noktası</Label>
+        <Input
+          id="destinationAddress"
+          name="destinationAddress"
+          required
+          placeholder="Teslimat adresi (örn. İzmir)"
+        />
+        <Input
+          name="destinationMapsUrl"
+          type="url"
+          placeholder="Teslimat Google Maps linki (opsiyonel)"
+        />
       </div>
 
       <Separator />

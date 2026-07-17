@@ -21,8 +21,44 @@ export function getWarehouseForTenant(ctx: TenantContext, warehouseId: string) {
 }
 
 export function createWarehouseRecord(ctx: TenantContext, data: WarehouseInput) {
-  return prisma.warehouse.create({
-    data: { ...data, companyId: ctx.companyId },
+  if (!data.isDefault) {
+    return prisma.warehouse.create({
+      data: { ...data, companyId: ctx.companyId },
+    });
+  }
+  // Marking the new warehouse default: clear any existing default in the
+  // same transaction first, so the partial unique index never conflicts.
+  return prisma.$transaction(async (tx) => {
+    await tx.warehouse.updateMany({
+      where: { companyId: ctx.companyId, isDefault: true },
+      data: { isDefault: false },
+    });
+    return tx.warehouse.create({
+      data: { ...data, companyId: ctx.companyId },
+    });
+  });
+}
+
+/** Flips which warehouse is the company's default loading point; unsets the prior default atomically. Returns null if the warehouse isn't the tenant's. */
+export function setDefaultWarehouseRecord(
+  ctx: TenantContext,
+  warehouseId: string
+) {
+  return prisma.$transaction(async (tx) => {
+    const existing = await tx.warehouse.findFirst({
+      where: { id: warehouseId, companyId: ctx.companyId },
+      select: { id: true },
+    });
+    if (!existing) return null;
+
+    await tx.warehouse.updateMany({
+      where: { companyId: ctx.companyId, isDefault: true },
+      data: { isDefault: false },
+    });
+    return tx.warehouse.update({
+      where: { id: warehouseId },
+      data: { isDefault: true },
+    });
   });
 }
 

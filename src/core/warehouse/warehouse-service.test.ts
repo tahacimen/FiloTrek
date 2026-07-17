@@ -63,6 +63,56 @@ describe("warehouse-service", () => {
     expect(updated.workingHours.every((h) => h.isOpen)).toBe(true);
   });
 
+  it("keeps at most one default warehouse per company — setting a new default unsets the old one", async () => {
+    const ctx = await createCustomerContext();
+    companyIds.push(ctx.companyId);
+
+    const first = await warehouseService.createWarehouse(ctx, {
+      name: "Depo A",
+      isDefault: true,
+    });
+    expect(first.isDefault).toBe(true);
+
+    // Creating a second default flips the first off.
+    const second = await warehouseService.createWarehouse(ctx, {
+      name: "Depo B",
+      isDefault: true,
+    });
+    expect(second.isDefault).toBe(true);
+
+    const list = await warehouseService.listWarehouses(ctx);
+    const defaults = list.filter((w) => w.isDefault);
+    expect(defaults).toHaveLength(1);
+    expect(defaults[0].id).toBe(second.id);
+
+    // Explicitly re-pointing the default back to the first also unsets B.
+    await warehouseService.setDefaultWarehouse(ctx, first.id);
+    const list2 = await warehouseService.listWarehouses(ctx);
+    expect(list2.filter((w) => w.isDefault).map((w) => w.id)).toEqual([first.id]);
+  });
+
+  it("defaults isDefault to false when omitted", async () => {
+    const ctx = await createCustomerContext();
+    companyIds.push(ctx.companyId);
+
+    const warehouse = await warehouseService.createWarehouse(ctx, {
+      name: "Sıradan Depo",
+    });
+    expect(warehouse.isDefault).toBe(false);
+  });
+
+  it("rejects setting another tenant's warehouse as default", async () => {
+    const ctxA = await createCustomerContext();
+    const ctxB = await createCustomerContext();
+    companyIds.push(ctxA.companyId, ctxB.companyId);
+
+    const warehouseA = await createTestWarehouse(ctxA.companyId);
+
+    await expect(
+      warehouseService.setDefaultWarehouse(ctxB, warehouseA.id)
+    ).rejects.toThrow(NotFoundError);
+  });
+
   it("prevents a tenant from reading or modifying another tenant's warehouse/dock", async () => {
     const ctxA = await createCustomerContext();
     const ctxB = await createCustomerContext();

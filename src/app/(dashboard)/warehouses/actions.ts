@@ -23,11 +23,27 @@ export async function createWarehouseAction(
       name: formData.get("name"),
       address: optionalFormString(formData, "address"),
       mapsUrl: optionalFormString(formData, "mapsUrl"),
+      isDefault: formData.get("isDefault") === "true",
     });
   } catch (error) {
     return { error: toActionErrorMessage(error) };
   }
   revalidatePath("/warehouses");
+  revalidatePath("/shipments/request");
+  return undefined;
+}
+
+export async function setDefaultWarehouseAction(
+  warehouseId: string
+): Promise<WarehouseFormState> {
+  try {
+    const ctx = await requireTenantContext();
+    await warehouseService.setDefaultWarehouse(ctx, warehouseId);
+  } catch (error) {
+    return { error: toActionErrorMessage(error) };
+  }
+  revalidatePath("/warehouses");
+  revalidatePath("/shipments/request");
   return undefined;
 }
 

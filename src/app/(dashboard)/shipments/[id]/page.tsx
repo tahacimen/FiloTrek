@@ -305,7 +305,7 @@ export default async function ShipmentDetailPage({
       {(shipment.originMapsUrl || shipment.destinationMapsUrl) && (
         <Card>
           <CardHeader>
-            <CardTitle>Kapı Rezervasyonu</CardTitle>
+            <CardTitle>Konum Linkleri</CardTitle>
           </CardHeader>
           <CardContent className="grid grid-cols-2 gap-4">
             <Field

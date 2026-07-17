@@ -5,6 +5,7 @@ import { Loader2, Plus } from "lucide-react";
 
 import { createWarehouseAction, type WarehouseFormState } from "@/app/(dashboard)/warehouses/actions";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
   DialogContent,
@@ -19,6 +20,7 @@ import { confirmSubmit } from "@/lib/confirm-submit";
 
 export function WarehouseFormDialog() {
   const [open, setOpen] = useState(false);
+  const [isDefault, setIsDefault] = useState(false);
   const [state, formAction, isPending] = useActionState<
     WarehouseFormState,
     FormData
@@ -29,6 +31,7 @@ export function WarehouseFormDialog() {
     setWasPending(isPending);
     if (wasPending && open && !state?.error) {
       setOpen(false);
+      setIsDefault(false);
     }
   }
 
@@ -69,6 +72,17 @@ export function WarehouseFormDialog() {
               type="url"
               placeholder="https://maps.google.com/..."
             />
+          </div>
+          <div className="flex items-center gap-2">
+            <Checkbox
+              id="isDefault"
+              checked={isDefault}
+              onCheckedChange={(checked) => setIsDefault(checked === true)}
+            />
+            <input type="hidden" name="isDefault" value={isDefault ? "true" : ""} />
+            <Label htmlFor="isDefault" className="font-normal">
+              Varsayılan yükleme noktam yap (Araç Çağır ekranında hazır gelsin)
+            </Label>
           </div>
           {state?.error && (
             <p className="text-sm text-destructive" role="alert">

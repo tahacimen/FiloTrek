@@ -14,6 +14,7 @@ import {
 } from "@/lib/labels";
 import { WarehouseFormDialog } from "@/app/(dashboard)/warehouses/warehouse-form-dialog";
 import { DockFormDialog } from "@/app/(dashboard)/warehouses/dock-form-dialog";
+import { DefaultWarehouseControl } from "@/app/(dashboard)/warehouses/default-warehouse-button";
 
 export default async function WarehousesPage() {
   const ctx = await requireTenantContext();
@@ -52,9 +53,15 @@ export default async function WarehousesPage() {
 
       {warehouses.map((warehouse) => (
         <Card key={warehouse.id}>
-          <CardHeader className="flex flex-row items-center justify-between">
+          <CardHeader className="flex flex-row items-start justify-between">
             <div>
-              <CardTitle>{warehouse.name}</CardTitle>
+              <div className="flex flex-wrap items-center gap-2">
+                <CardTitle>{warehouse.name}</CardTitle>
+                <DefaultWarehouseControl
+                  warehouseId={warehouse.id}
+                  isDefault={warehouse.isDefault}
+                />
+              </div>
               {warehouse.address && (
                 <p className="text-muted-foreground mt-1 text-sm">
                   {warehouse.address}
