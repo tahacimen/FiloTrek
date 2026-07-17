@@ -36,6 +36,7 @@ import { ShipmentLiveMap } from "@/components/shipment-live-map-loader";
 import * as marketplaceService from "@/core/marketplace/marketplace-service";
 import * as ratingService from "@/core/rating/rating-service";
 import { getSupplierScorecard } from "@/core/scorecard/scorecard-service";
+import { calculateShipmentEmissionsKg } from "@/lib/emissions";
 import { DockReservationType } from "@/generated/prisma/enums";
 
 function Field({ label, value }: { label: string; value: React.ReactNode }) {
@@ -249,6 +250,16 @@ export default async function ShipmentDetailPage({
               label="Belge Takip Numarası"
               value={shipment.documentTrackingNumber ?? "Girilmedi"}
             />
+            {shipment.vehicle && (
+              <Field
+                label="Tahmini CO2 Emisyonu"
+                value={`${calculateShipmentEmissionsKg(
+                  shipment.distanceKm.toNumber(),
+                  shipment.tonnage.toNumber(),
+                  shipment.vehicle.vehicleType
+                ).toLocaleString("tr-TR", { maximumFractionDigits: 0 })} kg`}
+              />
+            )}
             {shipment.cargoDescription && (
               <div className="col-span-full">
                 <Field label="Yük Açıklaması" value={shipment.cargoDescription} />

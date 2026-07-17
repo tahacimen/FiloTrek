@@ -87,13 +87,13 @@ export async function createPlatformAdminContext(): Promise<TenantContext> {
 
 export async function createTestVehicle(
   companyId: string,
-  overrides: Partial<{ status: VehicleStatus; plate: string }> = {}
+  overrides: Partial<{ status: VehicleStatus; plate: string; vehicleType: VehicleType }> = {}
 ) {
   return prisma.vehicle.create({
     data: {
       companyId,
       plate: overrides.plate ?? unique("PLT").toUpperCase(),
-      vehicleType: VehicleType.KAMYON,
+      vehicleType: overrides.vehicleType ?? VehicleType.KAMYON,
       bedType: VehicleBedType.KAPALI_KASA,
       tonnageCapacity: 10,
       status: overrides.status ?? VehicleStatus.AVAILABLE,

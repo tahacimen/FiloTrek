@@ -4,6 +4,7 @@ import { Truck } from "lucide-react";
 import { requireTenantContext } from "@/core/shared/tenant-context";
 import { getDashboardData, getOperationalKpis } from "@/core/dashboard/dashboard-service";
 import { getSupplierScorecard } from "@/core/scorecard/scorecard-service";
+import { getCompanyEmissionsSummary } from "@/core/emissions/emissions-service";
 import { listShipments } from "@/core/shipment/shipment-service";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -16,6 +17,7 @@ import { ActivityFeed } from "@/components/dashboard/activity-feed";
 import { FeaturedShipmentPanel } from "@/components/dashboard/featured-shipment-panel";
 import { ScorecardCard } from "@/components/dashboard/scorecard-card";
 import { OperationalKpiCard } from "@/components/dashboard/operational-kpi-card";
+import { CarbonFootprintCard } from "@/components/dashboard/carbon-footprint-card";
 import {
   customerShipmentStatusLabels,
   driverStatusLabels,
@@ -26,9 +28,10 @@ export default async function DashboardPage() {
   const ctx = await requireTenantContext();
 
   if (ctx.companyType === "CUSTOMER") {
-    const [shipments, operationalKpis] = await Promise.all([
+    const [shipments, operationalKpis, emissionsSummary] = await Promise.all([
       listShipments(ctx),
       getOperationalKpis(ctx),
+      getCompanyEmissionsSummary(ctx),
     ]);
     const counts = shipments.reduce(
       (acc, s) => {
@@ -78,13 +81,16 @@ export default async function DashboardPage() {
         </Card>
 
         <OperationalKpiCard kpis={operationalKpis} />
+
+        <CarbonFootprintCard summary={emissionsSummary} />
       </div>
     );
   }
 
-  const [data, scorecard] = await Promise.all([
+  const [data, scorecard, emissionsSummary] = await Promise.all([
     getDashboardData(ctx),
     getSupplierScorecard(ctx.companyId),
+    getCompanyEmissionsSummary(ctx),
   ]);
 
   return (
@@ -158,6 +164,8 @@ export default async function DashboardPage() {
       </div>
 
       <OperationalKpiCard kpis={data.operationalKpis} />
+
+      <CarbonFootprintCard summary={emissionsSummary} />
 
       <ActivityFeed rows={data.recentActivity} />
     </div>

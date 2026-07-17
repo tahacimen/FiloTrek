@@ -515,3 +515,24 @@ export async function getIncidentRate(ctx: TenantContext) {
   ]);
   return totalShipments === 0 ? null : incidentedShipments / totalShipments;
 }
+
+/** Completed shipments in the given window, with just the fields the CO2 estimate (src/lib/emissions.ts) needs. */
+export async function getCompletedShipmentsForEmissions(
+  ctx: TenantContext,
+  from: Date,
+  to: Date
+) {
+  return prisma.shipment.findMany({
+    where: {
+      ...roleScopedShipmentFilter(ctx),
+      status: ShipmentStatus.COMPLETED,
+      completedAt: { gte: from, lte: to },
+    },
+    select: {
+      distanceKm: true,
+      tonnage: true,
+      completedAt: true,
+      vehicle: { select: { vehicleType: true } },
+    },
+  });
+}
