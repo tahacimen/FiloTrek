@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Warehouse } from "lucide-react";
+import { Navigation, Warehouse } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -46,6 +46,8 @@ export function DockReservationCard({
   reservation: {
     warehouseId: string;
     warehouseName: string;
+    warehouseAddress: string | null;
+    warehouseMapsUrl: string | null;
     dockId: string;
     dockName: string;
     startAt: Date;
@@ -94,7 +96,23 @@ export function DockReservationCard({
                   </Badge>
                 }
               />
+              {reservation.warehouseAddress && (
+                <div className="col-span-full">
+                  <Field label="Adres" value={reservation.warehouseAddress} />
+                </div>
+              )}
             </div>
+            {reservation.warehouseMapsUrl && (
+              <a
+                href={reservation.warehouseMapsUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-primary inline-flex items-center gap-1 text-sm underline underline-offset-2"
+              >
+                <Navigation className="size-3.5" />
+                Depoya Navigasyon
+              </a>
+            )}
             {companyType === "CUSTOMER" && (
               <Link
                 href={`/warehouses/${reservation.warehouseId}/docks/${reservation.dockId}`}

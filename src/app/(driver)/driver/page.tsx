@@ -1,9 +1,10 @@
-import { Navigation } from "lucide-react";
+import { Navigation, Warehouse } from "lucide-react";
 
 import { requireDriverContext } from "@/core/shared/driver-context";
 import { listActiveShipmentsForDriver } from "@/core/shipment/shipment-service";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { formatDateTime } from "@/lib/format";
 import {
   driverNextStepLabels,
   shipmentStatusLabels,
@@ -64,14 +65,19 @@ export default async function DriverPage() {
       ) : (
         shipments.map((shipment) => {
           const nextTargetStatus = DRIVER_NEXT_TARGET_STATUS[shipment.status];
+          const reservation = shipment.dockReservations[0] ?? null;
+          const isBeforePickup =
+            shipment.status !== "EN_ROUTE" &&
+            shipment.status !== "AT_DELIVERY_POINT";
           // Whichever navigation link is relevant right now: before pickup,
-          // the customer's request-time / load-ready links; once handed
-          // off, the delivery destination.
-          const navUrl =
-            shipment.status === "EN_ROUTE" ||
-            shipment.status === "AT_DELIVERY_POINT"
-              ? shipment.destinationMapsUrl
-              : (shipment.pickupMapsUrl ?? shipment.originMapsUrl);
+          // the reservation's warehouse (most precise) then the customer's
+          // request-time / load-ready links; once handed off, the delivery
+          // destination.
+          const navUrl = isBeforePickup
+            ? (reservation?.dock.warehouse.mapsUrl ??
+              shipment.pickupMapsUrl ??
+              shipment.originMapsUrl)
+            : shipment.destinationMapsUrl;
 
           return (
             <Card key={shipment.id}>
@@ -111,6 +117,34 @@ export default async function DriverPage() {
                     </div>
                   )}
                 </div>
+
+                {reservation && isBeforePickup && (
+                  <div className="bg-muted/40 flex flex-col gap-3 rounded-lg border p-3">
+                    <div className="flex items-center gap-2 text-sm font-medium">
+                      <Warehouse className="text-muted-foreground size-4" />
+                      Rampa Rezervasyonu
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <Field
+                        label="Depo"
+                        value={reservation.dock.warehouse.name}
+                      />
+                      <Field label="Rampa" value={reservation.dock.name} />
+                      <Field
+                        label="Planlanan Saat"
+                        value={formatDateTime(reservation.startAt)}
+                      />
+                      {reservation.dock.warehouse.address && (
+                        <div className="col-span-full">
+                          <Field
+                            label="Adres"
+                            value={reservation.dock.warehouse.address}
+                          />
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
 
                 <NavigationLink url={navUrl} />
                 {LOCATION_SHARING_STATUSES.has(shipment.status) && (

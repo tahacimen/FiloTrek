@@ -2,6 +2,7 @@ import { prisma } from "@/lib/db";
 import type { TenantContext } from "@/core/shared/tenant-context";
 import {
   CompanyType,
+  DockReservationStatus,
   ShipmentStatus,
   StatusEntityType,
 } from "@/generated/prisma/client";
@@ -19,6 +20,32 @@ const shipmentListInclude = {
       phone: true,
       licenseNumber: true,
       experienceYears: true,
+    },
+  },
+} as const;
+
+/**
+ * The driver needs the structured dock reservation to act on — which
+ * warehouse (with a navigable address), which dock, and at what time — not
+ * just the customer's optional free-text pickupGateInfo. At most one active
+ * (non-cancelled) reservation exists per shipment (partial unique index),
+ * so take:1 is exact, not a truncation.
+ */
+const driverShipmentInclude = {
+  ...shipmentListInclude,
+  dockReservations: {
+    where: { status: { not: DockReservationStatus.CANCELLED } },
+    orderBy: { startAt: "asc" as const },
+    take: 1,
+    include: {
+      dock: {
+        select: {
+          name: true,
+          warehouse: {
+            select: { name: true, address: true, mapsUrl: true },
+          },
+        },
+      },
     },
   },
 } as const;
@@ -103,7 +130,7 @@ export function getShipmentForTenant(ctx: TenantContext, shipmentId: string) {
   });
 }
 
-/** A driver only ever sees their own currently-active (not finished) shipments. */
+/** A driver only ever sees their own currently-active (not finished) shipments, with the active dock reservation so they know where/when to load. */
 export function listActiveShipmentsForDriver(driverId: string) {
   return prisma.shipment.findMany({
     where: {
@@ -112,7 +139,7 @@ export function listActiveShipmentsForDriver(driverId: string) {
         notIn: [ShipmentStatus.COMPLETED, ShipmentStatus.CANCELLED],
       },
     },
-    include: shipmentListInclude,
+    include: driverShipmentInclude,
     orderBy: { createdAt: "desc" },
   });
 }

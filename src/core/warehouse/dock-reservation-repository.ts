@@ -85,7 +85,13 @@ export function findActiveReservationForShipment(
     },
     include: {
       dock: {
-        select: { id: true, name: true, warehouse: { select: { id: true, name: true } } },
+        select: {
+          id: true,
+          name: true,
+          warehouse: {
+            select: { id: true, name: true, address: true, mapsUrl: true },
+          },
+        },
       },
     },
   });

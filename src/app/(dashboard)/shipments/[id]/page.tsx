@@ -366,6 +366,8 @@ export default async function ShipmentDetailPage({
             ? {
                 warehouseId: dockReservation.dock.warehouse.id,
                 warehouseName: dockReservation.dock.warehouse.name,
+                warehouseAddress: dockReservation.dock.warehouse.address,
+                warehouseMapsUrl: dockReservation.dock.warehouse.mapsUrl,
                 dockId: dockReservation.dock.id,
                 dockName: dockReservation.dock.name,
                 startAt: dockReservation.startAt,

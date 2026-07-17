@@ -125,9 +125,12 @@ export async function createDriverContext(
   return { driverId: driver.id, companyId, fullName: driver.fullName };
 }
 
-export async function createTestWarehouse(companyId: string) {
+export async function createTestWarehouse(
+  companyId: string,
+  overrides: Partial<{ address: string; mapsUrl: string; isDefault: boolean }> = {}
+) {
   return prisma.warehouse.create({
-    data: { companyId, name: unique("warehouse") },
+    data: { companyId, name: unique("warehouse"), ...overrides },
   });
 }
 
