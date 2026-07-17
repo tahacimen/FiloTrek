@@ -30,6 +30,7 @@ import { PriceApprovalCard } from "@/app/(dashboard)/shipments/[id]/price-approv
 import { IncidentCard } from "@/app/(dashboard)/shipments/[id]/incident-card";
 import { StatusTimelineCard } from "@/app/(dashboard)/shipments/[id]/status-timeline-card";
 import { DockReservationCard } from "@/app/(dashboard)/shipments/[id]/dock-reservation-card";
+import { ShipmentLiveMap } from "@/components/shipment-live-map-loader";
 import { DockReservationType } from "@/generated/prisma/enums";
 
 function Field({ label, value }: { label: string; value: React.ReactNode }) {
@@ -254,6 +255,32 @@ export default async function ShipmentDetailPage({
           </CardContent>
         </Card>
       )}
+
+      {shipment.status !== "COMPLETED" &&
+        shipment.status !== "CANCELLED" &&
+        shipment.lastKnownLat != null &&
+        shipment.lastKnownLng != null && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-base">
+                <MapPinned className="text-muted-foreground size-4" />
+                Canlı Konum
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ShipmentLiveMap
+                lat={shipment.lastKnownLat.toNumber()}
+                lng={shipment.lastKnownLng.toNumber()}
+                label={`${shipment.originAddress} → ${shipment.destinationAddress}`}
+              />
+              {shipment.lastLocationAt && (
+                <p className="text-muted-foreground mt-2 text-xs">
+                  Son güncelleme: {formatDateTime(shipment.lastLocationAt)}
+                </p>
+              )}
+            </CardContent>
+          </Card>
+        )}
 
       <DockReservationCard
         status={shipment.status}

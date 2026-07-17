@@ -6,6 +6,7 @@ import {
   advanceShipmentStatusAsDriver,
   assignVehicleAndDriver,
   cancelShipment,
+  updateShipmentLocation,
 } from "@/core/shipment/shipment-status";
 import { setVehicleMaintenance } from "@/core/vehicle/vehicle-status";
 import {
@@ -642,5 +643,113 @@ describe("advanceShipmentStatusAsDriver", () => {
     });
     expect(customerNotifications).toHaveLength(5);
     expect(supplierNotifications).toHaveLength(5);
+  });
+});
+
+describe("updateShipmentLocation", () => {
+  const companyIds: string[] = [];
+  afterAll(async () => {
+    await cleanupCompanies(companyIds);
+  });
+
+  async function setupHeadingToPickupShipment() {
+    const ctx = await createSupplierContext();
+    const customer = await createTestCompany(CompanyType.CUSTOMER);
+    companyIds.push(ctx.companyId, customer.id);
+
+    const vehicle = await createTestVehicle(ctx.companyId);
+    const driver = await createTestDriver(ctx.companyId);
+    const shipment = await prisma.shipment.create({
+      data: {
+        customerCompanyId: customer.id,
+        supplierCompanyId: ctx.companyId,
+        originAddress: "A",
+        destinationAddress: "B",
+        distanceKm: 100,
+        tonnage: 5,
+        status: ShipmentStatus.PENDING,
+      },
+    });
+    await assignVehicleAndDriver(ctx, {
+      shipmentId: shipment.id,
+      vehicleId: vehicle.id,
+      driverId: driver.id,
+      agreedPrice: AGREED_PRICE,
+    });
+    await prisma.shipment.update({
+      where: { id: shipment.id },
+      data: { priceApprovedAt: new Date() },
+    });
+    const heading = await advanceShipmentStatus(ctx, {
+      shipmentId: shipment.id,
+      targetStatus: ShipmentStatus.HEADING_TO_PICKUP,
+    });
+
+    return {
+      driverCtx: { driverId: driver.id, companyId: ctx.companyId, fullName: driver.fullName },
+      shipment: heading,
+    };
+  }
+
+  it("records the driver-reported position while HEADING_TO_PICKUP", async () => {
+    const { driverCtx, shipment } = await setupHeadingToPickupShipment();
+
+    await updateShipmentLocation(driverCtx, {
+      shipmentId: shipment.id,
+      lat: 41.015137,
+      lng: 28.97953,
+    });
+
+    const updated = await prisma.shipment.findUniqueOrThrow({ where: { id: shipment.id } });
+    expect(updated.lastKnownLat?.toNumber()).toBeCloseTo(41.015137, 5);
+    expect(updated.lastKnownLng?.toNumber()).toBeCloseTo(28.97953, 5);
+    expect(updated.lastLocationAt).not.toBeNull();
+  });
+
+  it("records the position while EN_ROUTE too", async () => {
+    const { driverCtx, shipment } = await setupHeadingToPickupShipment();
+    for (const targetStatus of [
+      ShipmentStatus.LOADING,
+      ShipmentStatus.AT_PICKUP_GATE,
+    ]) {
+      await advanceShipmentStatusAsDriver(driverCtx, { shipmentId: shipment.id, targetStatus });
+    }
+    await advanceShipmentStatusAsDriver(driverCtx, {
+      shipmentId: shipment.id,
+      targetStatus: ShipmentStatus.EN_ROUTE,
+      photo: createTestPhotoFile(),
+    });
+
+    await updateShipmentLocation(driverCtx, {
+      shipmentId: shipment.id,
+      lat: 40.192,
+      lng: 29.061,
+    });
+
+    const updated = await prisma.shipment.findUniqueOrThrow({ where: { id: shipment.id } });
+    expect(updated.lastKnownLat?.toNumber()).toBeCloseTo(40.192, 3);
+  });
+
+  it("rejects updating location once the shipment is no longer in transit (e.g. still LOADING)", async () => {
+    const { driverCtx, shipment } = await setupHeadingToPickupShipment();
+    await advanceShipmentStatusAsDriver(driverCtx, {
+      shipmentId: shipment.id,
+      targetStatus: ShipmentStatus.LOADING,
+    });
+
+    await expect(
+      updateShipmentLocation(driverCtx, { shipmentId: shipment.id, lat: 1, lng: 1 })
+    ).rejects.toThrow(NotFoundError);
+  });
+
+  it("rejects a driver updating a shipment that isn't assigned to them", async () => {
+    const { shipment } = await setupHeadingToPickupShipment();
+    const otherCompany = await createTestCompany(CompanyType.SUPPLIER);
+    companyIds.push(otherCompany.id);
+    const otherDriverCtx = await createDriverContext(otherCompany.id);
+
+    await expect(
+      updateShipmentLocation(otherDriverCtx, { shipmentId: shipment.id, lat: 1, lng: 1 })
+    ).rejects.toThrow(NotFoundError);
   });
 });

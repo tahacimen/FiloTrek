@@ -344,6 +344,9 @@ export function getShipmentByTrackingNumber(trackingNumber: number) {
       status: true,
       createdAt: true,
       hasOpenIncident: true,
+      lastKnownLat: true,
+      lastKnownLng: true,
+      lastLocationAt: true,
     },
   });
 }

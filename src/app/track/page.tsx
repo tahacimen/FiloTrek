@@ -14,6 +14,7 @@ import {
   trackShipmentByNumber,
 } from "@/core/shipment/public-tracking";
 import { StatusTimelineCard } from "@/app/(dashboard)/shipments/[id]/status-timeline-card";
+import { ShipmentLiveMap } from "@/components/shipment-live-map-loader";
 
 // The strict CSP in proxy.ts stamps a per-request nonce; this public page
 // must render per request so Next can tag its scripts with that nonce
@@ -130,6 +131,24 @@ export default async function TrackPage({
               companyType="CUSTOMER"
               history={result.history}
             />
+
+            {result.liveLocation && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base">Canlı Konum</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <ShipmentLiveMap
+                    lat={result.liveLocation.lat}
+                    lng={result.liveLocation.lng}
+                    label={`${result.originAddress} → ${result.destinationAddress}`}
+                  />
+                  <p className="text-muted-foreground mt-2 text-xs">
+                    Son güncelleme: {formatDateTime(result.liveLocation.at)}
+                  </p>
+                </CardContent>
+              </Card>
+            )}
 
             <div className="text-muted-foreground flex items-center justify-center gap-2 text-xs">
               <ShieldCheck className="size-3.5" />

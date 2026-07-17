@@ -478,6 +478,47 @@ export async function advanceShipmentStatusAsDriver(
 }
 
 /**
+ * Restricted to the two "vehicle is actually moving between two points"
+ * legs — HEADING_TO_PICKUP (towards the customer) and EN_ROUTE (towards the
+ * delivery point). While LOADING/AT_PICKUP_GATE/AT_DELIVERY_POINT the
+ * vehicle is stationary at a gate/dock, so there is nothing live to show;
+ * excluding those keeps a stale-but-technically-recent pin from ever
+ * appearing next to a truck that hasn't moved. No StatusHistory row (this
+ * isn't a status transition), no notification — purely informational,
+ * overwrites in place, same "no history, just current state" shape as
+ * dock reservation status. Ownership scoping mirrors
+ * advanceShipmentStatusAsDriver: `driverId` match is sufficient (see that
+ * function's own doc comment for why).
+ */
+const LOCATION_UPDATE_ALLOWED_STATUSES: ReadonlySet<ShipmentStatus> = new Set([
+  ShipmentStatus.HEADING_TO_PICKUP,
+  ShipmentStatus.EN_ROUTE,
+]);
+
+export async function updateShipmentLocation(
+  driverCtx: DriverContext,
+  params: { shipmentId: string; lat: number; lng: number }
+) {
+  const result = await prisma.shipment.updateMany({
+    where: {
+      id: params.shipmentId,
+      driverId: driverCtx.driverId,
+      status: { in: Array.from(LOCATION_UPDATE_ALLOWED_STATUSES) },
+    },
+    data: {
+      lastKnownLat: params.lat,
+      lastKnownLng: params.lng,
+      lastLocationAt: new Date(),
+    },
+  });
+  if (result.count === 0) {
+    throw new NotFoundError(
+      "Sefer bulunamadı veya konum güncellemesi için uygun durumda değil."
+    );
+  }
+}
+
+/**
  * The only two steps a dock reservation event can ever drive (see
  * dock-reservation-status.ts): the gate guard's own facility only accounts
  * for the customer's pickup dock, never the destination or completion —

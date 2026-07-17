@@ -75,7 +75,7 @@ function withSecurityHeaders(
   res.headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
   res.headers.set(
     "Permissions-Policy",
-    "camera=(), microphone=(), geolocation=()"
+    "camera=(), microphone=(), geolocation=(self)"
   );
   // Only re-set the cookie when it didn't already come in valid on the
   // request — an unconditional set-cookie on every response would reset

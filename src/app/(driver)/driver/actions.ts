@@ -3,7 +3,10 @@
 import { revalidatePath } from "next/cache";
 
 import { requireDriverContext } from "@/core/shared/driver-context";
-import { advanceShipmentStatusAsDriver } from "@/core/shipment/shipment-status";
+import {
+  advanceShipmentStatusAsDriver,
+  updateShipmentLocation,
+} from "@/core/shipment/shipment-status";
 import {
   reportShipmentIncident,
   resolveShipmentIncidentAsDriver,
@@ -57,6 +60,28 @@ export async function advanceShipmentStatusAsDriverAction(
     return { error: toActionErrorMessage(error) };
   }
   revalidateShipmentPaths(shipmentId);
+  return undefined;
+}
+
+/**
+ * Called imperatively from the driver page's geolocation watcher (not a
+ * form submission), roughly once per position change — no
+ * revalidatePath here, unlike every other action in this file: the driver
+ * doesn't need their own page to re-render on every background ping, only
+ * the customer/supplier viewing the shipment detail page or /track do, and
+ * those already poll/refetch on their own schedule.
+ */
+export async function updateShipmentLocationAction(
+  shipmentId: string,
+  lat: number,
+  lng: number
+): Promise<{ error?: string } | undefined> {
+  try {
+    const driverCtx = await requireDriverContext();
+    await updateShipmentLocation(driverCtx, { shipmentId, lat, lng });
+  } catch (error) {
+    return { error: toActionErrorMessage(error) };
+  }
   return undefined;
 }
 

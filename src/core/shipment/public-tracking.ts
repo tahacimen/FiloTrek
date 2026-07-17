@@ -17,6 +17,12 @@ export type PublicTrackingResult = {
   createdAt: Date;
   hasOpenIncident: boolean;
   history: { toStatus: string; createdAt: Date }[];
+  // Live position while genuinely in transit — same trust model as the
+  // status/timeline above (a bare tracking number already reveals "where is
+  // this in its journey"; a live pin is not a materially bigger disclosure).
+  // Deliberately null once COMPLETED/CANCELLED — a stale pin next to a
+  // finished shipment would be misleading, not informative.
+  liveLocation: { lat: number; lng: number; at: Date } | null;
 };
 
 /** 8-digit tracking numbers start at 10000000; reject anything outside that shape early. */
@@ -37,6 +43,16 @@ export async function trackShipmentByNumber(
 
   const history = await shipmentRepository.getShipmentStatusHistory(shipment.id);
 
+  const isActive = shipment.status !== "COMPLETED" && shipment.status !== "CANCELLED";
+  const liveLocation =
+    isActive && shipment.lastKnownLat != null && shipment.lastKnownLng != null
+      ? {
+          lat: shipment.lastKnownLat.toNumber(),
+          lng: shipment.lastKnownLng.toNumber(),
+          at: shipment.lastLocationAt!,
+        }
+      : null;
+
   return {
     trackingNumber: shipment.trackingNumber,
     originAddress: shipment.originAddress,
@@ -45,5 +61,6 @@ export async function trackShipmentByNumber(
     createdAt: shipment.createdAt,
     hasOpenIncident: shipment.hasOpenIncident,
     history: history.map((h) => ({ toStatus: h.toStatus, createdAt: h.createdAt })),
+    liveLocation,
   };
 }

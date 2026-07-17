@@ -12,6 +12,9 @@ import {
 import { DRIVER_NEXT_TARGET_STATUS } from "@/core/shipment/shipment-transitions";
 import { DriverShipmentActions } from "@/app/(driver)/driver/driver-shipment-actions";
 import { DriverIncidentActions } from "@/app/(driver)/driver/incident-actions";
+import { LocationReporter } from "@/app/(driver)/driver/location-reporter";
+
+const LOCATION_SHARING_STATUSES = new Set(["HEADING_TO_PICKUP", "EN_ROUTE"]);
 
 function Field({ label, value }: { label: string; value: React.ReactNode }) {
   return (
@@ -110,6 +113,9 @@ export default async function DriverPage() {
                 </div>
 
                 <NavigationLink url={navUrl} />
+                {LOCATION_SHARING_STATUSES.has(shipment.status) && (
+                  <LocationReporter shipmentId={shipment.id} />
+                )}
 
                 {nextTargetStatus ? (
                   <DriverShipmentActions

@@ -391,6 +391,15 @@ model Shipment {
   // stage the shipment is in (see ShipmentIncident below), it's a warning
   // overlay so list views can badge it without joining shipment_incidents.
   hasOpenIncident     Boolean        @default(false) @map("has_open_incident")
+  // Live GPS position, driver-reported (browser Geolocation API, free — no
+  // third-party service or API key). Deliberately just "where is it right
+  // now", not a location-history table — overwritten on every update, no
+  // route trail is kept. Cleared implicitly by simply going stale once the
+  // shipment completes (nothing deletes these columns, callers just stop
+  // showing the live map once status is COMPLETED/CANCELLED).
+  lastKnownLat        Decimal?       @map("last_known_lat") @db.Decimal(9, 6)
+  lastKnownLng        Decimal?       @map("last_known_lng") @db.Decimal(9, 6)
+  lastLocationAt      DateTime?      @map("last_location_at")
   createdAt           DateTime       @default(now()) @map("created_at")
   updatedAt           DateTime       @updatedAt @map("updated_at")
   completedAt         DateTime?      @map("completed_at")

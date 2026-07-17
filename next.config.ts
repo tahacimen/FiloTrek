@@ -24,8 +24,12 @@ const nextConfig: NextConfig = {
           { key: "X-Frame-Options", value: "DENY" },
           { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
           {
+            // geolocation=(self): the driver page reports live position
+            // (see src/app/(driver)/driver/location-reporter.tsx) via the
+            // browser's own Geolocation API — same-origin only, camera/mic
+            // stay fully disabled since nothing here uses them.
             key: "Permissions-Policy",
-            value: "camera=(), microphone=(), geolocation=()",
+            value: "camera=(), microphone=(), geolocation=(self)",
           },
         ],
       },
