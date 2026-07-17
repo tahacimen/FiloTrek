@@ -47,6 +47,7 @@ export default async function DashboardLayout({
         </div>
         <DashboardNav
           companyType={user.companyType}
+          companyRole={user.companyRole}
           isPlatformAdmin={user.isPlatformAdmin}
         />
       </aside>

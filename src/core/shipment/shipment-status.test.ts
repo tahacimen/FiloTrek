@@ -1,4 +1,4 @@
-import { afterAll, describe, expect, it } from "vitest";
+import { afterAll, afterEach, describe, expect, it, vi } from "vitest";
 
 import { prisma } from "@/lib/db";
 import {
@@ -9,6 +9,7 @@ import {
   updateShipmentLocation,
 } from "@/core/shipment/shipment-status";
 import { setVehicleMaintenance } from "@/core/vehicle/vehicle-status";
+import * as companyRepository from "@/core/company/company-repository";
 import {
   InvalidTransitionError,
   NotFoundError,
@@ -751,5 +752,100 @@ describe("updateShipmentLocation", () => {
     await expect(
       updateShipmentLocation(otherDriverCtx, { shipmentId: shipment.id, lat: 1, lng: 1 })
     ).rejects.toThrow(NotFoundError);
+  });
+});
+
+describe("advanceShipmentStatusCore: webhook dispatch", () => {
+  const companyIds: string[] = [];
+  afterAll(async () => {
+    await cleanupCompanies(companyIds);
+  });
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("POSTs a signed shipment.status_changed event to a company with a configured webhook on every real transition", async () => {
+    const supplierCtx = await createSupplierContext();
+    const customer = await createTestCompany(CompanyType.CUSTOMER);
+    companyIds.push(supplierCtx.companyId, customer.id);
+    await companyRepository.setWebhookUrl(
+      customer.id,
+      "https://customer.example.com/webhooks/logigo"
+    );
+    await companyRepository.setWebhookSecret(customer.id, "customer-secret");
+
+    const vehicle = await createTestVehicle(supplierCtx.companyId);
+    const driver = await createTestDriver(supplierCtx.companyId);
+    const shipment = await prisma.shipment.create({
+      data: {
+        customerCompanyId: customer.id,
+        supplierCompanyId: supplierCtx.companyId,
+        originAddress: "A",
+        destinationAddress: "B",
+        distanceKm: 100,
+        tonnage: 5,
+        status: ShipmentStatus.PENDING,
+      },
+    });
+    await assignVehicleAndDriver(supplierCtx, {
+      shipmentId: shipment.id,
+      vehicleId: vehicle.id,
+      driverId: driver.id,
+      agreedPrice: AGREED_PRICE,
+    });
+    await approvePriceDirectly(shipment.id);
+
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true, status: 200 });
+    vi.stubGlobal("fetch", fetchMock);
+
+    await advanceShipmentStatus(supplierCtx, {
+      shipmentId: shipment.id,
+      targetStatus: ShipmentStatus.HEADING_TO_PICKUP,
+    });
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(url).toBe("https://customer.example.com/webhooks/logigo");
+    const body = JSON.parse(init.body);
+    expect(body.from_status).toBe(ShipmentStatus.ASSIGNED);
+    expect(body.to_status).toBe(ShipmentStatus.HEADING_TO_PICKUP);
+    expect(body.shipment_id).toBe(shipment.id);
+  });
+
+  it("does not fire for a company with no webhook configured", async () => {
+    const ctx = await createSupplierContext();
+    const customer = await createTestCompany(CompanyType.CUSTOMER);
+    companyIds.push(ctx.companyId, customer.id);
+    const vehicle = await createTestVehicle(ctx.companyId);
+    const driver = await createTestDriver(ctx.companyId);
+    const shipment = await prisma.shipment.create({
+      data: {
+        customerCompanyId: customer.id,
+        supplierCompanyId: ctx.companyId,
+        originAddress: "A",
+        destinationAddress: "B",
+        distanceKm: 100,
+        tonnage: 5,
+        status: ShipmentStatus.PENDING,
+      },
+    });
+
+    await assignVehicleAndDriver(ctx, {
+      shipmentId: shipment.id,
+      vehicleId: vehicle.id,
+      driverId: driver.id,
+      agreedPrice: AGREED_PRICE,
+    });
+    await approvePriceDirectly(shipment.id);
+
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+
+    await advanceShipmentStatus(ctx, {
+      shipmentId: shipment.id,
+      targetStatus: ShipmentStatus.HEADING_TO_PICKUP,
+    });
+
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 });

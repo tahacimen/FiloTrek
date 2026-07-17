@@ -23,21 +23,39 @@ const shipmentListInclude = {
   },
 } as const;
 
-/** A shipment is visible to both the customer and the supplier side of it. */
-function tenantVisibilityFilter(ctx: TenantContext) {
+/**
+ * A shipment is visible to both the customer and the supplier side of it.
+ * Takes a bare companyId (not a TenantContext) since it's shared by the
+ * session-based dashboard queries below and the API-key-scoped read API
+ * (see api-key-context.ts) — an API key's whole notion of "my shipments"
+ * is exactly this same OR.
+ */
+function companyVisibilityFilter(companyId: string) {
   return {
-    OR: [
-      { customerCompanyId: ctx.companyId },
-      { supplierCompanyId: ctx.companyId },
-    ],
+    OR: [{ customerCompanyId: companyId }, { supplierCompanyId: companyId }],
   };
 }
 
 export function listShipmentsForTenant(ctx: TenantContext) {
   return prisma.shipment.findMany({
-    where: tenantVisibilityFilter(ctx),
+    where: companyVisibilityFilter(ctx.companyId),
     include: shipmentListInclude,
     orderBy: { createdAt: "desc" },
+  });
+}
+
+export function listShipmentsForCompanyId(companyId: string) {
+  return prisma.shipment.findMany({
+    where: companyVisibilityFilter(companyId),
+    include: shipmentListInclude,
+    orderBy: { createdAt: "desc" },
+  });
+}
+
+export function getShipmentForCompanyId(companyId: string, shipmentId: string) {
+  return prisma.shipment.findFirst({
+    where: { id: shipmentId, ...companyVisibilityFilter(companyId) },
+    include: shipmentListInclude,
   });
 }
 
@@ -80,7 +98,7 @@ export function getShipmentForCustomer(ctx: TenantContext, shipmentId: string) {
 
 export function getShipmentForTenant(ctx: TenantContext, shipmentId: string) {
   return prisma.shipment.findFirst({
-    where: { id: shipmentId, ...tenantVisibilityFilter(ctx) },
+    where: { id: shipmentId, ...companyVisibilityFilter(ctx.companyId) },
     include: shipmentListInclude,
   });
 }
@@ -224,7 +242,7 @@ export function proposeShipmentPrice(
   return prisma.shipment.updateMany({
     where: {
       id: shipmentId,
-      ...tenantVisibilityFilter(ctx),
+      ...companyVisibilityFilter(ctx.companyId),
       status: ShipmentStatus.ASSIGNED,
       priceApprovedAt: null,
     },
@@ -242,7 +260,7 @@ export function rejectShipmentPrice(ctx: TenantContext, shipmentId: string) {
   return prisma.shipment.updateMany({
     where: {
       id: shipmentId,
-      ...tenantVisibilityFilter(ctx),
+      ...companyVisibilityFilter(ctx.companyId),
       status: ShipmentStatus.ASSIGNED,
       priceApprovedAt: null,
     },
@@ -264,7 +282,7 @@ export function getOpenShipmentIncidentForTenant(
     where: {
       shipmentId,
       resolvedAt: null,
-      shipment: tenantVisibilityFilter(ctx),
+      shipment: companyVisibilityFilter(ctx.companyId),
     },
     include: { reportedByDriver: { select: { fullName: true } } },
     orderBy: { reportedAt: "desc" },

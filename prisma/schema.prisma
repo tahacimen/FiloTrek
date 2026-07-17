@@ -135,15 +135,26 @@ enum NotificationType {
 // ---------------------------------------------------------------------------
 
 model Company {
-  id        String        @id @default(uuid(7)) @db.Uuid
-  name      String
-  type      CompanyType
-  taxNumber String?       @unique @map("tax_number")
-  address   String?
-  phone     String?
-  status    CompanyStatus @default(ACTIVE)
-  createdAt DateTime      @default(now()) @map("created_at")
-  updatedAt DateTime      @updatedAt @map("updated_at")
+  id            String        @id @default(uuid(7)) @db.Uuid
+  name          String
+  type          CompanyType
+  taxNumber     String?       @unique @map("tax_number")
+  address       String?
+  phone         String?
+  status        CompanyStatus @default(ACTIVE)
+  // Read-only API access (see src/core/company/api-key-context.ts and
+  // src/app/api/v1/) — a company's own ADMIN generates/rotates this from
+  // /settings; shown in full only once, at generation time, same
+  // "shown-once secret" convention as Invitation.token.
+  apiKey        String?       @unique @map("api_key")
+  // Outbound status-change notifications (best-effort, single attempt —
+  // see advanceShipmentStatusCore in shipment-status.ts). Both null unless
+  // this company has configured them; webhookSecret signs the payload via
+  // src/lib/webhook-signing.ts, shown in full only once like apiKey above.
+  webhookUrl    String?       @map("webhook_url")
+  webhookSecret String?       @map("webhook_secret")
+  createdAt     DateTime      @default(now()) @map("created_at")
+  updatedAt     DateTime      @updatedAt @map("updated_at")
 
   users               User[]
   vehicles            Vehicle[]

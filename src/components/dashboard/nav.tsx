@@ -10,6 +10,7 @@ import {
   ClipboardList,
   Settings,
   ShieldCheck,
+  SlidersHorizontal,
   Warehouse,
   HandCoins,
 } from "lucide-react";
@@ -34,19 +35,28 @@ const customerNavItems = [
 
 export function DashboardNav({
   companyType,
+  companyRole,
   isPlatformAdmin,
 }: {
   companyType: "SUPPLIER" | "CUSTOMER";
+  companyRole: "ADMIN" | "MEMBER";
   isPlatformAdmin?: boolean;
 }) {
   const pathname = usePathname();
   const baseItems =
     companyType === "SUPPLIER" ? supplierNavItems : customerNavItems;
-  // Platform-wide, not per-company — visible regardless of companyType (see
-  // requirePlatformAdmin in authorization.ts).
-  const items = isPlatformAdmin
-    ? [...baseItems, { href: "/admin", label: "Yönetim", icon: Settings }]
+  // Own-company settings (API key/webhook), ADMIN-only per company — see
+  // /settings and requireAdmin in authorization.ts. Distinct from Yönetim
+  // below, which is platform-wide, not per-company.
+  const withSettings = companyRole === "ADMIN"
+    ? [
+        ...baseItems,
+        { href: "/settings", label: "Ayarlar", icon: SlidersHorizontal },
+      ]
     : baseItems;
+  const items = isPlatformAdmin
+    ? [...withSettings, { href: "/admin", label: "Yönetim", icon: Settings }]
+    : withSettings;
 
   return (
     <nav className="flex flex-col gap-1 p-3">

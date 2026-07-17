@@ -24,6 +24,7 @@ import {
 } from "@/core/shipment/shipment-transitions";
 import * as companyRepository from "@/core/company/company-repository";
 import * as notificationService from "@/core/notification/notification-service";
+import { dispatchShipmentStatusWebhook } from "@/core/integration/webhook-dispatch";
 import { saveUploadedPhoto } from "@/lib/file-storage";
 
 export { SHIPMENT_ALLOWED_TRANSITIONS };
@@ -170,10 +171,13 @@ async function advanceShipmentStatusCore(params: {
   /** Only ever applied to the SHIPMENT entity's own history row, never Vehicle/Driver. */
   photoUrl?: string | null;
 }): Promise<Shipment> {
-  return prisma.$transaction(async (tx) => {
+  let fromStatus: ShipmentStatus | undefined;
+
+  const updatedShipment = await prisma.$transaction(async (tx) => {
     const shipment = await params.findShipment(tx);
     if (!shipment) throw new NotFoundError("Sefer bulunamadı.");
     assertTransitionAllowed(shipment.status, params.targetStatus);
+    fromStatus = shipment.status;
 
     // The vehicle can't be sent off to load until the customer has agreed
     // to the price proposed at assignment time — see approvePrice in
@@ -253,6 +257,20 @@ async function advanceShipmentStatusCore(params: {
 
     return updatedShipment;
   });
+
+  // Best-effort, post-commit — see dispatchShipmentStatusWebhook's own
+  // doc comment. Every status-change path that goes through this shared
+  // core function gets this for free; assignVehicleAndDriver's PENDING ->
+  // ASSIGNED and cancelShipment's -> CANCELLED transitions run their own
+  // separate transactions and deliberately don't (see the module comment
+  // on webhook-dispatch.ts for the scoping rationale).
+  try {
+    await dispatchShipmentStatusWebhook(updatedShipment, fromStatus!, params.targetStatus);
+  } catch (error) {
+    console.error("Webhook gönderimi başarısız:", error);
+  }
+
+  return updatedShipment;
 }
 
 /**
