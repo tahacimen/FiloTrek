@@ -228,7 +228,7 @@ describe("marketplace-service: acceptBid", () => {
     ).rejects.toThrow(NotFoundError);
   });
 
-  it("requires a fresh customer approval after assignment, even though accepting the bid already approved that price", async () => {
+  it("keeps the accepted bid price + approval on assignment — the supplier isn't re-asked and any passed price is ignored", async () => {
     const customerCtx = await createCustomerContext();
     const supplierCtx = await createSupplierContext();
     companyIds.push(customerCtx.companyId, supplierCtx.companyId);
@@ -248,18 +248,44 @@ describe("marketplace-service: acceptBid", () => {
 
     const vehicle = await createTestVehicle(supplierCtx.companyId);
     const driver = await createTestDriver(supplierCtx.companyId);
+    // Even if a different price is somehow submitted, a bid-accepted shipment
+    // keeps the agreed price and its approval — the price stage is skipped at
+    // assignment for these.
     const assigned = await assignVehicleAndDriver(supplierCtx, {
       shipmentId: shipment.id,
       vehicleId: vehicle.id,
       driverId: driver.id,
-      // A different price than the accepted bid — without clearing
-      // priceApprovedAt on assignment, this would silently take effect as
-      // "already approved" despite the customer never having agreed to it.
       agreedPrice: 13000,
     });
 
-    expect(assigned.agreedPrice?.toNumber()).toBe(13000);
-    expect(assigned.priceApprovedAt).toBeNull();
+    expect(assigned.agreedPrice?.toNumber()).toBe(12000);
+    expect(assigned.priceApprovedAt).not.toBeNull();
+  });
+
+  it("lets the winning supplier assign without passing a price at all", async () => {
+    const customerCtx = await createCustomerContext();
+    const supplierCtx = await createSupplierContext();
+    companyIds.push(customerCtx.companyId, supplierCtx.companyId);
+
+    const shipment = await shipmentService.createShipmentRequest(customerCtx, {
+      ...baseFields,
+    });
+    const bid = await marketplaceService.submitBid(supplierCtx, shipment.id, {
+      price: 12000,
+    });
+    await marketplaceService.acceptBid(customerCtx, shipment.id, bid.id);
+
+    const vehicle = await createTestVehicle(supplierCtx.companyId);
+    const driver = await createTestDriver(supplierCtx.companyId);
+    const assigned = await assignVehicleAndDriver(supplierCtx, {
+      shipmentId: shipment.id,
+      vehicleId: vehicle.id,
+      driverId: driver.id,
+    });
+
+    expect(assigned.status).toBe("ASSIGNED");
+    expect(assigned.agreedPrice?.toNumber()).toBe(12000);
+    expect(assigned.priceApprovedAt).not.toBeNull();
   });
 
   it("rejects re-accepting once the shipment is no longer open (already has a supplier)", async () => {

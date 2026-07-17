@@ -23,12 +23,18 @@ export async function assignShipmentAction(
   if (typeof driverId !== "string" || !driverId) {
     return { error: "Bir şoför seçin." };
   }
-  if (typeof agreedPriceRaw !== "string" || !agreedPriceRaw) {
-    return { error: "Nakliye fiyatı girin." };
-  }
-  const agreedPrice = Number(agreedPriceRaw);
-  if (!Number.isFinite(agreedPrice) || agreedPrice <= 0) {
-    return { error: "Geçerli bir nakliye fiyatı girin." };
+
+  // Price is optional here: a bid-accepted shipment already has an agreed
+  // price, so the dialog omits the field entirely. When present it's still
+  // validated; when absent the service keeps the already-agreed price (and
+  // enforces the "required" rule for the direct-request flow).
+  let agreedPrice: number | undefined;
+  if (typeof agreedPriceRaw === "string" && agreedPriceRaw.length > 0) {
+    const parsed = Number(agreedPriceRaw);
+    if (!Number.isFinite(parsed) || parsed <= 0) {
+      return { error: "Geçerli bir nakliye fiyatı girin." };
+    }
+    agreedPrice = parsed;
   }
 
   try {

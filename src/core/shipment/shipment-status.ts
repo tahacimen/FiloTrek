@@ -47,106 +47,129 @@ export async function assignVehicleAndDriver(
     shipmentId: string;
     vehicleId: string;
     driverId: string;
-    agreedPrice: number;
+    // Optional: only the direct-request flow needs it (the supplier proposes
+    // a price at assignment time). A marketplace shipment whose bid was
+    // already accepted arrives here with an agreed+approved price, so the
+    // supplier isn't asked again and any value passed here is ignored.
+    agreedPrice?: number;
   }
 ) {
   requireCompanyType(ctx, CompanyType.SUPPLIER);
-  if (!(params.agreedPrice > 0)) {
-    throw new ValidationError("Nakliye fiyatı pozitif bir değer olmalı.");
-  }
 
-  const updatedShipment = await prisma.$transaction(async (tx) => {
-    const shipment = await tx.shipment.findFirst({
-      where: { id: params.shipmentId, supplierCompanyId: ctx.companyId },
-    });
-    if (!shipment) throw new NotFoundError("Sefer bulunamadı.");
-    assertTransitionAllowed(shipment.status, ShipmentStatus.ASSIGNED);
+  const { updatedShipment, proposedAmount } = await prisma.$transaction(
+    async (tx) => {
+      const shipment = await tx.shipment.findFirst({
+        where: { id: params.shipmentId, supplierCompanyId: ctx.companyId },
+      });
+      if (!shipment) throw new NotFoundError("Sefer bulunamadı.");
+      assertTransitionAllowed(shipment.status, ShipmentStatus.ASSIGNED);
 
-    const vehicle = await tx.vehicle.findFirst({
-      where: { id: params.vehicleId, companyId: ctx.companyId },
-    });
-    if (!vehicle) throw new NotFoundError("Araç bulunamadı.");
-    if (vehicle.status !== VehicleStatus.AVAILABLE) {
-      throw new ValidationError("Seçilen araç şu anda müsait değil.");
+      // A non-null agreedPrice at this point can only come from an accepted
+      // marketplace bid (acceptBid sets agreedPrice + priceApprovedAt before
+      // the winning supplier assigns) — price negotiation otherwise happens
+      // only AFTER assignment. So this cleanly distinguishes "price already
+      // agreed, don't touch it" from the direct-request flow where the
+      // supplier proposes the price here.
+      const priceAlreadyAgreed = shipment.agreedPrice !== null;
+      if (
+        !priceAlreadyAgreed &&
+        !(typeof params.agreedPrice === "number" && params.agreedPrice > 0)
+      ) {
+        throw new ValidationError("Nakliye fiyatı pozitif bir değer olmalı.");
+      }
+
+      const vehicle = await tx.vehicle.findFirst({
+        where: { id: params.vehicleId, companyId: ctx.companyId },
+      });
+      if (!vehicle) throw new NotFoundError("Araç bulunamadı.");
+      if (vehicle.status !== VehicleStatus.AVAILABLE) {
+        throw new ValidationError("Seçilen araç şu anda müsait değil.");
+      }
+
+      const driver = await tx.driver.findFirst({
+        where: { id: params.driverId, companyId: ctx.companyId },
+      });
+      if (!driver) throw new NotFoundError("Şoför bulunamadı.");
+      if (driver.status !== DriverStatus.AVAILABLE) {
+        throw new ValidationError("Seçilen şoför şu anda müsait değil.");
+      }
+
+      const updatedShipment = await tx.shipment.update({
+        where: { id: shipment.id },
+        data: {
+          status: ShipmentStatus.ASSIGNED,
+          vehicleId: vehicle.id,
+          driverId: driver.id,
+          // Price already agreed (accepted bid) → leave agreedPrice,
+          // priceProposedBy and priceApprovedAt exactly as the bid
+          // acceptance set them. Direct flow → the supplier's fresh proposal,
+          // awaiting the customer's approval.
+          ...(priceAlreadyAgreed
+            ? {}
+            : {
+                agreedPrice: params.agreedPrice,
+                priceProposedBy: CompanyType.SUPPLIER,
+                priceApprovedAt: null,
+              }),
+        },
+      });
+      await tx.vehicle.update({
+        where: { id: vehicle.id },
+        data: { status: VehicleStatus.ASSIGNED },
+      });
+      await tx.driver.update({
+        where: { id: driver.id },
+        data: { status: DriverStatus.ON_TRIP },
+      });
+
+      await recordStatusChange(tx, {
+        entityType: StatusEntityType.SHIPMENT,
+        entityId: shipment.id,
+        fromStatus: shipment.status,
+        toStatus: ShipmentStatus.ASSIGNED,
+        changedByUserId: ctx.userId,
+        source: StatusChangeSource.MANUAL,
+      });
+      await recordStatusChange(tx, {
+        entityType: StatusEntityType.VEHICLE,
+        entityId: vehicle.id,
+        fromStatus: vehicle.status,
+        toStatus: VehicleStatus.ASSIGNED,
+        changedByUserId: ctx.userId,
+        source: StatusChangeSource.MANUAL,
+      });
+      await recordStatusChange(tx, {
+        entityType: StatusEntityType.DRIVER,
+        entityId: driver.id,
+        fromStatus: driver.status,
+        toStatus: DriverStatus.ON_TRIP,
+        changedByUserId: ctx.userId,
+        source: StatusChangeSource.MANUAL,
+      });
+
+      return {
+        updatedShipment,
+        proposedAmount: priceAlreadyAgreed ? null : params.agreedPrice!,
+      };
     }
+  );
 
-    const driver = await tx.driver.findFirst({
-      where: { id: params.driverId, companyId: ctx.companyId },
-    });
-    if (!driver) throw new NotFoundError("Şoför bulunamadı.");
-    if (driver.status !== DriverStatus.AVAILABLE) {
-      throw new ValidationError("Seçilen şoför şu anda müsait değil.");
+  // Only the direct-request flow proposes a new price here; a bid-accepted
+  // shipment's price was already agreed, so there's nothing to notify about.
+  if (proposedAmount != null) {
+    try {
+      const supplierCompany = await companyRepository.getCompanyById(
+        ctx.companyId
+      );
+      await notificationService.notifyPriceProposed({
+        recipientCompanyId: updatedShipment.customerCompanyId,
+        proposerCompanyName: supplierCompany?.name ?? "Tedarikçi",
+        amount: proposedAmount,
+        shipment: updatedShipment,
+      });
+    } catch (error) {
+      console.error("Fiyat teklifi bildirimi oluşturulamadı:", error);
     }
-
-    const updatedShipment = await tx.shipment.update({
-      where: { id: shipment.id },
-      data: {
-        status: ShipmentStatus.ASSIGNED,
-        vehicleId: vehicle.id,
-        driverId: driver.id,
-        agreedPrice: params.agreedPrice,
-        priceProposedBy: CompanyType.SUPPLIER,
-        // Always a fresh proposal awaiting the customer's approval — this
-        // was already implicitly true pre-bidding (agreedPrice/
-        // priceApprovedAt were always null going into this call), but an
-        // accepted marketplace bid now sets priceApprovedAt *before*
-        // assignment (see acceptBid in marketplace-service.ts), so without
-        // this the customer's original bid-acceptance approval would stick
-        // around even if the supplier enters a different price here.
-        priceApprovedAt: null,
-      },
-    });
-    await tx.vehicle.update({
-      where: { id: vehicle.id },
-      data: { status: VehicleStatus.ASSIGNED },
-    });
-    await tx.driver.update({
-      where: { id: driver.id },
-      data: { status: DriverStatus.ON_TRIP },
-    });
-
-    await recordStatusChange(tx, {
-      entityType: StatusEntityType.SHIPMENT,
-      entityId: shipment.id,
-      fromStatus: shipment.status,
-      toStatus: ShipmentStatus.ASSIGNED,
-      changedByUserId: ctx.userId,
-      source: StatusChangeSource.MANUAL,
-    });
-    await recordStatusChange(tx, {
-      entityType: StatusEntityType.VEHICLE,
-      entityId: vehicle.id,
-      fromStatus: vehicle.status,
-      toStatus: VehicleStatus.ASSIGNED,
-      changedByUserId: ctx.userId,
-      source: StatusChangeSource.MANUAL,
-    });
-    await recordStatusChange(tx, {
-      entityType: StatusEntityType.DRIVER,
-      entityId: driver.id,
-      fromStatus: driver.status,
-      toStatus: DriverStatus.ON_TRIP,
-      changedByUserId: ctx.userId,
-      source: StatusChangeSource.MANUAL,
-    });
-
-    return updatedShipment;
-  });
-
-  // Best-effort, post-commit — same rationale as the HEADING_TO_PICKUP hook
-  // in advanceShipmentStatus below.
-  try {
-    const supplierCompany = await companyRepository.getCompanyById(
-      ctx.companyId
-    );
-    await notificationService.notifyPriceProposed({
-      recipientCompanyId: updatedShipment.customerCompanyId,
-      proposerCompanyName: supplierCompany?.name ?? "Tedarikçi",
-      amount: params.agreedPrice,
-      shipment: updatedShipment,
-    });
-  } catch (error) {
-    console.error("Fiyat teklifi bildirimi oluşturulamadı:", error);
   }
 
   return updatedShipment;

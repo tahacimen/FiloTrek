@@ -36,11 +36,14 @@ export function AssignDialog({
   route,
   availableVehicles,
   availableDrivers,
+  agreedPrice,
 }: {
   shipmentId: string;
   route: string;
   availableVehicles: SerializableVehicle[];
   availableDrivers: SerializableDriver[];
+  /** Non-null when the price is already agreed (an accepted marketplace bid) — the dialog then skips asking for a price. */
+  agreedPrice: number | null;
 }) {
   const [open, setOpen] = useState(false);
   const [state, formAction, isPending] = useActionState<
@@ -119,17 +122,31 @@ export function AssignDialog({
                 </SelectContent>
               </Select>
             </div>
-            <div className="flex flex-col gap-2">
-              <Label htmlFor={`price-${shipmentId}`}>Nakliye Fiyatı (₺)</Label>
-              <Input
-                id={`price-${shipmentId}`}
-                name="agreedPrice"
-                type="number"
-                step="0.01"
-                min="0.01"
-                required
-              />
-            </div>
+            {agreedPrice === null ? (
+              <div className="flex flex-col gap-2">
+                <Label htmlFor={`price-${shipmentId}`}>Nakliye Fiyatı (₺)</Label>
+                <Input
+                  id={`price-${shipmentId}`}
+                  name="agreedPrice"
+                  type="number"
+                  step="0.01"
+                  min="0.01"
+                  required
+                />
+              </div>
+            ) : (
+              <div className="bg-muted/40 flex flex-col gap-1 rounded-lg border p-3">
+                <span className="text-muted-foreground text-xs">
+                  Anlaşılan Nakliye Fiyatı
+                </span>
+                <span className="text-lg font-semibold">
+                  {agreedPrice.toLocaleString("tr-TR")} ₺
+                </span>
+                <span className="text-muted-foreground text-xs">
+                  Kabul edilen teklif — atama sırasında yeniden sorulmaz.
+                </span>
+              </div>
+            )}
             {state?.error && (
               <p className="text-sm text-destructive" role="alert">
                 {state.error}

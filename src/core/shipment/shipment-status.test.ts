@@ -102,6 +102,18 @@ describe("shipment status state machine", () => {
     ).rejects.toThrow(ValidationError);
   });
 
+  it("requires a price in the direct-request flow (no accepted bid) when none is provided", async () => {
+    const { ctx, vehicle, driver, shipment } = await setupPendingShipment();
+
+    await expect(
+      assignVehicleAndDriver(ctx, {
+        shipmentId: shipment.id,
+        vehicleId: vehicle.id,
+        driverId: driver.id,
+      })
+    ).rejects.toThrow(ValidationError);
+  });
+
   it("rejects assignment when the vehicle is not available", async () => {
     const { ctx, driver, shipment } = await setupPendingShipment();
     const busyVehicle = await createTestVehicle(ctx.companyId, {

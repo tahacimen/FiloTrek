@@ -70,6 +70,9 @@ export default async function AssignPage() {
                     route={`${shipment.originAddress} → ${shipment.destinationAddress}`}
                     availableVehicles={availableVehicles}
                     availableDrivers={availableDrivers}
+                    agreedPrice={
+                      shipment.agreedPrice ? shipment.agreedPrice.toNumber() : null
+                    }
                   />
                 </div>
               ))}
