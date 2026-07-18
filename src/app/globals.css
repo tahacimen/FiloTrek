@@ -135,3 +135,92 @@
     font-family: var(--font-geist-sans), system-ui, sans-serif;
   }
 }
+
+/*
+ * Landing "magic" motion katmanı — ambient (arka planda sürekli dönen) ve
+ * scroll-reveal (görünüme girince beliren) hareketler. Hepsi saf CSS /
+ * IntersectionObserver ile; ek kütüphane yok. Sıkı CSP ile uyumlu:
+ * style-src 'unsafe-inline' açık, script-src nonce'lu (Next client
+ * component'leri kendi script'lerini otomatik imzalar).
+ */
+
+/* Hero'daki yol çizgilerini yatay kaydırır — "hareket eden zemin" hissi. */
+@keyframes logigo-road {
+  from {
+    background-position: 0 0;
+  }
+  to {
+    background-position: 88px 0;
+  }
+}
+.logigo-road {
+  animation: logigo-road 2.4s linear infinite;
+}
+
+/* Süzülen nesneler (tır ikonu, rozetler) için yumuşak yukarı-aşağı salınım. */
+@keyframes logigo-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+.logigo-float {
+  animation: logigo-float 4s ease-in-out infinite;
+}
+.logigo-float-slow {
+  animation: logigo-float 6s ease-in-out infinite;
+}
+
+/* Yavaşça sağa-sola süzülen dekoratif "geçen araç" şeridi. */
+@keyframes logigo-drift {
+  0% {
+    transform: translateX(-8%);
+  }
+  50% {
+    transform: translateX(8%);
+  }
+  100% {
+    transform: translateX(-8%);
+  }
+}
+.logigo-drift {
+  animation: logigo-drift 9s ease-in-out infinite;
+}
+
+/*
+ * Reveal bileşeninin başlangıç (gizli) durumu. JS görünürlüğü tespit edince
+ * .is-visible ekler; geçiş buradaki transition ile olur. JS çalışmazsa
+ * (no-JS / hata) içerik yine görünür kalsın diye görünürlüğü .no-js-safe
+ * fallback'iyle değil, doğrudan IntersectionObserver'ın ilk tetiklenmesiyle
+ * garanti ediyoruz (bkz. reveal.tsx — mount'ta bir kez zorlar).
+ */
+.logigo-reveal {
+  opacity: 0;
+  transform: translateY(24px);
+  transition:
+    opacity 0.7s cubic-bezier(0.22, 1, 0.36, 1),
+    transform 0.7s cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: opacity, transform;
+}
+.logigo-reveal.is-visible {
+  opacity: 1;
+  transform: none;
+}
+
+/* Erişilebilirlik: hareket azaltma tercihinde tüm ambient + reveal durur. */
+@media (prefers-reduced-motion: reduce) {
+  .logigo-road,
+  .logigo-float,
+  .logigo-float-slow,
+  .logigo-drift {
+    animation: none !important;
+  }
+  .logigo-reveal {
+    opacity: 1 !important;
+    transform: none !important;
+    transition: none !important;
+  }
+}

@@ -24,6 +24,8 @@ import {
 } from "lucide-react";
 
 import { Logo } from "@/components/logo";
+import { Reveal } from "@/components/motion/reveal";
+import { CountUp } from "@/components/motion/count-up";
 
 // Forces per-request rendering rather than a build-time static export — this
 // page has no dynamic data of its own, but the strict CSP in proxy.ts stamps
@@ -60,10 +62,20 @@ const SERVICES = [
   { label: "Ekspres Gönderi", icon: Zap, brand: true },
 ];
 
-const STATS = [
-  { value: "500+", label: "aktif firma", sub: "tedarikçi ve müşteri tek platformda" },
-  { value: "12 dk", label: "ortalama eşleşme", sub: "yük ilanından araç atamasına" },
-  { value: "%98", label: "müşteri memnuniyeti", sub: "zamanında ve eksiksiz teslimat" },
+type Stat = {
+  label: string;
+  sub: string;
+  value?: string;
+  prefix?: string;
+  to?: number;
+  suffix?: string;
+  brandSuffix?: boolean;
+};
+
+const STATS: Stat[] = [
+  { to: 500, suffix: "+", brandSuffix: true, label: "aktif firma", sub: "tedarikçi ve müşteri tek platformda" },
+  { to: 12, suffix: " dk", label: "ortalama eşleşme", sub: "yük ilanından araç atamasına" },
+  { prefix: "%", to: 98, label: "müşteri memnuniyeti", sub: "zamanında ve eksiksiz teslimat" },
   { value: "7/24", label: "canlı takip", sub: "sürücü, araç ve sevkiyat izleme" },
 ];
 
@@ -101,8 +113,17 @@ export default function LandingPage() {
 
       {/* HERO */}
       <section className="relative overflow-hidden bg-[#1e1e1e]">
-        <div className="absolute inset-0 bg-[repeating-linear-gradient(115deg,#242424,#242424_22px,#2c2c2c_22px,#2c2c2c_44px)]" />
+        <div className="logigo-road absolute inset-0 bg-[repeating-linear-gradient(115deg,#242424,#242424_22px,#2c2c2c_22px,#2c2c2c_44px)]" />
         <div className="absolute inset-0 bg-[linear-gradient(100deg,#1e1e1e_34%,rgba(24,24,24,0.72)_52%,rgba(24,24,24,0.15)_82%)]" />
+        {/* Süzülen dekoratif nesneler — arka planda yavaşça hareket eder */}
+        <Truck
+          aria-hidden
+          className="logigo-float pointer-events-none absolute -top-6 right-4 size-44 text-white/[0.05] sm:right-20 sm:size-64"
+        />
+        <Package
+          aria-hidden
+          className="logigo-float-slow pointer-events-none absolute bottom-8 right-[38%] hidden size-16 text-white/[0.04] lg:block"
+        />
         <div className="relative mx-auto max-w-[1240px] px-5 pb-16 pt-12 sm:px-8 sm:pb-[72px] sm:pt-14">
           <div className="mb-7 flex flex-col justify-between gap-4 md:flex-row md:items-start">
             <h1 className="max-w-[640px] text-[34px] font-extrabold leading-[1.08] tracking-tight text-white sm:text-[52px]">
@@ -116,7 +137,7 @@ export default function LandingPage() {
 
           <div className="grid max-w-[1010px] gap-5 lg:grid-cols-[1fr_340px]">
             {/* login card */}
-            <div className="rounded-2xl bg-white p-6 shadow-[0_24px_60px_rgba(0,0,0,0.38)] sm:p-7">
+            <Reveal className="rounded-2xl bg-white p-6 shadow-[0_24px_60px_rgba(0,0,0,0.38)] sm:p-7">
               <div className="mb-4 flex items-center gap-2 text-[19px] font-bold text-[#1a1a1a]">
                 <Truck className="size-5 text-[#1e1e1e]" />
                 Sisteme Giriş Yap
@@ -159,10 +180,10 @@ export default function LandingPage() {
                   Demo talep edin →
                 </a>
               </div>
-            </div>
+            </Reveal>
 
             {/* right column */}
-            <div className="flex flex-col gap-3.5">
+            <Reveal className="flex flex-col gap-3.5" delay={140}>
               <a
                 href="#iletisim"
                 className="rounded-2xl bg-[#f5b301] p-5 text-[#1a1a1a] shadow-[0_18px_40px_rgba(245,179,1,0.4)] transition hover:bg-[#e0a400]"
@@ -202,7 +223,7 @@ export default function LandingPage() {
                   </button>
                 </form>
               </div>
-            </div>
+            </Reveal>
           </div>
         </div>
       </section>
@@ -211,23 +232,26 @@ export default function LandingPage() {
       <section className="border-b border-[#ece9e3] bg-[#f5f5f3]">
         <div className="mx-auto grid max-w-[1240px] grid-cols-2 gap-y-8 px-5 py-12 sm:px-8 md:grid-cols-4 md:gap-6">
           {STATS.map((s, i) => (
-            <div
+            <Reveal
               key={s.label}
+              delay={i * 110}
               className={`text-center ${i > 0 ? "md:border-l md:border-[#e8e6e0]" : ""}`}
             >
               <div className="text-[38px] font-extrabold leading-none tracking-tight text-[#1e1e1e] sm:text-[48px]">
-                {s.value.includes("+") ? (
-                  <>
-                    {s.value.replace("+", "")}
-                    <span className="text-[#f5b301]">+</span>
-                  </>
-                ) : (
+                {s.value ? (
                   s.value
+                ) : (
+                  <CountUp
+                    to={s.to!}
+                    prefix={s.prefix}
+                    suffix={s.suffix}
+                    suffixClassName={s.brandSuffix ? "text-[#f5b301]" : undefined}
+                  />
                 )}
               </div>
               <div className="mt-1 text-[15px] font-bold text-[#2a3350]">{s.label}</div>
               <div className="mt-1.5 text-[13px] leading-snug text-[#7b8399]">{s.sub}</div>
-            </div>
+            </Reveal>
           ))}
         </div>
       </section>
@@ -240,10 +264,11 @@ export default function LandingPage() {
             Nasıl Çalışır
           </div>
           <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {STEPS.map((step) => (
-              <div
+            {STEPS.map((step, i) => (
+              <Reveal
                 key={step.n}
-                className="flex items-center gap-4 rounded-2xl border-[1.5px] border-[#e8e6e0] bg-white p-4 shadow-[0_12px_28px_rgba(20,40,90,0.08)]"
+                delay={i * 90}
+                className="flex items-center gap-4 rounded-2xl border-[1.5px] border-[#e8e6e0] bg-white p-4 shadow-[0_12px_28px_rgba(20,40,90,0.08)] transition-transform duration-300 hover:-translate-y-1 hover:shadow-[0_18px_36px_rgba(20,40,90,0.14)]"
               >
                 <div
                   className={`flex size-11 shrink-0 items-center justify-center rounded-full text-[17px] font-extrabold ${
@@ -260,7 +285,7 @@ export default function LandingPage() {
                     {step.title}
                   </span>
                 </div>
-              </div>
+              </Reveal>
             ))}
           </div>
         </div>
@@ -269,16 +294,16 @@ export default function LandingPage() {
       {/* HAKKIMIZDA */}
       <section id="hakkimizda" className="bg-[#f5f5f3]">
         <div className="mx-auto grid max-w-[1240px] items-center gap-10 px-5 py-16 sm:px-8 lg:grid-cols-[0.9fr_1.1fr] lg:gap-14">
-          <div className="relative aspect-[16/11] overflow-hidden rounded-[18px] shadow-[0_20px_50px_rgba(0,0,0,0.15)]">
+          <Reveal className="relative aspect-[16/11] overflow-hidden rounded-[18px] shadow-[0_20px_50px_rgba(0,0,0,0.15)]">
             <Image
               src="/logigo_branded_global_image.png"
               alt="Logigo lojistik filosu — kara, hava ve deniz taşımacılığı"
               fill
               sizes="(max-width: 1024px) 100vw, 45vw"
-              className="object-cover"
+              className="object-cover transition-transform duration-700 hover:scale-105"
             />
-          </div>
-          <div>
+          </Reveal>
+          <Reveal delay={120}>
             <div className="mb-3.5 text-[13px] font-bold uppercase tracking-[1.5px] text-[#f5b301]">
               Logigo Hakkında
             </div>
@@ -310,26 +335,26 @@ export default function LandingPage() {
                 Bize Ulaşın
               </a>
             </div>
-          </div>
+          </Reveal>
         </div>
       </section>
 
       {/* HIZMETLER */}
       <section id="hizmetler" className="bg-white">
         <div className="mx-auto max-w-[1240px] px-5 py-16 sm:px-8">
-          <div className="mb-11 text-center">
+          <Reveal className="mb-11 text-center">
             <div className="mb-3 text-[13px] font-bold uppercase tracking-[1.5px] text-[#f5b301]">
               Taşıma Çözümlerimiz
             </div>
             <h2 className="text-[28px] font-extrabold tracking-tight text-[#1a1a1a] sm:text-[34px]">
               Her yüke uygun taşıma tipi
             </h2>
-          </div>
+          </Reveal>
           <div className="grid grid-cols-2 gap-5 sm:grid-cols-3 lg:grid-cols-5">
-            {SERVICES.map((s) => (
-              <div key={s.label} className="text-center">
+            {SERVICES.map((s, i) => (
+              <Reveal key={s.label} delay={i * 90} className="group text-center">
                 <div
-                  className={`mx-auto mb-4 flex size-[78px] items-center justify-center rounded-[20px] ${
+                  className={`mx-auto mb-4 flex size-[78px] items-center justify-center rounded-[20px] transition-transform duration-300 group-hover:-translate-y-1.5 group-hover:scale-105 ${
                     s.brand ? "bg-[#fff6d9] text-[#f5b301]" : "bg-[#f6f1e2] text-[#1e1e1e]"
                   }`}
                 >
@@ -338,7 +363,7 @@ export default function LandingPage() {
                 <div className="rounded-[11px] border border-[#ece9e3] bg-[#f5f5f3] px-2.5 py-3 text-sm font-semibold leading-snug text-[#2a3350]">
                   {s.label}
                 </div>
-              </div>
+              </Reveal>
             ))}
           </div>
         </div>
