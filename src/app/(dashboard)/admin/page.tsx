@@ -2,11 +2,13 @@ import { redirect } from "next/navigation";
 
 import { requireTenantContext } from "@/core/shared/tenant-context";
 import { listInvitations } from "@/core/invitation/invitation-service";
+import { listSignupRequests } from "@/core/signup/signup-service";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getRequestOrigin } from "@/lib/request-origin";
 import { InvitationFormDialog } from "@/app/(dashboard)/admin/invitation-form-dialog";
 import { ManualAccountFormDialog } from "@/app/(dashboard)/admin/manual-account-form-dialog";
 import { InvitationTable } from "@/app/(dashboard)/admin/invitation-table";
+import { SignupRequestTable } from "@/app/(dashboard)/admin/signup-request-table";
 
 export default async function AdminPage() {
   const ctx = await requireTenantContext();
@@ -14,8 +16,9 @@ export default async function AdminPage() {
     redirect("/dashboard");
   }
 
-  const [invitations, origin] = await Promise.all([
+  const [invitations, signupRequests, origin] = await Promise.all([
     listInvitations(ctx),
+    listSignupRequests(ctx),
     getRequestOrigin(),
   ]);
 
@@ -28,6 +31,10 @@ export default async function AdminPage() {
     expiresAt: invitation.expiresAt,
     invitationUrl: `${origin}/davet/${invitation.token}`,
   }));
+
+  const pendingSignupCount = signupRequests.filter(
+    (r) => r.status === "PENDING"
+  ).length;
 
   return (
     <div className="flex flex-col gap-6">
@@ -44,6 +51,20 @@ export default async function AdminPage() {
           <InvitationFormDialog />
         </div>
       </div>
+      <Card>
+        <CardHeader>
+          <CardTitle>
+            Kayıt Talepleri
+            {pendingSignupCount > 0 && (
+              <span className="text-brand"> ({pendingSignupCount} bekliyor)</span>
+            )}
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <SignupRequestTable requests={signupRequests} />
+        </CardContent>
+      </Card>
+
       <Card>
         <CardHeader>
           <CardTitle>Tüm Davetler ({rows.length})</CardTitle>

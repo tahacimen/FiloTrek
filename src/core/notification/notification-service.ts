@@ -198,6 +198,30 @@ export async function notifyInvitation(params: {
 }
 
 /**
+ * Best-effort fan-out to every platform admin's company when a visitor
+ * submits the public "Kaydol" form — see createSignupRequest in
+ * signup-service.ts, which must never let a notification failure fail the
+ * applicant's submission. Each admin company gets its own bell entry.
+ */
+export async function notifySignupRequest(params: {
+  adminCompanyIds: string[];
+  companyName: string;
+  fullName: string;
+  email: string;
+}) {
+  const message = `Yeni kayıt talebi: ${params.companyName} (${params.fullName}, ${params.email}).`;
+  await Promise.all(
+    params.adminCompanyIds.map((companyId) =>
+      notificationRepository.createNotification({
+        companyId,
+        type: NotificationType.SIGNUP_REQUESTED,
+        message,
+      })
+    )
+  );
+}
+
+/**
  * Best-effort side effect of the supplier advancing a shipment to
  * HEADING_TO_PICKUP — see the hook in shipment-status.ts's
  * advanceShipmentStatus for why a notification failure must never fail that

@@ -128,6 +128,7 @@ enum NotificationType {
   BID_SUBMITTED
   BID_ACCEPTED
   BID_REJECTED
+  SIGNUP_REQUESTED
 }
 
 // ---------------------------------------------------------------------------
@@ -239,6 +240,37 @@ model Invitation {
 
   @@index([token])
   @@map("invitations")
+}
+
+enum SignupRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+/**
+ * A public "başvuru" (application), NOT an account. The landing page's
+ * "Kaydol" form writes one of these; it never creates a Company/User on its
+ * own — that still happens only through Invitation / createAccountDirectly by
+ * a platform admin (see the comment above Invitation, which this does not
+ * contradict). Its whole job is to notify the platform admin that someone
+ * wants in, carry the details they'd need to then create the account, and let
+ * the admin mark it handled (APPROVED) or dismiss it (REJECTED).
+ */
+model SignupRequest {
+  id          String              @id @default(uuid(7)) @db.Uuid
+  companyName String              @map("company_name")
+  fullName    String              @map("full_name")
+  email       String
+  phone       String?
+  role        InvitationRole
+  message     String?
+  status      SignupRequestStatus @default(PENDING)
+  createdAt   DateTime            @default(now()) @map("created_at")
+  updatedAt   DateTime            @updatedAt @map("updated_at")
+
+  @@index([status, createdAt])
+  @@map("signup_requests")
 }
 
 model Vehicle {

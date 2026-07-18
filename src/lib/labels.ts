@@ -6,6 +6,7 @@ import {
   InvitationRole,
   InvitationStatus,
   ShipmentStatus,
+  SignupRequestStatus,
   VehicleBedType,
   VehicleStatus,
   VehicleType,
@@ -125,6 +126,21 @@ export const invitationStatusBadgeVariant: Record<
   [InvitationStatus.PENDING]: "warning",
   [InvitationStatus.ACCEPTED]: "success",
   [InvitationStatus.REVOKED]: "destructive",
+};
+
+export const signupRequestStatusLabels: Record<SignupRequestStatus, string> = {
+  [SignupRequestStatus.PENDING]: "Bekliyor",
+  [SignupRequestStatus.APPROVED]: "Onaylandı",
+  [SignupRequestStatus.REJECTED]: "Reddedildi",
+};
+
+export const signupRequestStatusBadgeVariant: Record<
+  SignupRequestStatus,
+  "default" | "secondary" | "outline" | "destructive" | "success" | "warning"
+> = {
+  [SignupRequestStatus.PENDING]: "warning",
+  [SignupRequestStatus.APPROVED]: "success",
+  [SignupRequestStatus.REJECTED]: "destructive",
 };
 
 /** Badge color variant per status, shared by vehicle/driver/shipment status chips. */

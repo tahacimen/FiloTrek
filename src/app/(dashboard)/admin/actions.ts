@@ -5,8 +5,10 @@ import { revalidatePath } from "next/cache";
 import { requireTenantContext } from "@/core/shared/tenant-context";
 import * as invitationService from "@/core/invitation/invitation-service";
 import * as notificationService from "@/core/notification/notification-service";
+import * as signupService from "@/core/signup/signup-service";
 import { getRequestOrigin } from "@/lib/request-origin";
 import { toActionErrorMessage } from "@/lib/action-error";
+import { SignupRequestStatus } from "@/generated/prisma/client";
 
 export type InvitationFormState = { error?: string } | undefined;
 
@@ -61,6 +63,24 @@ export async function revokeInvitationAction(
   try {
     const ctx = await requireTenantContext();
     await invitationService.revokeInvitation(ctx, invitationId);
+  } catch (error) {
+    return { error: toActionErrorMessage(error) };
+  }
+  revalidatePath("/admin");
+  return undefined;
+}
+
+export async function setSignupRequestStatusAction(
+  id: string,
+  status: "APPROVED" | "REJECTED"
+): Promise<InvitationFormState> {
+  try {
+    const ctx = await requireTenantContext();
+    await signupService.setSignupRequestStatus(
+      ctx,
+      id,
+      SignupRequestStatus[status]
+    );
   } catch (error) {
     return { error: toActionErrorMessage(error) };
   }

@@ -8,7 +8,6 @@ import {
   Forklift,
   Globe,
   Handshake,
-  LogIn,
   Mail,
   MapPin,
   MapPinned,
@@ -20,6 +19,7 @@ import {
   Send,
   Snowflake,
   Truck,
+  UserPlus,
   Zap,
 } from "lucide-react";
 
@@ -96,16 +96,12 @@ export default function LandingPage() {
             ))}
           </nav>
           <div className="ml-auto flex items-center gap-3.5">
-            <span className="hidden items-center gap-1.5 text-sm font-semibold text-[#1e1e1e] sm:flex">
-              <Phone className="size-4" />
-              0850 840 00 00
-            </span>
             <Link
-              href="/login"
+              href="/kaydol"
               className="inline-flex items-center gap-2 rounded-lg bg-[#f5b301] px-5 py-2.5 text-[15px] font-semibold text-[#1a1a1a] shadow-[0_6px_16px_rgba(245,179,1,0.35)] transition hover:bg-[#e0a400]"
             >
-              <LogIn className="size-[17px]" />
-              Giriş Yap
+              <UserPlus className="size-[17px]" />
+              Kaydol
             </Link>
           </div>
         </div>
@@ -166,7 +162,7 @@ export default function LandingPage() {
                   href="/login"
                   className="inline-flex flex-1 items-center justify-center gap-2 rounded-[10px] bg-[#1e1e1e] px-4 py-3 text-[15px] font-semibold text-white transition hover:bg-[#0a0a0a]"
                 >
-                  Panele Giriş <ArrowRight className="size-[17px]" />
+                  Giriş Yap <ArrowRight className="size-[17px]" />
                 </Link>
                 <Link href="/login" className="text-[13.5px] leading-tight text-[#6b7488]">
                   Şifremi
@@ -174,28 +170,32 @@ export default function LandingPage() {
                   unuttum
                 </Link>
               </div>
-              <div className="mt-4 border-t border-[#efece5] pt-3.5 text-[13.5px] text-[#6b7488]">
-                Hesabınız yok mu?{" "}
-                <a href="#iletisim" className="font-semibold text-[#f5b301]">
-                  Demo talep edin →
-                </a>
+              <div className="mt-4 flex flex-wrap items-center justify-between gap-2 border-t border-[#efece5] pt-3.5 text-[13.5px] text-[#6b7488]">
+                <span>Hesabınız yok mu?</span>
+                <Link
+                  href="/kaydol"
+                  className="inline-flex items-center gap-1.5 rounded-lg bg-[#f5b301] px-3.5 py-2 text-[13.5px] font-semibold text-[#1a1a1a] transition hover:bg-[#e0a400]"
+                >
+                  <UserPlus className="size-4" />
+                  Yeni Kayıt Oluştur
+                </Link>
               </div>
             </Reveal>
 
             {/* right column */}
             <Reveal className="flex flex-col gap-3.5" delay={140}>
-              <a
-                href="#iletisim"
+              <Link
+                href="/kaydol"
                 className="rounded-2xl bg-[#f5b301] p-5 text-[#1a1a1a] shadow-[0_18px_40px_rgba(245,179,1,0.4)] transition hover:bg-[#e0a400]"
               >
                 <div className="flex items-center justify-between">
-                  <span className="text-[17px] font-bold">Demo Talep Et</span>
-                  <CalendarCheck className="size-[22px]" />
+                  <span className="text-[17px] font-bold">Yeni Kayıt Oluştur</span>
+                  <UserPlus className="size-[22px]" />
                 </div>
                 <div className="mt-1 text-[13px] text-[#1a1a1a]/70">
-                  Ücretsiz 14 gün deneyin
+                  Firmanızı sisteme kaydedin
                 </div>
-              </a>
+              </Link>
               <div className="rounded-2xl bg-white p-5 shadow-[0_16px_40px_rgba(0,0,0,0.3)]">
                 <div className="mb-2.5 flex items-center gap-2 text-[15px] font-bold text-[#1a1a1a]">
                   <MapPin className="size-[18px] text-[#1e1e1e]" />
@@ -398,7 +398,7 @@ export default function LandingPage() {
               <a href="#nasil" className="hover:text-white">Nasıl Çalışır</a>
               <a href="#hizmetler" className="hover:text-white">Hizmetler</a>
               <a href="#" className="hover:text-white">Fiyatlandırma</a>
-              <a href="#iletisim" className="hover:text-white">Demo Talep Et</a>
+              <Link href="/kaydol" className="hover:text-white">Yeni Kayıt Oluştur</Link>
             </div>
           </div>
           <div>
