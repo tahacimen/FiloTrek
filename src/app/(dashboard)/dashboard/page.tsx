@@ -18,6 +18,7 @@ import { FeaturedShipmentPanel } from "@/components/dashboard/featured-shipment-
 import { ScorecardCard } from "@/components/dashboard/scorecard-card";
 import { OperationalKpiCard } from "@/components/dashboard/operational-kpi-card";
 import { CarbonFootprintCard } from "@/components/dashboard/carbon-footprint-card";
+import { Reveal } from "@/components/motion/reveal";
 import {
   customerShipmentStatusLabels,
   driverStatusLabels,
@@ -50,39 +51,47 @@ export default async function DashboardPage() {
           </p>
         </div>
 
-        <Card className="border-primary/20 bg-primary/5">
-          <CardContent className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
-            <div>
-              <p className="font-medium">Yeni bir yük için araç mı lazım?</p>
-              <p className="text-muted-foreground text-sm">
-                Tedarikçilerimizden birini seçip tek adımda araç talep edin.
-              </p>
-            </div>
-            <Button asChild size="lg">
-              <Link href="/shipments/request">
-                <Truck />
-                Araç Çağır
-              </Link>
-            </Button>
-          </CardContent>
-        </Card>
+        <Reveal>
+          <Card className="border-primary/20 bg-primary/5">
+            <CardContent className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
+              <div>
+                <p className="font-medium">Yeni bir yük için araç mı lazım?</p>
+                <p className="text-muted-foreground text-sm">
+                  Tedarikçilerimizden birini seçip tek adımda araç talep edin.
+                </p>
+              </div>
+              <Button asChild size="lg">
+                <Link href="/shipments/request">
+                  <Truck />
+                  Araç Çağır
+                </Link>
+              </Button>
+            </CardContent>
+          </Card>
+        </Reveal>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Sefer Durumu Dağılımı ({shipments.length})</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <StatusBreakdownChart
-              counts={counts}
-              labels={customerShipmentStatusLabels}
-              unitLabel="Sefer"
-            />
-          </CardContent>
-        </Card>
+        <Reveal delay={90}>
+          <Card>
+            <CardHeader>
+              <CardTitle>Sefer Durumu Dağılımı ({shipments.length})</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <StatusBreakdownChart
+                counts={counts}
+                labels={customerShipmentStatusLabels}
+                unitLabel="Sefer"
+              />
+            </CardContent>
+          </Card>
+        </Reveal>
 
-        <OperationalKpiCard kpis={operationalKpis} />
+        <Reveal delay={180}>
+          <OperationalKpiCard kpis={operationalKpis} />
+        </Reveal>
 
-        <CarbonFootprintCard summary={emissionsSummary} />
+        <Reveal delay={270}>
+          <CarbonFootprintCard summary={emissionsSummary} />
+        </Reveal>
       </div>
     );
   }
@@ -102,7 +111,9 @@ export default async function DashboardPage() {
         </p>
       </div>
 
-      <ScorecardCard scorecard={scorecard} />
+      <Reveal>
+        <ScorecardCard scorecard={scorecard} />
+      </Reveal>
 
       <KpiCards
         totalVehicles={data.totalVehicles}
@@ -111,7 +122,7 @@ export default async function DashboardPage() {
         idleDrivers={data.idleDrivers}
       />
 
-      <div className="grid items-stretch gap-4 lg:grid-cols-3">
+      <Reveal as="div" className="grid items-stretch gap-4 lg:grid-cols-3">
         <Card className="lg:col-span-2">
           <CardHeader>
             <CardTitle>Araç Tipine Göre Filo Doluluğu</CardTitle>
@@ -125,9 +136,9 @@ export default async function DashboardPage() {
           shipment={data.featuredShipment}
           history={data.featuredShipmentHistory}
         />
-      </div>
+      </Reveal>
 
-      <div className="grid gap-4 sm:grid-cols-2">
+      <Reveal as="div" delay={90} className="grid gap-4 sm:grid-cols-2">
         <Card>
           <CardHeader>
             <CardTitle>Kapasite Kullanım Trendi (Son 14 Gün)</CardTitle>
@@ -161,13 +172,19 @@ export default async function DashboardPage() {
             </div>
           </CardContent>
         </Card>
-      </div>
+      </Reveal>
 
-      <OperationalKpiCard kpis={data.operationalKpis} />
+      <Reveal>
+        <OperationalKpiCard kpis={data.operationalKpis} />
+      </Reveal>
 
-      <CarbonFootprintCard summary={emissionsSummary} />
+      <Reveal delay={90}>
+        <CarbonFootprintCard summary={emissionsSummary} />
+      </Reveal>
 
-      <ActivityFeed rows={data.recentActivity} />
+      <Reveal delay={180}>
+        <ActivityFeed rows={data.recentActivity} />
+      </Reveal>
     </div>
   );
 }

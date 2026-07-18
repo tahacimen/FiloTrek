@@ -1,6 +1,7 @@
 import { Handshake, MapPinned, Radio, Truck } from "lucide-react";
 
 import { LoginForm } from "@/app/login/login-form";
+import { Reveal } from "@/components/motion/reveal";
 
 const FEATURES = [
   {
@@ -34,25 +35,36 @@ export default async function LoginPage({
 
       {/* RIGHT: brand panel (desktop only) */}
       <div className="relative hidden overflow-hidden bg-[#1e1e1e] lg:flex lg:flex-col lg:justify-center lg:p-16">
-        <div className="absolute inset-0 bg-[repeating-linear-gradient(115deg,#242424,#242424_26px,#2c2c2c_26px,#2c2c2c_52px)]" />
+        <div className="logigo-road absolute inset-0 bg-[repeating-linear-gradient(115deg,#242424,#242424_26px,#2c2c2c_26px,#2c2c2c_52px)]" />
         <div className="absolute inset-0 bg-[linear-gradient(160deg,rgba(24,24,24,0.55),rgba(24,24,24,0.9))]" />
+        <Truck
+          aria-hidden
+          className="logigo-float pointer-events-none absolute -bottom-6 -right-6 size-56 text-white/[0.05]"
+        />
 
         <div className="relative max-w-[420px]">
-          <div className="mb-7 inline-flex items-center gap-2 rounded-full bg-white/12 px-4 py-2 text-[13px] font-semibold text-white">
+          <Reveal
+            as="div"
+            className="mb-7 inline-flex items-center gap-2 rounded-full bg-white/12 px-4 py-2 text-[13px] font-semibold text-white"
+          >
             <Radio className="size-[15px] text-[#f5b301]" />
             Canlı sevkiyat takibi
-          </div>
-          <h2 className="mb-4.5 text-[38px] font-extrabold leading-[1.15] tracking-tight text-white">
+          </Reveal>
+          <Reveal as="h2" delay={80} className="mb-4.5 text-[38px] font-extrabold leading-[1.15] tracking-tight text-white">
             Filonuzun tamamı tek ekranda
-          </h2>
-          <p className="mb-10 text-base leading-relaxed text-white/75">
+          </Reveal>
+          <Reveal as="p" delay={160} className="mb-10 text-base leading-relaxed text-white/75">
             Yük ilanı, teklif, araç–sürücü ataması ve teslimatı uçtan uca
             yönetin. Her adımı gerçek zamanlı izleyin.
-          </p>
+          </Reveal>
 
           <div className="flex flex-col gap-4">
-            {FEATURES.map((f) => (
-              <div key={f.title} className="flex items-center gap-3.5 text-white">
+            {FEATURES.map((f, i) => (
+              <Reveal
+                key={f.title}
+                delay={260 + i * 110}
+                className="flex items-center gap-3.5 text-white"
+              >
                 <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-white/12">
                   <f.icon className="size-[22px] text-[#f5b301]" />
                 </span>
@@ -60,7 +72,7 @@ export default async function LoginPage({
                   <div className="text-[15px] font-bold">{f.title}</div>
                   <div className="text-[13.5px] text-white/60">{f.sub}</div>
                 </div>
-              </div>
+              </Reveal>
             ))}
           </div>
         </div>

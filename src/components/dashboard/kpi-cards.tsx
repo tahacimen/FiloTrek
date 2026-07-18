@@ -1,6 +1,8 @@
 import { CheckCircle2, Truck, UserCheck, Waypoints } from "lucide-react";
 
 import { Card } from "@/components/ui/card";
+import { CountUp } from "@/components/motion/count-up";
+import { Reveal } from "@/components/motion/reveal";
 
 function KpiStat({
   label,
@@ -8,15 +10,19 @@ function KpiStat({
   icon: Icon,
   chipClassName,
   isLast,
+  delay,
 }: {
   label: string;
   value: number;
   icon: React.ComponentType<{ className?: string }>;
   chipClassName: string;
   isLast: boolean;
+  delay: number;
 }) {
   return (
-    <div
+    <Reveal
+      as="div"
+      delay={delay}
       className={`flex flex-1 items-center gap-3.5 px-4 py-4 first:pl-5 sm:px-5 ${
         isLast ? "" : "border-b sm:border-r sm:border-b-0"
       }`}
@@ -28,9 +34,11 @@ function KpiStat({
       </span>
       <div>
         <p className="text-muted-foreground text-xs">{label}</p>
-        <p className="text-2xl font-extrabold tracking-tight">{value}</p>
+        <p className="text-2xl font-extrabold tracking-tight">
+          <CountUp to={value} duration={1000} />
+        </p>
       </div>
-    </div>
+    </Reveal>
   );
 }
 
@@ -61,6 +69,7 @@ export function KpiCards({
         icon={Truck}
         chipClassName="bg-primary/10 text-primary"
         isLast={false}
+        delay={0}
       />
       <KpiStat
         label="Müsait Araç"
@@ -68,6 +77,7 @@ export function KpiCards({
         icon={CheckCircle2}
         chipClassName="bg-success/15 text-success"
         isLast={false}
+        delay={90}
       />
       <KpiStat
         label="Yoldaki Araç"
@@ -75,6 +85,7 @@ export function KpiCards({
         icon={Waypoints}
         chipClassName="bg-brand/15 text-brand"
         isLast={false}
+        delay={180}
       />
       <KpiStat
         label="Boştaki Şoför"
@@ -82,6 +93,7 @@ export function KpiCards({
         icon={UserCheck}
         chipClassName="bg-accent-blue/15 text-accent-blue"
         isLast={true}
+        delay={270}
       />
     </Card>
   );

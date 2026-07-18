@@ -39,6 +39,11 @@ export function Reveal({
       return () => clearTimeout(t);
     }
 
+    // threshold 0 = elemanın herhangi bir pikseli görünür olur olmaz tetikle.
+    // Negatif rootMargin bilinçli olarak yok: aksi halde en alttaki (ya da
+    // sıfır yükseklikli/boş) bir kart tetikleme bandına hiç giremeyip kalıcı
+    // olarak gizli kalabiliyordu. Erken birkaç pikselde belirme, gizli
+    // kalmaktan her zaman iyidir.
     const observer = new IntersectionObserver(
       (entries) => {
         for (const entry of entries) {
@@ -49,7 +54,7 @@ export function Reveal({
           }
         }
       },
-      { threshold: 0.15, rootMargin: "0px 0px -8% 0px" }
+      { threshold: 0 }
     );
     observer.observe(el);
     return () => observer.disconnect();
