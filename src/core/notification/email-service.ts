@@ -57,7 +57,10 @@ export async function sendEmail(params: {
     return;
   }
   await transporter.sendMail({
-    from: process.env.SMTP_FROM ?? "Logigo <noreply@logigotr.com>",
+    // Defaults to the real info@ mailbox: GoDaddy (and most providers) reject
+    // a From address that isn't the authenticated mailbox, so falling back to
+    // a non-existent noreply@ would bounce. Override with SMTP_FROM if needed.
+    from: process.env.SMTP_FROM ?? "Logigo <info@logigotr.com>",
     to: params.to,
     subject: params.subject,
     text: params.text,
