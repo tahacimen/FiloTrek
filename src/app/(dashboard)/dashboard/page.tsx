@@ -8,10 +8,8 @@ import { getCompanyEmissionsSummary } from "@/core/emissions/emissions-service";
 import { listShipments } from "@/core/shipment/shipment-service";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
 import { KpiCards } from "@/components/dashboard/kpi-cards";
-import { OccupancyChart } from "@/components/dashboard/occupancy-chart";
-import { TrendChart } from "@/components/dashboard/trend-chart";
+import { MonthlyRevenueChart } from "@/components/dashboard/monthly-revenue-chart";
 import { StatusBreakdownChart } from "@/components/dashboard/status-breakdown-chart";
 import { ActivityFeed } from "@/components/dashboard/activity-feed";
 import { FeaturedShipmentPanel } from "@/components/dashboard/featured-shipment-panel";
@@ -19,11 +17,7 @@ import { ScorecardCard } from "@/components/dashboard/scorecard-card";
 import { OperationalKpiCard } from "@/components/dashboard/operational-kpi-card";
 import { CarbonFootprintCard } from "@/components/dashboard/carbon-footprint-card";
 import { Reveal } from "@/components/motion/reveal";
-import {
-  customerShipmentStatusLabels,
-  driverStatusLabels,
-  vehicleStatusLabels,
-} from "@/lib/labels";
+import { customerShipmentStatusLabels } from "@/lib/labels";
 
 export default async function DashboardPage() {
   const ctx = await requireTenantContext();
@@ -125,10 +119,10 @@ export default async function DashboardPage() {
       <Reveal as="div" className="grid items-stretch gap-4 lg:grid-cols-3">
         <Card className="lg:col-span-2">
           <CardHeader>
-            <CardTitle>Araç Tipine Göre Filo Doluluğu</CardTitle>
+            <CardTitle>Aylık Ciro & Sefer (Son 6 Ay)</CardTitle>
           </CardHeader>
           <CardContent className="flex flex-1 items-center">
-            <OccupancyChart data={data.occupancyByType} />
+            <MonthlyRevenueChart data={data.monthlyRevenueTrend} />
           </CardContent>
         </Card>
 
@@ -136,42 +130,6 @@ export default async function DashboardPage() {
           shipment={data.featuredShipment}
           history={data.featuredShipmentHistory}
         />
-      </Reveal>
-
-      <Reveal as="div" delay={90} className="grid gap-4 sm:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle>Kapasite Kullanım Trendi (Son 14 Gün)</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <TrendChart data={data.completedShipmentsTrend} />
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Şoför/Araç Durumu</CardTitle>
-          </CardHeader>
-          <CardContent className="flex flex-col gap-6">
-            <div>
-              <p className="mb-2 text-sm font-medium">Araçlar</p>
-              <StatusBreakdownChart
-                counts={data.vehiclesByStatus}
-                labels={vehicleStatusLabels}
-                unitLabel="Araç"
-              />
-            </div>
-            <Separator />
-            <div>
-              <p className="mb-2 text-sm font-medium">Şoförler</p>
-              <StatusBreakdownChart
-                counts={data.driversByStatus}
-                labels={driverStatusLabels}
-                unitLabel="Şoför"
-              />
-            </div>
-          </CardContent>
-        </Card>
       </Reveal>
 
       <Reveal>

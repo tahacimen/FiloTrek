@@ -413,7 +413,12 @@ export function countShipmentsByStatus(ctx: TenantContext) {
 }
 
 /** Shipments completed per day over the trailing window, for the dashboard trend chart. */
-export async function getCompletedShipmentsPerDay(
+/**
+ * Completed shipments (with their agreed price) since a date — the supplier
+ * dashboard's monthly revenue + volume chart. agreedPrice is normalised to a
+ * plain number here so the service layer never juggles Prisma Decimal.
+ */
+export async function getCompletedShipmentRevenueSince(
   ctx: TenantContext,
   sinceDate: Date
 ) {
@@ -423,9 +428,12 @@ export async function getCompletedShipmentsPerDay(
       status: ShipmentStatus.COMPLETED,
       completedAt: { gte: sinceDate },
     },
-    select: { completedAt: true },
+    select: { completedAt: true, agreedPrice: true },
   });
-  return rows;
+  return rows.map((row) => ({
+    completedAt: row.completedAt,
+    revenue: row.agreedPrice ? row.agreedPrice.toNumber() : 0,
+  }));
 }
 
 /**

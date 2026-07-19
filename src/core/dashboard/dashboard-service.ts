@@ -7,7 +7,6 @@ import {
   CompanyType,
   DriverStatus,
   VehicleStatus,
-  VehicleType,
 } from "@/generated/prisma/client";
 
 const TREND_WINDOW_DAYS = 14;
@@ -21,6 +20,8 @@ function emptyCountsByStatus<T extends string>(statuses: T[]) {
     {} as Record<T, number>
   );
 }
+
+const REVENUE_WINDOW_MONTHS = 6;
 
 /** Buckets a list of dates into a trailing TREND_WINDOW_DAYS series of {date, count}, zero-filled for days with no rows. */
 function bucketByDay(dates: Date[]) {
@@ -37,6 +38,37 @@ function bucketByDay(dates: Date[]) {
     }
   }
   return Array.from(trendByDate.entries()).map(([date, count]) => ({ date, count }));
+}
+
+function monthKey(d: Date) {
+  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
+}
+
+/**
+ * Buckets completed shipments into the trailing REVENUE_WINDOW_MONTHS as
+ * {month: "YYYY-MM", revenue, count}, zero-filled for empty months. UTC to
+ * match the server (Vercel runs UTC) and avoid month-boundary drift.
+ */
+function bucketByMonth(rows: { completedAt: Date | null; revenue: number }[]) {
+  const buckets = new Map<string, { revenue: number; count: number }>();
+  const now = new Date();
+  for (let i = REVENUE_WINDOW_MONTHS - 1; i >= 0; i--) {
+    const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - i, 1));
+    buckets.set(monthKey(d), { revenue: 0, count: 0 });
+  }
+  for (const row of rows) {
+    if (!row.completedAt) continue;
+    const bucket = buckets.get(monthKey(row.completedAt));
+    if (bucket) {
+      bucket.revenue += row.revenue;
+      bucket.count += 1;
+    }
+  }
+  return Array.from(buckets.entries()).map(([month, v]) => ({
+    month,
+    revenue: v.revenue,
+    count: v.count,
+  }));
 }
 
 /**
@@ -70,15 +102,25 @@ export type OperationalKpis = Awaited<ReturnType<typeof getOperationalKpis>>;
 export async function getDashboardData(ctx: TenantContext) {
   requireCompanyType(ctx, CompanyType.SUPPLIER);
 
-  const [vehicleStatusGroups, driverStatusGroups, typeStatusGroups, sinceDate] =
-    await Promise.all([
-      vehicleRepository.countVehiclesByStatus(ctx),
-      driverRepository.countDriversByStatus(ctx),
-      vehicleRepository.countVehiclesByTypeAndStatus(ctx),
-      Promise.resolve(
-        new Date(Date.now() - TREND_WINDOW_DAYS * 24 * 60 * 60 * 1000)
-      ),
-    ]);
+  const revenueSince = new Date(
+    Date.UTC(new Date().getUTCFullYear(), new Date().getUTCMonth() - (REVENUE_WINDOW_MONTHS - 1), 1)
+  );
+
+  const [
+    vehicleStatusGroups,
+    driverStatusGroups,
+    revenueRows,
+    recentActivity,
+    featuredShipment,
+    operationalKpis,
+  ] = await Promise.all([
+    vehicleRepository.countVehiclesByStatus(ctx),
+    driverRepository.countDriversByStatus(ctx),
+    shipmentRepository.getCompletedShipmentRevenueSince(ctx, revenueSince),
+    shipmentRepository.listRecentActivity(ctx, 6),
+    shipmentRepository.getFeaturedShipmentForSupplier(ctx),
+    getOperationalKpis(ctx),
+  ]);
 
   const vehiclesByStatus = emptyCountsByStatus(Object.values(VehicleStatus));
   for (const g of vehicleStatusGroups) vehiclesByStatus[g.status] = g._count;
@@ -88,40 +130,16 @@ export async function getDashboardData(ctx: TenantContext) {
 
   const totalVehicles = Object.values(vehiclesByStatus).reduce((a, b) => a + b, 0);
 
-  const occupancyByType = Object.values(VehicleType).map((vehicleType) => {
-    const rows = typeStatusGroups.filter((g) => g.vehicleType === vehicleType);
-    const total = rows.reduce((sum, r) => sum + r._count, 0);
-    const available =
-      rows.find((r) => r.status === VehicleStatus.AVAILABLE)?._count ?? 0;
-    const maintenance =
-      rows.find((r) => r.status === VehicleStatus.MAINTENANCE)?._count ?? 0;
-    const inUse = total - available - maintenance;
-    return { vehicleType, total, available, inUse, maintenance };
-  });
-
-  const [completedRows, recentActivity, featuredShipment, operationalKpis] =
-    await Promise.all([
-      shipmentRepository.getCompletedShipmentsPerDay(ctx, sinceDate),
-      shipmentRepository.listRecentActivity(ctx, 6),
-      shipmentRepository.getFeaturedShipmentForSupplier(ctx),
-      getOperationalKpis(ctx),
-    ]);
   const featuredShipmentHistory = featuredShipment
     ? await shipmentRepository.getShipmentStatusHistory(featuredShipment.id)
     : [];
-  const completedShipmentsTrend = bucketByDay(
-    completedRows.flatMap((row) => (row.completedAt ? [row.completedAt] : []))
-  );
 
   return {
     totalVehicles,
     availableVehicles: vehiclesByStatus[VehicleStatus.AVAILABLE],
     enRouteVehicles: vehiclesByStatus[VehicleStatus.EN_ROUTE],
     idleDrivers: driversByStatus[DriverStatus.AVAILABLE],
-    vehiclesByStatus,
-    driversByStatus,
-    occupancyByType,
-    completedShipmentsTrend,
+    monthlyRevenueTrend: bucketByMonth(revenueRows),
     operationalKpis,
     recentActivity,
     featuredShipment,
