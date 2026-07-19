@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 
 import { Logo } from "@/components/logo";
+import { HeroLoginForm } from "@/app/hero-login-form";
 import { Reveal } from "@/components/motion/reveal";
 import { CountUp } from "@/components/motion/count-up";
 
@@ -137,38 +138,7 @@ export default function LandingPage() {
                 <Truck className="size-5 text-[#1e1e1e]" />
                 Sisteme Giriş Yap
               </div>
-              <div className="mb-3 grid gap-3 sm:grid-cols-2">
-                <div>
-                  <span className="mb-1.5 block text-[12.5px] font-medium text-[#6b7488]">
-                    E-posta
-                  </span>
-                  <div className="flex items-center gap-2 rounded-[10px] border-[1.5px] border-[#e2ddd4] px-3 py-2.5 text-[#9aa2b5]">
-                    <Mail className="size-4" />
-                    <span className="text-sm">ornek@firma.com</span>
-                  </div>
-                </div>
-                <div>
-                  <span className="mb-1.5 block text-[12.5px] font-medium text-[#6b7488]">
-                    Şifre
-                  </span>
-                  <div className="flex items-center gap-2 rounded-[10px] border-[1.5px] border-[#e2ddd4] px-3 py-2.5 text-[#9aa2b5]">
-                    <span className="text-sm tracking-widest">••••••••</span>
-                  </div>
-                </div>
-              </div>
-              <div className="flex items-center gap-3">
-                <Link
-                  href="/login"
-                  className="inline-flex flex-1 items-center justify-center gap-2 rounded-[10px] bg-[#1e1e1e] px-4 py-3 text-[15px] font-semibold text-white transition hover:bg-[#0a0a0a]"
-                >
-                  Giriş Yap <ArrowRight className="size-[17px]" />
-                </Link>
-                <Link href="/login" className="text-[13.5px] leading-tight text-[#6b7488]">
-                  Şifremi
-                  <br />
-                  unuttum
-                </Link>
-              </div>
+              <HeroLoginForm />
               <div className="mt-4 flex flex-wrap items-center justify-between gap-2 border-t border-[#efece5] pt-3.5 text-[13.5px] text-[#6b7488]">
                 <span>Hesabınız yok mu?</span>
                 <Link
@@ -183,18 +153,6 @@ export default function LandingPage() {
 
             {/* right column */}
             <Reveal className="flex flex-col gap-3.5" delay={140}>
-              <Link
-                href="/kaydol"
-                className="rounded-2xl bg-[#f5b301] p-5 text-[#1a1a1a] shadow-[0_18px_40px_rgba(245,179,1,0.4)] transition hover:bg-[#e0a400]"
-              >
-                <div className="flex items-center justify-between">
-                  <span className="text-[17px] font-bold">Yeni Kayıt Oluştur</span>
-                  <UserPlus className="size-[22px]" />
-                </div>
-                <div className="mt-1 text-[13px] text-[#1a1a1a]/70">
-                  Firmanızı sisteme kaydedin
-                </div>
-              </Link>
               <div className="rounded-2xl bg-white p-5 shadow-[0_16px_40px_rgba(0,0,0,0.3)]">
                 <div className="mb-2.5 flex items-center gap-2 text-[15px] font-bold text-[#1a1a1a]">
                   <MapPin className="size-[18px] text-[#1e1e1e]" />
