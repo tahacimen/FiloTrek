@@ -22,7 +22,7 @@ type ShipmentRow = Prisma.ShipmentGetPayload<{
     customerCompany: { select: { id: true; name: true } };
     supplierCompany: { select: { id: true; name: true } };
     vehicle: { select: { id: true; plate: true; vehicleType: true } };
-    driver: { select: { id: true; fullName: true } };
+    driver: { select: { id: true; fullName: true; phone: true } };
   };
 }>;
 
@@ -56,6 +56,7 @@ export function ShipmentTable({
           <TableHead>Güzergah</TableHead>
           <TableHead>Tonaj</TableHead>
           <TableHead>Araç</TableHead>
+          <TableHead>Şoför</TableHead>
           <TableHead>Fiyat</TableHead>
           <TableHead>Durum</TableHead>
           <TableHead />
@@ -92,6 +93,20 @@ export function ShipmentTable({
             </TableCell>
             <TableCell>{shipment.tonnage.toString()} ton</TableCell>
             <TableCell>{shipment.vehicle?.plate ?? "—"}</TableCell>
+            <TableCell>
+              {shipment.driver ? (
+                <div className="flex flex-col">
+                  <span>{shipment.driver.fullName}</span>
+                  {shipment.driver.phone && (
+                    <span className="text-muted-foreground text-xs">
+                      {shipment.driver.phone}
+                    </span>
+                  )}
+                </div>
+              ) : (
+                "—"
+              )}
+            </TableCell>
             <TableCell>
               {shipment.agreedPrice ? (
                 <span className="flex items-center gap-1.5">
