@@ -13,7 +13,6 @@ import {
   MapPinned,
   MessageCircle,
   Package,
-  Phone,
   Route,
   Search,
   Send,
@@ -414,13 +413,7 @@ export default function LandingPage() {
             <div className="mb-4 text-sm font-bold">İletişim</div>
             <div className="flex flex-col gap-3 text-sm text-white/80">
               <span className="flex items-center gap-2.5">
-                <Phone className="size-4 text-[#f5b301]" />0850 840 00 00
-              </span>
-              <span className="flex items-center gap-2.5">
-                <Mail className="size-4 text-[#f5b301]" />taha.cimen@logigotr.com
-              </span>
-              <span className="flex items-start gap-2.5">
-                <MapPin className="mt-0.5 size-4 text-[#f5b301]" />Ümraniye, İstanbul
+                <Mail className="size-4 text-[#f5b301]" />info@logigotr.com
               </span>
               <span className="flex items-center gap-2.5">
                 <Clock className="size-4 text-[#f5b301]" />7/24 destek hattı
