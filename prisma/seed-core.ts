@@ -92,6 +92,9 @@ export async function seedDatabase() {
         passwordHash,
         fullName: "Taha Çimen",
         companyRole: CompanyRole.ADMIN,
+        // Site sahibi — /admin (davetler + kayıt talepleri) yalnızca
+        // platform admin'e açık, bkz. schema'daki Invitation yorumu.
+        isPlatformAdmin: true,
       },
       {
         companyId: anadolu.id,

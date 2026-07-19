@@ -198,6 +198,38 @@ export async function notifyInvitation(params: {
 }
 
 /**
+ * Sent to the applicant once a platform admin approves their signup request
+ * and creates the account (see approveSignupRequestAndCreateAccount). Carries
+ * the credentials the admin set. Best-effort at the transport level —
+ * email-service just logs when SMTP_HOST is unset — so the caller wraps this
+ * in its own catch and the approval never fails on a mail hiccup.
+ */
+export async function notifyAccountApproved(params: {
+  email: string;
+  fullName: string;
+  password: string;
+  loginUrl: string;
+}) {
+  const lines = [
+    `Merhaba ${params.fullName},`,
+    "",
+    "Logigo kayıt talebiniz onaylandı ve hesabınız oluşturuldu. Aşağıdaki " +
+      "bilgilerle giriş yapabilirsiniz:",
+    "",
+    `Giriş adresi: ${params.loginUrl}`,
+    `E-posta: ${params.email}`,
+    `Geçici şifre: ${params.password}`,
+    "",
+    "Güvenliğiniz için ilk girişten sonra şifrenizi değiştirmenizi öneririz.",
+  ];
+  await emailService.sendEmail({
+    to: params.email,
+    subject: "Logigo hesabınız hazır",
+    text: lines.join("\n"),
+  });
+}
+
+/**
  * Best-effort fan-out to every platform admin's company when a visitor
  * submits the public "Kaydol" form — see createSignupRequest in
  * signup-service.ts, which must never let a notification failure fail the

@@ -1,10 +1,11 @@
 "use client";
 
 import { useTransition } from "react";
-import { Check, X } from "lucide-react";
+import { X } from "lucide-react";
 import { toast } from "sonner";
 
-import { setSignupRequestStatusAction } from "@/app/(dashboard)/admin/actions";
+import { rejectSignupRequestAction } from "@/app/(dashboard)/admin/actions";
+import { ApproveSignupDialog } from "@/app/(dashboard)/admin/approve-signup-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -38,16 +39,14 @@ export type SignupRequestRow = {
 export function SignupRequestTable({ requests }: { requests: SignupRequestRow[] }) {
   const [isPending, startTransition] = useTransition();
 
-  function handle(id: string, status: "APPROVED" | "REJECTED") {
+  function handleReject(id: string) {
+    if (!confirm("Bu kayıt talebini reddetmek istediğinize emin misiniz?")) {
+      return;
+    }
     startTransition(async () => {
-      const result = await setSignupRequestStatusAction(id, status);
+      const result = await rejectSignupRequestAction(id);
       if (result?.error) toast.error(result.error);
-      else
-        toast.success(
-          status === "APPROVED"
-            ? "Talep onaylandı olarak işaretlendi."
-            : "Talep reddedildi."
-        );
+      else toast.success("Talep reddedildi.");
     });
   }
 
@@ -105,20 +104,12 @@ export function SignupRequestTable({ requests }: { requests: SignupRequestRow[] 
                 <div className="flex items-center justify-end gap-1">
                   {isPendingReq && (
                     <>
+                      <ApproveSignupDialog request={r} />
                       <Button
                         variant="ghost"
                         size="icon"
                         disabled={isPending}
-                        onClick={() => handle(r.id, "APPROVED")}
-                      >
-                        <span className="sr-only">Onayla</span>
-                        <Check />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        disabled={isPending}
-                        onClick={() => handle(r.id, "REJECTED")}
+                        onClick={() => handleReject(r.id)}
                       >
                         <span className="sr-only">Reddet</span>
                         <X />

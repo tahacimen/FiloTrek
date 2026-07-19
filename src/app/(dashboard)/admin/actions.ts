@@ -70,17 +70,46 @@ export async function revokeInvitationAction(
   return undefined;
 }
 
-export async function setSignupRequestStatusAction(
-  id: string,
-  status: "APPROVED" | "REJECTED"
+export async function rejectSignupRequestAction(
+  id: string
 ): Promise<InvitationFormState> {
   try {
     const ctx = await requireTenantContext();
     await signupService.setSignupRequestStatus(
       ctx,
       id,
-      SignupRequestStatus[status]
+      SignupRequestStatus.REJECTED
     );
+  } catch (error) {
+    return { error: toActionErrorMessage(error) };
+  }
+  revalidatePath("/admin");
+  return undefined;
+}
+
+export async function approveSignupRequestAction(
+  id: string,
+  _prevState: InvitationFormState,
+  formData: FormData
+): Promise<InvitationFormState> {
+  try {
+    const ctx = await requireTenantContext();
+    const account = await signupService.approveSignupRequestAndCreateAccount(
+      ctx,
+      id,
+      formData.get("password")
+    );
+    const origin = await getRequestOrigin();
+    try {
+      await notificationService.notifyAccountApproved({
+        email: account.email,
+        fullName: account.fullName,
+        password: account.password,
+        loginUrl: `${origin}/login`,
+      });
+    } catch (error) {
+      console.error("Onay e-postası gönderilemedi:", error);
+    }
   } catch (error) {
     return { error: toActionErrorMessage(error) };
   }

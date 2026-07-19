@@ -99,3 +99,93 @@ describe("createSignupRequest", () => {
     }
   });
 });
+
+describe("approveSignupRequestAndCreateAccount", () => {
+  afterEach(cleanupSignups);
+
+  it("creates the account, marks the request APPROVED, and returns credentials", async () => {
+    const adminCtx = await createPlatformAdminContext();
+    const cleanupIds = [adminCtx.companyId];
+    try {
+      const email = uniqueEmail();
+      const { id } = await signupService.createSignupRequest({
+        companyName: "Onay Test Lojistik",
+        fullName: "Onay Kişi",
+        email,
+        role: "SUPPLIER_COMPANY",
+      });
+
+      const result = await signupService.approveSignupRequestAndCreateAccount(
+        adminCtx,
+        id,
+        "GucluSifre123"
+      );
+      expect(result.email).toBe(email);
+      expect(result.password).toBe("GucluSifre123");
+
+      const user = await prisma.user.findUnique({ where: { email } });
+      expect(user).not.toBeNull();
+      expect(user!.companyRole).toBe("ADMIN");
+      cleanupIds.push(user!.companyId);
+
+      const company = await prisma.company.findUnique({
+        where: { id: user!.companyId },
+      });
+      expect(company!.type).toBe("SUPPLIER");
+
+      const saved = await prisma.signupRequest.findUnique({ where: { id } });
+      expect(saved!.status).toBe("APPROVED");
+    } finally {
+      await cleanupCompanies(cleanupIds);
+    }
+  });
+
+  it("rejects a password shorter than 8 characters", async () => {
+    const adminCtx = await createPlatformAdminContext();
+    try {
+      const { id } = await signupService.createSignupRequest({
+        companyName: "Kısa Şifre Firma",
+        fullName: "Kişi",
+        email: uniqueEmail(),
+        role: "CUSTOMER_COMPANY",
+      });
+      await expect(
+        signupService.approveSignupRequestAndCreateAccount(adminCtx, id, "kısa")
+      ).rejects.toThrow(/en az 8/);
+    } finally {
+      await cleanupCompanies([adminCtx.companyId]);
+    }
+  });
+
+  it("rejects approving an already-handled request", async () => {
+    const adminCtx = await createPlatformAdminContext();
+    const cleanupIds = [adminCtx.companyId];
+    try {
+      const { id } = await signupService.createSignupRequest({
+        companyName: "İkinci Onay Firma",
+        fullName: "Kişi",
+        email: uniqueEmail(),
+        role: "CUSTOMER_COMPANY",
+      });
+      const first = await signupService.approveSignupRequestAndCreateAccount(
+        adminCtx,
+        id,
+        "GucluSifre123"
+      );
+      const created = await prisma.user.findUnique({
+        where: { email: first.email },
+      });
+      cleanupIds.push(created!.companyId);
+
+      await expect(
+        signupService.approveSignupRequestAndCreateAccount(
+          adminCtx,
+          id,
+          "BaskaSifre123"
+        )
+      ).rejects.toThrow(/zaten işleme/);
+    } finally {
+      await cleanupCompanies(cleanupIds);
+    }
+  });
+});
