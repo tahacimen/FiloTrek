@@ -78,6 +78,57 @@ export async function sendDriverLoginLinkAction(
   return undefined;
 }
 
+export type DriverLoginLinkResult =
+  | { url: string; phone: string; fullName: string; hasEmail: boolean }
+  | { error: string };
+
+/**
+ * Issues a fresh login link and returns its URL so the dispatcher can share
+ * it over free channels (WhatsApp / copy) — no e-mail required. Rotates the
+ * token, so any previously shared link stops working.
+ */
+export async function getDriverLoginLinkAction(
+  driverId: string
+): Promise<DriverLoginLinkResult> {
+  try {
+    const ctx = await requireTenantContext();
+    const { token, phone, fullName, email } =
+      await driverService.issueDriverLoginToken(ctx, driverId);
+    const origin = await getRequestOrigin();
+    revalidatePath("/drivers");
+    return {
+      url: `${origin}/api/driver-login/${token}`,
+      phone,
+      fullName,
+      hasEmail: Boolean(email),
+    };
+  } catch (error) {
+    return { error: toActionErrorMessage(error) };
+  }
+}
+
+/** E-mails the driver's CURRENT link (no rotation) — used from the share dialog. */
+export async function emailDriverLoginLinkAction(
+  driverId: string
+): Promise<DriverFormState> {
+  try {
+    const ctx = await requireTenantContext();
+    const { token, email, fullName } =
+      await driverService.getDriverLoginTokenInfo(ctx, driverId);
+    if (!email) return { error: "Şoförün e-posta adresi tanımlı değil." };
+    if (!token) return { error: "Önce bir bağlantı oluşturun." };
+    const origin = await getRequestOrigin();
+    await notificationService.notifyDriverLoginLink({
+      driverEmail: email,
+      driverFullName: fullName,
+      loginUrl: `${origin}/api/driver-login/${token}`,
+    });
+  } catch (error) {
+    return { error: toActionErrorMessage(error) };
+  }
+  return undefined;
+}
+
 export async function revokeDriverLoginLinkAction(
   driverId: string
 ): Promise<DriverFormState> {

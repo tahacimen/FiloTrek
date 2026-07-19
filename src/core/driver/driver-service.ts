@@ -168,6 +168,50 @@ export async function regenerateDriverLoginToken(
 }
 
 /**
+ * Issues a fresh login-link token WITHOUT requiring an e-mail — the caller
+ * (getDriverLoginLinkAction) hands the resulting URL back to the dispatcher
+ * to share over free channels (WhatsApp / copy), which only need the driver's
+ * phone. Same "resend rotates" invalidation as regenerateDriverLoginToken.
+ */
+export async function issueDriverLoginToken(
+  ctx: TenantContext,
+  driverId: string
+) {
+  requireCompanyType(ctx, CompanyType.SUPPLIER);
+  const existing = await driverRepository.getDriverForTenant(ctx, driverId);
+  if (!existing) throw new NotFoundError("Şoför bulunamadı.");
+
+  const token = generateLoginToken();
+  await driverRepository.setDriverLoginToken(ctx, driverId, token);
+  return {
+    token,
+    fullName: existing.fullName,
+    phone: existing.phone,
+    email: existing.email,
+  };
+}
+
+/**
+ * Reads the driver's CURRENT login-link token (no rotation) so the e-mail
+ * channel can send the exact same link the dispatcher already copied /
+ * WhatsApp'd from the share dialog, instead of minting a new one that would
+ * invalidate it.
+ */
+export async function getDriverLoginTokenInfo(
+  ctx: TenantContext,
+  driverId: string
+) {
+  requireCompanyType(ctx, CompanyType.SUPPLIER);
+  const existing = await driverRepository.getDriverForTenant(ctx, driverId);
+  if (!existing) throw new NotFoundError("Şoför bulunamadı.");
+  return {
+    token: existing.loginToken,
+    email: existing.email,
+    fullName: existing.fullName,
+  };
+}
+
+/**
  * Kills the driver's current login-link token immediately without sending a
  * new one — for when a dispatcher suspects a link leaked and wants access
  * cut off right away, rather than waiting on regenerateDriverLoginToken's

@@ -1,15 +1,15 @@
 "use client";
 
 import { useTransition } from "react";
-import { Link2, Link2Off, Trash2 } from "lucide-react";
+import { Link2Off, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 import {
   deleteDriverAction,
   revokeDriverLoginLinkAction,
-  sendDriverLoginLinkAction,
 } from "@/app/(dashboard)/drivers/actions";
 import { DriverFormDialog } from "@/app/(dashboard)/drivers/driver-form-dialog";
+import { DriverShareDialog } from "@/app/(dashboard)/drivers/driver-share-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -34,21 +34,6 @@ export function DriverTable({ drivers }: { drivers: SerializableDriver[] }) {
       const result = await deleteDriverAction(driver.id);
       if (result?.error) toast.error(result.error);
       else toast.success("Şoför silindi.");
-    });
-  }
-
-  function handleSendLoginLink(driver: SerializableDriver) {
-    if (
-      !confirm(
-        `${driver.fullName} adlı şoföre giriş bağlantısı göndermek istediğinize emin misiniz?`
-      )
-    ) {
-      return;
-    }
-    startTransition(async () => {
-      const result = await sendDriverLoginLinkAction(driver.id);
-      if (result?.error) toast.error(result.error);
-      else toast.success(`${driver.fullName} adlı şoföre giriş bağlantısı gönderildi.`);
     });
   }
 
@@ -99,27 +84,14 @@ export function DriverTable({ drivers }: { drivers: SerializableDriver[] }) {
               </Badge>
             </TableCell>
             <TableCell>
-              <Badge variant={driver.email ? "success" : "outline"}>
-                {driver.email ? "Var" : "Yok"}
+              <Badge variant={driver.hasActiveLoginLink ? "success" : "outline"}>
+                {driver.hasActiveLoginLink ? "Bağlantı Aktif" : "Bağlantı Yok"}
               </Badge>
             </TableCell>
             <TableCell>
               <div className="flex items-center justify-end gap-1">
                 <DriverFormDialog driver={driver} />
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  disabled={isPending || !driver.email}
-                  title={
-                    driver.email
-                      ? "Giriş Bağlantısı Gönder"
-                      : "Bağlantı gönderebilmek için önce e-posta tanımlanmalı"
-                  }
-                  onClick={() => handleSendLoginLink(driver)}
-                >
-                  <span className="sr-only">Giriş Bağlantısı Gönder</span>
-                  <Link2 />
-                </Button>
+                <DriverShareDialog driver={driver} />
                 {driver.hasActiveLoginLink && (
                   <Button
                     variant="ghost"

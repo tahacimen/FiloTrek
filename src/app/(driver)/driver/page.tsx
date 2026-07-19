@@ -11,6 +11,7 @@ import {
   statusBadgeVariant,
 } from "@/lib/labels";
 import { DRIVER_NEXT_TARGET_STATUS } from "@/core/shipment/shipment-transitions";
+import { resolveNavUrl } from "@/lib/maps";
 import { DriverShipmentActions } from "@/app/(driver)/driver/driver-shipment-actions";
 import { DriverIncidentActions } from "@/app/(driver)/driver/incident-actions";
 import { LocationReporter } from "@/app/(driver)/driver/location-reporter";
@@ -26,17 +27,23 @@ function Field({ label, value }: { label: string; value: React.ReactNode }) {
   );
 }
 
-function NavigationLink({ url }: { url: string | null | undefined }) {
+function NavigationLink({
+  url,
+  label = "Navigasyonu Başlat",
+}: {
+  url: string | null | undefined;
+  label?: string;
+}) {
   if (!url) return null;
   return (
     <a
       href={url}
       target="_blank"
       rel="noopener noreferrer"
-      className="text-primary inline-flex items-center gap-1 text-sm underline underline-offset-2"
+      className="text-primary inline-flex w-fit items-center gap-1 text-sm underline underline-offset-2"
     >
       <Navigation className="size-3.5" />
-      Navigasyonu Başlat
+      {label}
     </a>
   );
 }
@@ -72,12 +79,17 @@ export default async function DriverPage() {
           // Whichever navigation link is relevant right now: before pickup,
           // the reservation's warehouse (most precise) then the customer's
           // request-time / load-ready links; once handed off, the delivery
-          // destination.
+          // destination. resolveNavUrl falls back to a directions link built
+          // from the address text, so the driver always gets a working link
+          // even when no exact maps URL was entered.
           const navUrl = isBeforePickup
-            ? (reservation?.dock.warehouse.mapsUrl ??
-              shipment.pickupMapsUrl ??
-              shipment.originMapsUrl)
-            : shipment.destinationMapsUrl;
+            ? resolveNavUrl(
+                reservation?.dock.warehouse.mapsUrl ??
+                  shipment.pickupMapsUrl ??
+                  shipment.originMapsUrl,
+                reservation?.dock.warehouse.address ?? shipment.originAddress
+              )
+            : resolveNavUrl(shipment.destinationMapsUrl, shipment.destinationAddress);
 
           return (
             <Card key={shipment.id}>
@@ -143,10 +155,20 @@ export default async function DriverPage() {
                         </div>
                       )}
                     </div>
+                    <NavigationLink
+                      url={resolveNavUrl(
+                        reservation.dock.warehouse.mapsUrl,
+                        reservation.dock.warehouse.address
+                      )}
+                      label="Depoya Yol Tarifi"
+                    />
                   </div>
                 )}
 
-                <NavigationLink url={navUrl} />
+                <NavigationLink
+                  url={navUrl}
+                  label={isBeforePickup ? "Yükleme Noktasına Yol Tarifi" : "Teslimat Noktasına Yol Tarifi"}
+                />
                 {LOCATION_SHARING_STATUSES.has(shipment.status) && (
                   <LocationReporter shipmentId={shipment.id} />
                 )}
