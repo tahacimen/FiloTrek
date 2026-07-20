@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import dynamic from "next/dynamic";
 import {
@@ -21,6 +21,7 @@ import {
   statusBadgeVariant,
 } from "@/lib/labels";
 import { SHIPMENT_STATUS_SEQUENCE } from "@/core/shipment/shipment-transitions";
+import { geocodeAddress, type LatLng } from "@/lib/geocode-client";
 import type { TrackingShipment } from "@/core/shipment/shipment-service";
 
 // Leaflet touches window at import — load the map client-only.
@@ -52,19 +53,73 @@ export function LiveTrackingBoard({
       : shipmentStatusLabels;
   const otherPartyLabel = companyType === "SUPPLIER" ? "Müşteri" : "Tedarikçi";
 
-  const withLocation = shipments.filter((s) => s.lat != null && s.lng != null);
   const [selectedId, setSelectedId] = useState<string | null>(
-    withLocation[0]?.id ?? shipments[0]?.id ?? null
+    shipments[0]?.id ?? null
   );
   const selected =
     shipments.find((s) => s.id === selectedId) ?? shipments[0] ?? null;
 
-  const markers = withLocation.map((s) => ({
-    id: s.id,
-    lat: s.lat as number,
-    lng: s.lng as number,
-    label: `${s.trackingNumber} · ${s.origin} → ${s.destination}`,
-  }));
+  // Geocoded origin/destination per shipment (client-side, cached) so a
+  // shipment can appear on the map from its address even before live GPS.
+  const [geo, setGeo] = useState<
+    Record<string, { origin?: LatLng; dest?: LatLng }>
+  >({});
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      for (const s of shipments) {
+        if (cancelled) break;
+        if (geo[s.id]) continue;
+        const origin = await geocodeAddress(s.origin);
+        const dest = await geocodeAddress(s.destination);
+        if (cancelled) break;
+        if (origin || dest) {
+          setGeo((prev) => ({
+            ...prev,
+            [s.id]: { origin: origin ?? undefined, dest: dest ?? undefined },
+          }));
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [shipments]);
+
+  // One marker per shipment at its best-known point: live GPS if shared,
+  // otherwise the geocoded origin (rendered in a muted "not live" style).
+  const markers = shipments.flatMap((s) => {
+    const live = s.lat != null && s.lng != null;
+    const point = live
+      ? { lat: s.lat as number, lng: s.lng as number }
+      : (geo[s.id]?.origin ?? null);
+    if (!point) return [];
+    return [
+      {
+        id: s.id,
+        lat: point.lat,
+        lng: point.lng,
+        live,
+        label: `${s.trackingNumber} · ${s.origin} → ${s.destination}`,
+      },
+    ];
+  });
+
+  const route = selected
+    ? {
+        origin: geo[selected.id]?.origin,
+        dest: geo[selected.id]?.dest,
+        current:
+          selected.lat != null && selected.lng != null
+            ? { lat: selected.lat, lng: selected.lng }
+            : undefined,
+      }
+    : null;
+
+  const onMapCount = markers.length;
+  const liveCount = markers.filter((m) => m.live).length;
 
   if (shipments.length === 0) {
     return (
@@ -99,14 +154,15 @@ export function LiveTrackingBoard({
               Canlı Takip Haritası
             </div>
             <p className="text-muted-foreground text-xs">
-              {withLocation.length > 0
-                ? `${withLocation.length} sefer haritada · konum şoför paylaştıkça güncellenir`
-                : "Henüz konum paylaşan sefer yok — şoför panelinden konum paylaşınca burada belirir"}
+              {onMapCount > 0
+                ? `${onMapCount} sefer haritada${liveCount > 0 ? ` · ${liveCount} canlı GPS` : ""} — canlı konum şoför paylaştıkça güncellenir`
+                : "Sefer konumları hazırlanıyor…"}
             </p>
           </div>
           <div className="h-[440px] w-full">
             <LiveTrackingMap
               markers={markers}
+              route={route}
               selectedId={selected?.id ?? null}
               onSelect={setSelectedId}
             />

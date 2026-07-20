@@ -57,7 +57,10 @@ function buildCsp(nonce: string): string {
     // board. Without this the map renders blank under the strict CSP.
     `img-src 'self' blob: data: https://*.tile.openstreetmap.org`,
     `font-src 'self'`,
-    `connect-src 'self'`,
+    // Nominatim (OpenStreetMap geocoding) — the dashboard map resolves
+    // shipment origin/destination addresses to coordinates client-side so a
+    // shipment shows on the map even before the driver shares live GPS.
+    `connect-src 'self' https://nominatim.openstreetmap.org`,
     `object-src 'none'`,
     `base-uri 'self'`,
     `form-action 'self'`,
