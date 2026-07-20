@@ -108,18 +108,20 @@ export default function LandingPage() {
       </header>
 
       {/* HERO */}
-      <section className="relative overflow-hidden bg-[#1e1e1e]">
-        <div className="logigo-road absolute inset-0 bg-[repeating-linear-gradient(115deg,#242424,#242424_22px,#2c2c2c_22px,#2c2c2c_44px)]" />
-        <div className="absolute inset-0 bg-[linear-gradient(100deg,#1e1e1e_34%,rgba(24,24,24,0.72)_52%,rgba(24,24,24,0.15)_82%)]" />
-        {/* Süzülen dekoratif nesneler — arka planda yavaşça hareket eder */}
-        <Truck
+      <section className="relative overflow-hidden bg-[#0c0c0c]">
+        {/* Lojistik hero görseli — next/image ile otomatik optimize/resize edilir */}
+        <Image
+          src="/logigo_branded_global_image.png"
+          alt=""
           aria-hidden
-          className="logigo-float pointer-events-none absolute -top-6 right-4 size-44 text-white/[0.05] sm:right-20 sm:size-64"
+          fill
+          priority
+          sizes="100vw"
+          className="object-cover object-center"
         />
-        <Package
-          aria-hidden
-          className="logigo-float-slow pointer-events-none absolute bottom-8 right-[38%] hidden size-16 text-white/[0.04] lg:block"
-        />
+        {/* Okunabilirlik katmanları: sol/üst koyu (başlık + kart), sağa doğru görsel açılır */}
+        <div className="absolute inset-0 bg-[linear-gradient(105deg,rgba(10,10,10,0.94)_0%,rgba(10,10,10,0.82)_40%,rgba(10,10,10,0.5)_75%,rgba(10,10,10,0.35)_100%)]" />
+        <div className="absolute inset-0 bg-[linear-gradient(to_bottom,rgba(10,10,10,0.55)_0%,transparent_30%,transparent_70%,rgba(10,10,10,0.45)_100%)]" />
         <div className="relative mx-auto max-w-[1240px] px-5 pb-16 pt-12 sm:px-8 sm:pb-[72px] sm:pt-14">
           <div className="mb-7 flex flex-col justify-between gap-4 md:flex-row md:items-start">
             <h1 className="max-w-[640px] text-[34px] font-extrabold leading-[1.08] tracking-tight text-white sm:text-[52px]">
