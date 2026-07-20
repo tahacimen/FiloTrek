@@ -30,6 +30,7 @@ import { PriceApprovalCard } from "@/app/(dashboard)/shipments/[id]/price-approv
 import { IncidentCard } from "@/app/(dashboard)/shipments/[id]/incident-card";
 import { StatusTimelineCard } from "@/app/(dashboard)/shipments/[id]/status-timeline-card";
 import { DockReservationCard } from "@/app/(dashboard)/shipments/[id]/dock-reservation-card";
+import { NotifyDriverCard } from "@/app/(dashboard)/shipments/[id]/notify-driver-card";
 import { BidListCard } from "@/app/(dashboard)/shipments/[id]/bid-list-card";
 import { RatingCard } from "@/app/(dashboard)/shipments/[id]/rating-card";
 import { ShipmentLiveMap } from "@/components/shipment-live-map-loader";
@@ -179,6 +180,14 @@ export default async function ShipmentDetailPage({
       {ctx.companyType === "SUPPLIER" && (
         <ShipmentStatusActions shipmentId={shipment.id} status={shipment.status} />
       )}
+
+      <NotifyDriverCard
+        shipmentId={shipment.id}
+        companyType={ctx.companyType}
+        hasDriver={shipment.driver != null}
+        priceApproved={shipment.priceApprovedAt != null}
+        status={shipment.status}
+      />
 
       <StatusTimelineCard
         status={shipment.status}
