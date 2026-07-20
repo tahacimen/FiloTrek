@@ -6,6 +6,7 @@ import * as shipmentRepository from "@/core/shipment/shipment-repository";
 import * as companyRepository from "@/core/company/company-repository";
 import * as driverRepository from "@/core/driver/driver-repository";
 import * as notificationService from "@/core/notification/notification-service";
+import { getShipmentProgressPercent } from "@/core/shipment/shipment-transitions";
 import {
   loadReadyInputSchema,
   pickupEtaInputSchema,
@@ -44,6 +45,53 @@ export async function getShipment(ctx: TenantContext, shipmentId: string) {
   );
   if (!shipment) throw new NotFoundError("Sefer bulunamadı.");
   return shipment;
+}
+
+export type TrackingShipment = {
+  id: string;
+  trackingNumber: number;
+  status: ShipmentStatus;
+  progress: number;
+  origin: string;
+  destination: string;
+  lat: number | null;
+  lng: number | null;
+  lastLocationAt: Date | null;
+  driverName: string | null;
+  vehiclePlate: string | null;
+  otherParty: string;
+  updatedAt: Date;
+};
+
+/**
+ * Flattened, client-serializable list for the dashboard live-tracking board —
+ * both roles. lat/lng are null until the driver shares a location; otherParty
+ * is whichever company the viewer isn't (customer sees the supplier, and vice
+ * versa). progress mirrors the same helper the detail/activity bars use.
+ */
+export async function getActiveShipmentsForTracking(
+  ctx: TenantContext
+): Promise<TrackingShipment[]> {
+  const rows =
+    await shipmentRepository.listActiveShipmentsWithLocationForTenant(ctx);
+  const isSupplier = ctx.companyType === CompanyType.SUPPLIER;
+  return rows.map((row) => ({
+    id: row.id,
+    trackingNumber: row.trackingNumber,
+    status: row.status,
+    progress: getShipmentProgressPercent(row.status),
+    origin: row.originAddress,
+    destination: row.destinationAddress,
+    lat: row.lastKnownLat ? row.lastKnownLat.toNumber() : null,
+    lng: row.lastKnownLng ? row.lastKnownLng.toNumber() : null,
+    lastLocationAt: row.lastLocationAt,
+    driverName: row.driver?.fullName ?? null,
+    vehiclePlate: row.vehicle?.plate ?? null,
+    otherParty:
+      (isSupplier ? row.customerCompany?.name : row.supplierCompany?.name) ??
+      "—",
+    updatedAt: row.updatedAt,
+  }));
 }
 
 /** Callers should only call this when shipment.hasOpenIncident is true. */

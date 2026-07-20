@@ -52,7 +52,10 @@ function buildCsp(nonce: string): string {
     // which nonces don't cover — 'unsafe-inline' is the accepted trade-off
     // here (style-src, not script-src).
     `style-src 'self' 'unsafe-inline'`,
-    `img-src 'self' blob: data:`,
+    // OpenStreetMap raster tiles (Leaflet loads them as <img>) for the live
+    // shipment maps — /track, shipment detail, and the dashboard tracking
+    // board. Without this the map renders blank under the strict CSP.
+    `img-src 'self' blob: data: https://*.tile.openstreetmap.org`,
     `font-src 'self'`,
     `connect-src 'self'`,
     `object-src 'none'`,

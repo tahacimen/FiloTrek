@@ -5,7 +5,10 @@ import { requireTenantContext } from "@/core/shared/tenant-context";
 import { getDashboardData, getOperationalKpis } from "@/core/dashboard/dashboard-service";
 import { getSupplierScorecard } from "@/core/scorecard/scorecard-service";
 import { getCompanyEmissionsSummary } from "@/core/emissions/emissions-service";
-import { listShipments } from "@/core/shipment/shipment-service";
+import {
+  getActiveShipmentsForTracking,
+  listShipments,
+} from "@/core/shipment/shipment-service";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { KpiCards } from "@/components/dashboard/kpi-cards";
@@ -16,6 +19,7 @@ import { FeaturedShipmentPanel } from "@/components/dashboard/featured-shipment-
 import { ScorecardCard } from "@/components/dashboard/scorecard-card";
 import { OperationalKpiCard } from "@/components/dashboard/operational-kpi-card";
 import { CarbonFootprintCard } from "@/components/dashboard/carbon-footprint-card";
+import { LiveTrackingBoard } from "@/components/dashboard/live-tracking-board";
 import { Reveal } from "@/components/motion/reveal";
 import { customerShipmentStatusLabels } from "@/lib/labels";
 
@@ -23,11 +27,13 @@ export default async function DashboardPage() {
   const ctx = await requireTenantContext();
 
   if (ctx.companyType === "CUSTOMER") {
-    const [shipments, operationalKpis, emissionsSummary] = await Promise.all([
-      listShipments(ctx),
-      getOperationalKpis(ctx),
-      getCompanyEmissionsSummary(ctx),
-    ]);
+    const [shipments, operationalKpis, emissionsSummary, trackingShipments] =
+      await Promise.all([
+        listShipments(ctx),
+        getOperationalKpis(ctx),
+        getCompanyEmissionsSummary(ctx),
+        getActiveShipmentsForTracking(ctx),
+      ]);
     const counts = shipments.reduce(
       (acc, s) => {
         acc[s.status] = (acc[s.status] ?? 0) + 1;
@@ -64,6 +70,13 @@ export default async function DashboardPage() {
           </Card>
         </Reveal>
 
+        <Reveal delay={60}>
+          <LiveTrackingBoard
+            shipments={trackingShipments}
+            companyType={ctx.companyType}
+          />
+        </Reveal>
+
         <Reveal delay={90}>
           <Card>
             <CardHeader>
@@ -90,11 +103,13 @@ export default async function DashboardPage() {
     );
   }
 
-  const [data, scorecard, emissionsSummary] = await Promise.all([
-    getDashboardData(ctx),
-    getSupplierScorecard(ctx.companyId),
-    getCompanyEmissionsSummary(ctx),
-  ]);
+  const [data, scorecard, emissionsSummary, trackingShipments] =
+    await Promise.all([
+      getDashboardData(ctx),
+      getSupplierScorecard(ctx.companyId),
+      getCompanyEmissionsSummary(ctx),
+      getActiveShipmentsForTracking(ctx),
+    ]);
 
   return (
     <div className="flex flex-col gap-6">
@@ -115,6 +130,13 @@ export default async function DashboardPage() {
         enRouteVehicles={data.enRouteVehicles}
         idleDrivers={data.idleDrivers}
       />
+
+      <Reveal delay={60}>
+        <LiveTrackingBoard
+          shipments={trackingShipments}
+          companyType={ctx.companyType}
+        />
+      </Reveal>
 
       <Reveal as="div" className="grid items-stretch gap-4 lg:grid-cols-3">
         <Card className="lg:col-span-2">

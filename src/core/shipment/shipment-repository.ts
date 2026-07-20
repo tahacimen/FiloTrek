@@ -502,6 +502,39 @@ function roleScopedShipmentFilter(ctx: TenantContext) {
 }
 
 /**
+ * The dashboard live-tracking board: the tenant's most recent non-cancelled
+ * shipments with their last-known GPS point (null until the driver has shared
+ * it). Works for both roles via roleScopedShipmentFilter.
+ */
+export async function listActiveShipmentsWithLocationForTenant(
+  ctx: TenantContext
+) {
+  return prisma.shipment.findMany({
+    where: {
+      ...roleScopedShipmentFilter(ctx),
+      status: { not: ShipmentStatus.CANCELLED },
+    },
+    orderBy: { updatedAt: "desc" },
+    take: 25,
+    select: {
+      id: true,
+      trackingNumber: true,
+      status: true,
+      originAddress: true,
+      destinationAddress: true,
+      lastKnownLat: true,
+      lastKnownLng: true,
+      lastLocationAt: true,
+      updatedAt: true,
+      driver: { select: { fullName: true } },
+      vehicle: { select: { plate: true } },
+      customerCompany: { select: { name: true } },
+      supplierCompany: { select: { name: true } },
+    },
+  });
+}
+
+/**
  * Among shipments with an ETA set (estimatedPickupArrivalAt) that actually
  * reached LOADING, the fraction that did so at or before that ETA. Null
  * when there's nothing eligible yet (too new a company, or no ETAs ever
