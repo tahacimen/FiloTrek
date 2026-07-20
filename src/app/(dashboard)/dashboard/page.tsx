@@ -11,6 +11,7 @@ import {
 } from "@/core/shipment/shipment-service";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { AutoRefresh } from "@/components/dashboard/auto-refresh";
 import { KpiCards } from "@/components/dashboard/kpi-cards";
 import { MonthlyRevenueChart } from "@/components/dashboard/monthly-revenue-chart";
 import { StatusBreakdownChart } from "@/components/dashboard/status-breakdown-chart";
@@ -44,6 +45,7 @@ export default async function DashboardPage() {
 
     return (
       <div className="flex flex-col gap-6">
+        <AutoRefresh intervalMs={30_000} />
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Gösterge Paneli</h1>
           <p className="text-muted-foreground text-sm">
@@ -113,6 +115,7 @@ export default async function DashboardPage() {
 
   return (
     <div className="flex flex-col gap-6">
+      <AutoRefresh intervalMs={30_000} />
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">Gösterge Paneli</h1>
         <p className="text-muted-foreground text-sm">
