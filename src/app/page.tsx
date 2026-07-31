@@ -5,7 +5,6 @@ import {
   CalendarCheck,
   Clock,
   Container,
-  Forklift,
   Globe,
   Handshake,
   Mail,
@@ -25,7 +24,6 @@ import {
 import { Logo } from "@/components/logo";
 import { HeroLoginForm } from "@/app/hero-login-form";
 import { Reveal } from "@/components/motion/reveal";
-import { CountUp } from "@/components/motion/count-up";
 
 // Forces per-request rendering rather than a build-time static export — this
 // page has no dynamic data of its own, but the strict CSP in proxy.ts stamps
@@ -58,25 +56,7 @@ const SERVICES = [
   { label: "Parsiyel Taşımacılık", icon: Package },
   { label: "Soğuk Zincir (Frigorifik)", icon: Snowflake },
   { label: "Konteyner Taşımacılığı", icon: Container },
-  { label: "Proje & Ağır Yük", icon: Forklift },
   { label: "Ekspres Gönderi", icon: Zap, brand: true },
-];
-
-type Stat = {
-  label: string;
-  sub: string;
-  value?: string;
-  prefix?: string;
-  to?: number;
-  suffix?: string;
-  brandSuffix?: boolean;
-};
-
-const STATS: Stat[] = [
-  { to: 500, suffix: "+", brandSuffix: true, label: "aktif firma", sub: "tedarikçi ve müşteri tek platformda" },
-  { to: 12, suffix: " dk", label: "ortalama eşleşme", sub: "yük ilanından araç atamasına" },
-  { prefix: "%", to: 98, label: "müşteri memnuniyeti", sub: "zamanında ve eksiksiz teslimat" },
-  { value: "7/24", label: "canlı takip", sub: "sürücü, araç ve sevkiyat izleme" },
 ];
 
 export default function LandingPage() {
@@ -187,34 +167,6 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* STATS */}
-      <section className="border-b border-[#ece9e3] bg-[#f5f5f3]">
-        <div className="mx-auto grid max-w-[1240px] grid-cols-2 gap-y-8 px-5 py-12 sm:px-8 md:grid-cols-4 md:gap-6">
-          {STATS.map((s, i) => (
-            <Reveal
-              key={s.label}
-              delay={i * 110}
-              className={`text-center ${i > 0 ? "md:border-l md:border-[#e8e6e0]" : ""}`}
-            >
-              <div className="text-[38px] font-extrabold leading-none tracking-tight text-[#1e1e1e] sm:text-[48px]">
-                {s.value ? (
-                  s.value
-                ) : (
-                  <CountUp
-                    to={s.to!}
-                    prefix={s.prefix}
-                    suffix={s.suffix}
-                    suffixClassName={s.brandSuffix ? "text-[#f5b301]" : undefined}
-                  />
-                )}
-              </div>
-              <div className="mt-1 text-[15px] font-bold text-[#2a3350]">{s.label}</div>
-              <div className="mt-1.5 text-[13px] leading-snug text-[#7b8399]">{s.sub}</div>
-            </Reveal>
-          ))}
-        </div>
-      </section>
-
       {/* NASIL ÇALIŞIR */}
       <section id="nasil" className="bg-white">
         <div className="mx-auto max-w-[1240px] px-5 py-16 sm:px-8">
@@ -309,7 +261,7 @@ export default function LandingPage() {
               Her yüke uygun taşıma tipi
             </h2>
           </Reveal>
-          <div className="grid grid-cols-2 gap-5 sm:grid-cols-3 lg:grid-cols-5">
+          <div className="grid grid-cols-2 gap-5 sm:grid-cols-4">
             {SERVICES.map((s, i) => (
               <Reveal key={s.label} delay={i * 90} className="group text-center">
                 <div
