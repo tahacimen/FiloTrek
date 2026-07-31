@@ -5,16 +5,13 @@ import {
   CalendarCheck,
   Clock,
   Container,
-  Globe,
   Handshake,
   Mail,
   MapPin,
   MapPinned,
-  MessageCircle,
   Package,
   Route,
   Search,
-  Send,
   Snowflake,
   Truck,
   UserPlus,
@@ -282,7 +279,7 @@ export default function LandingPage() {
 
       {/* FOOTER */}
       <footer id="iletisim" className="bg-[#1e1e1e] text-white">
-        <div className="mx-auto grid max-w-[1240px] gap-10 px-5 py-14 sm:px-8 md:grid-cols-2 lg:grid-cols-[1.4fr_1fr_1fr_1.3fr]">
+        <div className="mx-auto grid max-w-[1240px] gap-10 px-5 py-14 sm:px-8 md:grid-cols-2 lg:grid-cols-[1.6fr_1fr_1.2fr]">
           <div>
             <span className="inline-flex rounded-xl bg-white px-3.5 py-2">
               <Logo className="h-[30px] w-auto" />
@@ -291,34 +288,15 @@ export default function LandingPage() {
               Tedarikçi ve müşteri firmaları buluşturan B2B filo ve yük yönetim
               platformu.
             </p>
-            <div className="mt-5 flex gap-2.5">
-              {[Globe, MessageCircle, Send].map((Icon, i) => (
-                <a
-                  key={i}
-                  href="#"
-                  className="flex size-[38px] items-center justify-center rounded-[10px] bg-white/10 hover:bg-white/20"
-                >
-                  <Icon className="size-[18px]" />
-                </a>
-              ))}
-            </div>
           </div>
           <div>
             <div className="mb-4 text-sm font-bold">Platform</div>
             <div className="flex flex-col gap-2.5 text-sm text-white/70">
               <a href="#nasil" className="hover:text-white">Nasıl Çalışır</a>
               <a href="#hizmetler" className="hover:text-white">Hizmetler</a>
-              <a href="#" className="hover:text-white">Fiyatlandırma</a>
-              <Link href="/kaydol" className="hover:text-white">Yeni Kayıt Oluştur</Link>
-            </div>
-          </div>
-          <div>
-            <div className="mb-4 text-sm font-bold">Kurumsal</div>
-            <div className="flex flex-col gap-2.5 text-sm text-white/70">
               <a href="#hakkimizda" className="hover:text-white">Hakkımızda</a>
-              <a href="#" className="hover:text-white">KVKK Politikası</a>
-              <a href="#" className="hover:text-white">Kullanım Koşulları</a>
-              <a href="#" className="hover:text-white">SSS</a>
+              <Link href="/login" className="hover:text-white">Giriş Yap</Link>
+              <Link href="/kaydol" className="hover:text-white">Yeni Kayıt Oluştur</Link>
             </div>
           </div>
           <div>
