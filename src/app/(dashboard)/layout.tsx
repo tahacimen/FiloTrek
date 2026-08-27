@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 
 import { auth } from "@/lib/auth";
 import { DashboardNav } from "@/components/dashboard/nav";
+import { MobileNav } from "@/components/dashboard/mobile-nav";
 import { NotificationBell } from "@/components/dashboard/notification-bell";
 import { UserMenu } from "@/components/dashboard/user-menu";
 import { Logo } from "@/components/logo";
@@ -55,6 +56,11 @@ export default async function DashboardLayout({
       <div className="flex min-h-screen flex-1 flex-col">
         <header className="flex items-center justify-between border-b px-4 py-2.5 md:px-6">
           <div className="flex items-center gap-2 md:hidden">
+            <MobileNav
+              companyType={user.companyType}
+              companyRole={user.companyRole}
+              isPlatformAdmin={user.isPlatformAdmin}
+            />
             <Logo className="h-7 w-auto" />
           </div>
           <Badge variant="outline" className="hidden md:inline-flex">
