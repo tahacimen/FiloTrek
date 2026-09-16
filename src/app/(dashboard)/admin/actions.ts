@@ -6,11 +6,29 @@ import { requireTenantContext } from "@/core/shared/tenant-context";
 import * as invitationService from "@/core/invitation/invitation-service";
 import * as notificationService from "@/core/notification/notification-service";
 import * as signupService from "@/core/signup/signup-service";
+import * as demoService from "@/core/demo/demo-service";
 import { getRequestOrigin } from "@/lib/request-origin";
 import { toActionErrorMessage } from "@/lib/action-error";
-import { SignupRequestStatus } from "@/generated/prisma/client";
+import {
+  DemoRequestStatus,
+  SignupRequestStatus,
+} from "@/generated/prisma/client";
 
 export type InvitationFormState = { error?: string } | undefined;
+
+export async function setDemoRequestStatusAction(
+  id: string,
+  status: DemoRequestStatus
+): Promise<InvitationFormState> {
+  try {
+    const ctx = await requireTenantContext();
+    await demoService.setDemoRequestStatus(ctx, id, status);
+  } catch (error) {
+    return { error: toActionErrorMessage(error) };
+  }
+  revalidatePath("/admin");
+  return undefined;
+}
 
 export async function createInvitationAction(
   _prevState: InvitationFormState,

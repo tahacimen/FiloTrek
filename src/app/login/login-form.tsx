@@ -101,7 +101,7 @@ export function LoginForm({ callbackUrl }: { callbackUrl: string }) {
 
         <div className="mt-6 text-center text-sm text-muted-foreground">
           Hesabınız yok mu?{" "}
-          <Link href="/#iletisim" className="font-bold text-primary">
+          <Link href="/demo" className="font-bold text-primary">
             Demo talep edin
           </Link>
         </div>

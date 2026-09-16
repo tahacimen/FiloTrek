@@ -14,7 +14,6 @@ import {
   Search,
   Snowflake,
   Truck,
-  UserPlus,
   Zap,
 } from "lucide-react";
 
@@ -74,11 +73,11 @@ export default function LandingPage() {
           </nav>
           <div className="ml-auto flex items-center gap-3.5">
             <Link
-              href="/kaydol"
+              href="/demo"
               className="inline-flex items-center gap-2 rounded-lg bg-[#f5b301] px-5 py-2.5 text-[15px] font-semibold text-[#1a1a1a] shadow-[0_6px_16px_rgba(245,179,1,0.35)] transition hover:bg-[#e0a400]"
             >
-              <UserPlus className="size-[17px]" />
-              Kaydol
+              <CalendarCheck className="size-[17px]" />
+              Demo Talep Et
             </Link>
           </div>
         </div>
@@ -121,11 +120,11 @@ export default function LandingPage() {
               <div className="mt-4 flex flex-wrap items-center justify-between gap-2 border-t border-[#efece5] pt-3.5 text-[13.5px] text-[#6b7488]">
                 <span>Hesabınız yok mu?</span>
                 <Link
-                  href="/kaydol"
+                  href="/demo"
                   className="inline-flex items-center gap-1.5 rounded-lg bg-[#f5b301] px-3.5 py-2 text-[13.5px] font-semibold text-[#1a1a1a] transition hover:bg-[#e0a400]"
                 >
-                  <UserPlus className="size-4" />
-                  Yeni Kayıt Oluştur
+                  <CalendarCheck className="size-4" />
+                  Demo Talep Et
                 </Link>
               </div>
             </Reveal>
@@ -296,7 +295,7 @@ export default function LandingPage() {
               <a href="#hizmetler" className="hover:text-white">Hizmetler</a>
               <a href="#hakkimizda" className="hover:text-white">Hakkımızda</a>
               <Link href="/login" className="hover:text-white">Giriş Yap</Link>
-              <Link href="/kaydol" className="hover:text-white">Yeni Kayıt Oluştur</Link>
+              <Link href="/demo" className="hover:text-white">Demo Talep Et</Link>
             </div>
           </div>
           <div>

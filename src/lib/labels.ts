@@ -1,5 +1,6 @@
 import {
   CompanyType,
+  DemoRequestStatus,
   DockReservationStatus,
   DockReservationType,
   DriverStatus,
@@ -141,6 +142,19 @@ export const signupRequestStatusBadgeVariant: Record<
   [SignupRequestStatus.PENDING]: "warning",
   [SignupRequestStatus.APPROVED]: "success",
   [SignupRequestStatus.REJECTED]: "destructive",
+};
+
+export const demoRequestStatusLabels: Record<DemoRequestStatus, string> = {
+  [DemoRequestStatus.NEW]: "Yeni",
+  [DemoRequestStatus.CONTACTED]: "İletişime Geçildi",
+};
+
+export const demoRequestStatusBadgeVariant: Record<
+  DemoRequestStatus,
+  "default" | "secondary" | "outline" | "destructive" | "success" | "warning"
+> = {
+  [DemoRequestStatus.NEW]: "warning",
+  [DemoRequestStatus.CONTACTED]: "success",
 };
 
 /** Badge color variant per status, shared by vehicle/driver/shipment status chips. */

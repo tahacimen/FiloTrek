@@ -248,6 +248,11 @@ enum SignupRequestStatus {
   REJECTED
 }
 
+enum DemoRequestStatus {
+  NEW
+  CONTACTED
+}
+
 /**
  * A public "başvuru" (application), NOT an account. The landing page's
  * "Kaydol" form writes one of these; it never creates a Company/User on its
@@ -271,6 +276,26 @@ model SignupRequest {
 
   @@index([status, createdAt])
   @@map("signup_requests")
+}
+
+/// Public "Demo Talep Et" (demo request) lead form — src/app/demo. A pure
+/// contact/lead capture: creates NO account and is entirely separate from
+/// SignupRequest. The owner reviews these in /admin ("Demo Talepleri") and
+/// reaches out manually.
+model DemoRequest {
+  id           String            @id @default(uuid(7)) @db.Uuid
+  fullName     String            @map("full_name")
+  companyName  String            @map("company_name")
+  phone        String
+  email        String
+  vehicleCount Int               @map("vehicle_count")
+  message      String?
+  status       DemoRequestStatus @default(NEW)
+  createdAt    DateTime          @default(now()) @map("created_at")
+  updatedAt    DateTime          @updatedAt @map("updated_at")
+
+  @@index([status, createdAt])
+  @@map("demo_requests")
 }
 
 model Vehicle {

@@ -3,12 +3,14 @@ import { redirect } from "next/navigation";
 import { requireTenantContext } from "@/core/shared/tenant-context";
 import { listInvitations } from "@/core/invitation/invitation-service";
 import { listSignupRequests } from "@/core/signup/signup-service";
+import { listDemoRequests } from "@/core/demo/demo-service";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getRequestOrigin } from "@/lib/request-origin";
 import { InvitationFormDialog } from "@/app/(dashboard)/admin/invitation-form-dialog";
 import { ManualAccountFormDialog } from "@/app/(dashboard)/admin/manual-account-form-dialog";
 import { InvitationTable } from "@/app/(dashboard)/admin/invitation-table";
 import { SignupRequestTable } from "@/app/(dashboard)/admin/signup-request-table";
+import { DemoRequestTable } from "@/app/(dashboard)/admin/demo-request-table";
 
 export default async function AdminPage() {
   const ctx = await requireTenantContext();
@@ -16,11 +18,14 @@ export default async function AdminPage() {
     redirect("/dashboard");
   }
 
-  const [invitations, signupRequests, origin] = await Promise.all([
+  const [invitations, signupRequests, demoRequests, origin] = await Promise.all([
     listInvitations(ctx),
     listSignupRequests(ctx),
+    listDemoRequests(ctx),
     getRequestOrigin(),
   ]);
+
+  const newDemoCount = demoRequests.filter((r) => r.status === "NEW").length;
 
   const rows = invitations.map((invitation) => ({
     id: invitation.id,
@@ -51,6 +56,20 @@ export default async function AdminPage() {
           <InvitationFormDialog />
         </div>
       </div>
+      <Card>
+        <CardHeader>
+          <CardTitle>
+            Demo Talepleri
+            {newDemoCount > 0 && (
+              <span className="text-brand"> ({newDemoCount} yeni)</span>
+            )}
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <DemoRequestTable requests={demoRequests} />
+        </CardContent>
+      </Card>
+
       <Card>
         <CardHeader>
           <CardTitle>

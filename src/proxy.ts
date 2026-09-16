@@ -118,10 +118,14 @@ export default auth((req) => {
   const isTrackPage = pathname === "/track" || pathname.startsWith("/track/");
   const isInvitePage = pathname === "/davet" || pathname.startsWith("/davet/");
   const isSignupPage = pathname === "/kaydol" || pathname.startsWith("/kaydol/");
+  // Public "Demo Talep Et" lead form — the visitor has no account (and no
+  // account is ever created from it). /kaydol stays public too so its
+  // server-side redirect to /demo can run.
+  const isDemoPage = pathname === "/demo" || pathname.startsWith("/demo/");
   const isDriverRoute = pathname === "/driver" || pathname.startsWith("/driver/");
   const isGateRoute = pathname === "/gate" || pathname.startsWith("/gate/");
 
-  if (isLandingPage || isTrackPage || isInvitePage || isSignupPage) {
+  if (isLandingPage || isTrackPage || isInvitePage || isSignupPage || isDemoPage) {
     const requestHeaders = new Headers(req.headers);
     requestHeaders.set("x-nonce", nonce);
     requestHeaders.set("Content-Security-Policy", csp);
