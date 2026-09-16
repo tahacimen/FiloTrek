@@ -155,7 +155,7 @@ export default function LandingPage() {
       <section className="relative overflow-hidden bg-[#0c0c0c]">
         {/* Lojistik hero görseli — next/image ile otomatik optimize/resize edilir */}
         <Image
-          src="/logigo_branded_global_image.png"
+          src="/hero-terminal.webp"
           alt=""
           aria-hidden
           fill
@@ -310,8 +310,8 @@ export default function LandingPage() {
         <div className="mx-auto grid max-w-[1240px] items-center gap-10 px-5 py-16 sm:px-8 lg:grid-cols-[0.9fr_1.1fr] lg:gap-14">
           <Reveal className="relative aspect-[16/11] overflow-hidden rounded-[18px] shadow-[0_20px_50px_rgba(0,0,0,0.15)]">
             <Image
-              src="/logigo_branded_global_image.png"
-              alt="Logigo lojistik filosu — kara, hava ve deniz taşımacılığı"
+              src="/logigo-nedir.webp"
+              alt="Logigo yazılımını depo ofisinde kullanan operasyon ekibi"
               fill
               sizes="(max-width: 1024px) 100vw, 45vw"
               className="object-cover transition-transform duration-700 hover:scale-105"
