@@ -14,9 +14,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Logigo | B2B Lojistik ve Filo Yönetimi",
+  title: "Logigo | Filo ve Sevkiyat Yönetim Yazılımı",
   description:
-    "Lojistik firmalarını ve yük sahibi müşterileri tek platformda buluşturan B2B filo yönetim sistemi.",
+    "Nakliye firmaları ve yük sahibi işletmeler için filo, sürücü, yük ilanı, teklif ve sevkiyat yönetimini tek panelde toplayan B2B yazılım.",
 };
 
 export default function RootLayout({

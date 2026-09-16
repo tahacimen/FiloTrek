@@ -2,18 +2,26 @@ import Image from "next/image";
 import Link from "next/link";
 import {
   ArrowRight,
+  BarChart3,
   CalendarCheck,
+  Camera,
+  ClipboardList,
   Clock,
   Container,
+  FileCheck,
   Handshake,
+  Leaf,
   Mail,
   MapPin,
   MapPinned,
   Package,
+  Plug,
   Route,
   Search,
   Snowflake,
   Truck,
+  Users,
+  Warehouse,
   Zap,
 } from "lucide-react";
 
@@ -34,18 +42,72 @@ export const dynamic = "force-dynamic";
 
 const NAV_LINKS = [
   { href: "#nasil", label: "Nasıl Çalışır" },
-  { href: "#hizmetler", label: "Hizmetler" },
-  { href: "#hakkimizda", label: "Hakkımızda" },
+  { href: "#ozellikler", label: "Özellikler" },
+  { href: "#hizmetler", label: "Taşıma Tipleri" },
+  { href: "#hakkimizda", label: "Logigo Nedir" },
   { href: "#iletisim", label: "İletişim" },
 ];
 
 const STEPS = [
-  { n: 1, title: "Talebinizi alıyoruz", icon: Package },
-  { n: 2, title: "Fiyat hesaplar, teklif sunarız", icon: Handshake },
-  { n: 3, title: "Sözleşme imzalanır", icon: Clock },
-  { n: 4, title: "Araç atanır, işe başlanır", icon: Truck },
-  { n: 5, title: "Canlı sevkiyat takibi", icon: MapPinned },
-  { n: 6, title: "Teslimat & ödeme tamamlanır", icon: CalendarCheck, brand: true },
+  { n: 1, title: "Yük ilanı / talebi oluşturun", icon: Package },
+  { n: 2, title: "Teklifleri alın ve karşılaştırın", icon: Handshake },
+  { n: 3, title: "Anlaşmayı onaylayın", icon: FileCheck },
+  { n: 4, title: "Araç ve sürücü atayın", icon: Truck },
+  { n: 5, title: "Sevkiyatı canlı takip edin", icon: MapPinned },
+  { n: 6, title: "Teslimatı tamamlayın", icon: CalendarCheck, brand: true },
+];
+
+const FEATURES = [
+  {
+    title: "Filo & sürücü yönetimi",
+    desc: "Araç ve sürücüleri belge, durum ve iletişim bilgileriyle tek yerden yönetin.",
+    icon: Truck,
+  },
+  {
+    title: "Yük ilanı & teklif yönetimi",
+    desc: "Yük taleplerini oluşturun veya görün; teklif verin ya da pazaryerinde toplayın.",
+    icon: ClipboardList,
+  },
+  {
+    title: "Anlaşma & fiyat onayı",
+    desc: "Teklifi dijital olarak onaylayıp anlaşmayı netleştirin.",
+    icon: Handshake,
+  },
+  {
+    title: "Araç–sürücü ataması",
+    desc: "Onaylanan sefere uygun aracı ve sürücüyü atayın.",
+    icon: Users,
+  },
+  {
+    title: "Canlı sevkiyat takibi",
+    desc: "Sevkiyatları harita üzerinde gerçek zamanlı izleyin.",
+    icon: MapPinned,
+  },
+  {
+    title: "Rampa & depo rezervasyonu",
+    desc: "Yükleme/boşaltma için depo ve rampa zamanı planlayın.",
+    icon: Warehouse,
+  },
+  {
+    title: "Teslimat kanıtı (POD)",
+    desc: "Teslimat anında fotoğraflı kanıt kaydı alın.",
+    icon: Camera,
+  },
+  {
+    title: "Performans karnesi & KPI",
+    desc: "Zamanında teslim, iptal oranı ve km başı fiyat gibi metrikleri izleyin.",
+    icon: BarChart3,
+  },
+  {
+    title: "Karbon ayak izi",
+    desc: "Sefer bazında tahmini CO₂ emisyonunu görün.",
+    icon: Leaf,
+  },
+  {
+    title: "API & webhook",
+    desc: "Kendi sistemlerinizle entegrasyon için okuma API'si ve çıkış webhook'ları.",
+    icon: Plug,
+  },
 ];
 
 const SERVICES = [
@@ -72,6 +134,12 @@ export default function LandingPage() {
             ))}
           </nav>
           <div className="ml-auto flex items-center gap-3.5">
+            <Link
+              href="/login"
+              className="hidden text-[15px] font-semibold text-[#3d4560] transition hover:text-[#1e1e1e] sm:inline-flex"
+            >
+              Giriş Yap
+            </Link>
             <Link
               href="/demo"
               className="inline-flex items-center gap-2 rounded-lg bg-[#f5b301] px-5 py-2.5 text-[15px] font-semibold text-[#1a1a1a] shadow-[0_6px_16px_rgba(245,179,1,0.35)] transition hover:bg-[#e0a400]"
@@ -101,21 +169,24 @@ export default function LandingPage() {
         <div className="relative mx-auto max-w-[1240px] px-5 pb-16 pt-12 sm:px-8 sm:pb-[72px] sm:pt-14">
           <div className="mb-7 flex flex-col justify-between gap-4 md:flex-row md:items-start">
             <h1 className="max-w-[640px] text-[34px] font-extrabold leading-[1.08] tracking-tight text-white sm:text-[52px]">
-              Türkiye&apos;nin B2B filo ve yük yönetim platformu
+              Filo ve sevkiyat operasyonunuzu tek panelden yönetin
             </h1>
-            <p className="max-w-[250px] text-[14.5px] leading-relaxed text-white/70 md:text-right">
-              Tedarikçi ve müşteri firmaları tek panelde buluşturur; yükünüzü
-              doğru araçla saniyeler içinde eşleştirir.
+            <p className="max-w-[270px] text-[14.5px] leading-relaxed text-white/70 md:text-right">
+              Nakliye firmaları ve yük sahibi işletmeler için filo, sürücü, yük
+              ilanı, teklif ve sevkiyat yönetim yazılımı.
             </p>
           </div>
 
           <div className="grid max-w-[1010px] gap-5 lg:grid-cols-[1fr_340px]">
             {/* login card */}
             <Reveal className="rounded-2xl bg-white p-6 shadow-[0_24px_60px_rgba(0,0,0,0.38)] sm:p-7">
-              <div className="mb-4 flex items-center gap-2 text-[19px] font-bold text-[#1a1a1a]">
+              <div className="mb-1 flex items-center gap-2 text-[19px] font-bold text-[#1a1a1a]">
                 <Truck className="size-5 text-[#1e1e1e]" />
-                Sisteme Giriş Yap
+                Mevcut kullanıcı girişi
               </div>
+              <p className="mb-4 text-[13px] text-[#6b7488]">
+                Zaten hesabınız var mı? Panelinize giriş yapın.
+              </p>
               <HeroLoginForm />
               <div className="mt-4 flex items-center justify-center border-t border-[#efece5] pt-3.5">
                 <Link
@@ -197,8 +268,45 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* ÖZELLİKLER */}
+      <section id="ozellikler" className="bg-[#f5f5f3]">
+        <div className="mx-auto max-w-[1240px] px-5 py-16 sm:px-8">
+          <Reveal className="mb-11 text-center">
+            <div className="mb-3 text-[13px] font-bold uppercase tracking-[1.5px] text-[#f5b301]">
+              Özellikler
+            </div>
+            <h2 className="text-[28px] font-extrabold tracking-tight text-[#1a1a1a] sm:text-[34px]">
+              Tüm operasyon tek panelde
+            </h2>
+            <p className="mx-auto mt-3 max-w-[560px] text-base leading-relaxed text-[#4a5268]">
+              Dağınık tabloları ve mesajları bırakın; filodan teslimata kadar her
+              adımı aynı yazılımdan yönetin.
+            </p>
+          </Reveal>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {FEATURES.map((f, i) => (
+              <Reveal
+                key={f.title}
+                delay={(i % 3) * 90}
+                className="rounded-2xl border-[1.5px] border-[#e8e6e0] bg-white p-5 shadow-[0_12px_28px_rgba(20,40,90,0.08)] transition-transform duration-300 hover:-translate-y-1 hover:shadow-[0_18px_36px_rgba(20,40,90,0.14)]"
+              >
+                <div className="mb-3.5 flex size-11 items-center justify-center rounded-xl bg-[#f6f1e2] text-[#1e1e1e]">
+                  <f.icon className="size-5" />
+                </div>
+                <div className="mb-1 text-[16px] font-bold text-[#1a1a1a]">
+                  {f.title}
+                </div>
+                <p className="text-[14px] leading-relaxed text-[#5b6270]">
+                  {f.desc}
+                </p>
+              </Reveal>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* HAKKIMIZDA */}
-      <section id="hakkimizda" className="bg-[#f5f5f3]">
+      <section id="hakkimizda" className="bg-white">
         <div className="mx-auto grid max-w-[1240px] items-center gap-10 px-5 py-16 sm:px-8 lg:grid-cols-[0.9fr_1.1fr] lg:gap-14">
           <Reveal className="relative aspect-[16/11] overflow-hidden rounded-[18px] shadow-[0_20px_50px_rgba(0,0,0,0.15)]">
             <Image
@@ -211,49 +319,49 @@ export default function LandingPage() {
           </Reveal>
           <Reveal delay={120}>
             <div className="mb-3.5 text-[13px] font-bold uppercase tracking-[1.5px] text-[#f5b301]">
-              Logigo Hakkında
+              Logigo Nedir?
             </div>
             <h2 className="mb-4.5 text-[28px] font-extrabold leading-tight tracking-tight text-[#1a1a1a] sm:text-[34px]">
-              Lojistiği baştan sona tek panelden yönetin
+              Nakliye operasyonunuzu yöneten yazılım
             </h2>
             <p className="mb-4 text-base leading-relaxed text-[#4a5268]">
-              Logigo, tedarikçi nakliye firmalarını ve yük sahibi müşteri
-              işletmeleri tek platformda buluşturan B2B filo yönetim sistemidir.
-              Yük ilanı, teklif, sözleşme, araç–sürücü ataması ve teslimat
-              sürecini uçtan uca dijitalleştirir.
+              Logigo bir nakliye firması değildir; nakliye firmalarının ve yük
+              sahibi işletmelerin kendi filolarını, sürücülerini, yük ilanlarını,
+              tekliflerini ve sevkiyatlarını tek panelden yönetmesini sağlayan
+              bir B2B yazılım ürünüdür.
             </p>
             <p className="mb-6 text-base leading-relaxed text-[#4a5268]">
-              Tır, kamyon, kamyonet ve panelvandan oluşan filonuzu;
-              sürücülerinizi ve tüm sevkiyatlarınızı canlı olarak izleyin.
-              Yüksek kalite ve güvenilirlik standardıyla çalışın.
+              İşini Excel tabloları, telefon ve WhatsApp mesajlarıyla yürüten
+              firmalar için tasarlandı. Dağınık süreçleri tek, izlenebilir bir
+              akışta toplar.
             </p>
             <div className="flex flex-wrap gap-3.5">
               <Link
-                href="/login"
+                href="/demo"
                 className="inline-flex items-center gap-2 rounded-[10px] bg-[#1e1e1e] px-6 py-3 text-[15px] font-semibold text-white transition hover:bg-[#0a0a0a]"
               >
-                Hemen Başla <ArrowRight className="size-[17px]" />
+                Demo Talep Et <ArrowRight className="size-[17px]" />
               </Link>
-              <a
-                href="#iletisim"
+              <Link
+                href="/login"
                 className="inline-flex items-center gap-2 rounded-[10px] border-[1.5px] border-[#d8d4cc] px-6 py-3 text-[15px] font-semibold text-[#1e1e1e]"
               >
-                Bize Ulaşın
-              </a>
+                Giriş Yap
+              </Link>
             </div>
           </Reveal>
         </div>
       </section>
 
       {/* HIZMETLER */}
-      <section id="hizmetler" className="bg-white">
+      <section id="hizmetler" className="border-t border-[#ece9e3] bg-white">
         <div className="mx-auto max-w-[1240px] px-5 py-16 sm:px-8">
           <Reveal className="mb-11 text-center">
             <div className="mb-3 text-[13px] font-bold uppercase tracking-[1.5px] text-[#f5b301]">
-              Taşıma Çözümlerimiz
+              Desteklenen Taşıma Tipleri
             </div>
             <h2 className="text-[28px] font-extrabold tracking-tight text-[#1a1a1a] sm:text-[34px]">
-              Her yüke uygun taşıma tipi
+              Platformda yönetebileceğiniz taşıma tipleri
             </h2>
           </Reveal>
           <div className="grid grid-cols-2 gap-5 sm:grid-cols-4">
@@ -275,6 +383,26 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* CTA */}
+      <section className="bg-[#f5b301]">
+        <div className="mx-auto flex max-w-[1240px] flex-col items-center gap-4 px-5 py-14 text-center sm:px-8">
+          <h2 className="text-[26px] font-extrabold tracking-tight text-[#1a1a1a] sm:text-[32px]">
+            Logigo&apos;yu firmanızda görün
+          </h2>
+          <p className="max-w-[560px] text-[15.5px] leading-relaxed text-[#3a2f10]">
+            Ürünü kendi operasyonunuza göre değerlendirmek için kısa bir demo
+            planlayalım.
+          </p>
+          <Link
+            href="/demo"
+            className="mt-1 inline-flex items-center gap-2 rounded-xl bg-[#1e1e1e] px-7 py-3.5 text-[15px] font-semibold text-white transition hover:bg-[#0a0a0a]"
+          >
+            <CalendarCheck className="size-[18px]" />
+            Demo Talep Et
+          </Link>
+        </div>
+      </section>
+
       {/* FOOTER */}
       <footer id="iletisim" className="bg-[#1e1e1e] text-white">
         <div className="mx-auto grid max-w-[1240px] gap-10 px-5 py-14 sm:px-8 md:grid-cols-2 lg:grid-cols-[1.6fr_1fr_1.2fr]">
@@ -283,8 +411,8 @@ export default function LandingPage() {
               <Logo className="h-[30px] w-auto" />
             </span>
             <p className="mt-4.5 max-w-[260px] text-sm leading-relaxed text-white/70">
-              Tedarikçi ve müşteri firmaları buluşturan B2B filo ve yük yönetim
-              platformu.
+              Nakliye firmaları ve yük sahibi işletmeler için filo, sürücü ve
+              sevkiyat yönetim yazılımı.
             </p>
           </div>
           <div>
