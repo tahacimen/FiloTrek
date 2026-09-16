@@ -1,7 +1,6 @@
 "use client";
 
 import { useActionState } from "react";
-import Link from "next/link";
 import { ArrowRight, Loader2, Mail } from "lucide-react";
 
 import { loginAction } from "@/app/login/actions";
@@ -87,11 +86,6 @@ export function HeroLoginForm() {
             </>
           )}
         </button>
-        <Link href="/login" className="text-[13.5px] leading-tight text-[#6b7488]">
-          Şifremi
-          <br />
-          unuttum
-        </Link>
       </div>
     </form>
   );

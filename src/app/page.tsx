@@ -117,8 +117,7 @@ export default function LandingPage() {
                 Sisteme Giriş Yap
               </div>
               <HeroLoginForm />
-              <div className="mt-4 flex flex-wrap items-center justify-between gap-2 border-t border-[#efece5] pt-3.5 text-[13.5px] text-[#6b7488]">
-                <span>Hesabınız yok mu?</span>
+              <div className="mt-4 flex items-center justify-center border-t border-[#efece5] pt-3.5">
                 <Link
                   href="/demo"
                   className="inline-flex items-center gap-1.5 rounded-lg bg-[#f5b301] px-3.5 py-2 text-[13.5px] font-semibold text-[#1a1a1a] transition hover:bg-[#e0a400]"

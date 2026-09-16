@@ -53,13 +53,10 @@ export function LoginForm({ callbackUrl }: { callbackUrl: string }) {
             />
           </div>
 
-          <div className="mb-1.5 flex items-center justify-between">
+          <div className="mb-1.5">
             <label htmlFor="password" className="text-[13.5px] font-semibold text-foreground/80">
               Şifre
             </label>
-            <Link href="/login" className="text-[13px] font-semibold text-brand">
-              Şifremi unuttum
-            </Link>
           </div>
           <div className="mb-6 flex items-center gap-2.5 rounded-xl border-[1.5px] border-input bg-background px-3.5 py-3 transition-colors focus-within:border-primary">
             <Lock className="size-[18px] shrink-0 text-muted-foreground" />
