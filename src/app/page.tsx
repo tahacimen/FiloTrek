@@ -155,7 +155,7 @@ export default function LandingPage() {
       <section className="relative overflow-hidden bg-[#0c0c0c]">
         {/* Lojistik hero görseli — next/image ile otomatik optimize/resize edilir */}
         <Image
-          src="/logigo_branded_global_image.png"
+          src="/hero-terminal.webp"
           alt=""
           aria-hidden
           fill
