@@ -13,7 +13,7 @@ export default async function RequestShipmentPage() {
   }
 
   const [suppliers, warehouses] = await Promise.all([
-    listSupplierCompanies(),
+    listSupplierCompanies(ctx.isDemo),
     listWarehouses(ctx),
   ]);
   const loadingPoints = warehouses.map((w) => ({

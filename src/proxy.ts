@@ -125,6 +125,26 @@ export default auth((req) => {
   const isDriverRoute = pathname === "/driver" || pathname.startsWith("/driver/");
   const isGateRoute = pathname === "/gate" || pathname.startsWith("/gate/");
 
+  // Time-limited sandbox demo (see src/core/demo): a demo login's JWT carries
+  // demoExpiresAt, so once it passes we clear the session cookie and bounce to
+  // /login here on the next request — the JWT itself can't be revoked
+  // server-side, so mid-session expiry has to be enforced at the edge. The
+  // "demo-token" provider already refuses expired tokens at fresh login.
+  const sessionUser = req.auth?.user;
+  const isExpiredDemo =
+    sessionUser?.accountType === "COMPANY_USER" &&
+    sessionUser.isDemo === true &&
+    typeof sessionUser.demoExpiresAt === "number" &&
+    sessionUser.demoExpiresAt < Date.now();
+  if (isExpiredDemo && !isLoginPage) {
+    const loginUrl = new URL("/login", req.nextUrl.origin);
+    loginUrl.searchParams.set("demo", "expired");
+    const res = NextResponse.redirect(loginUrl);
+    res.cookies.delete("authjs.session-token");
+    res.cookies.delete("__Secure-authjs.session-token");
+    return withSecurityHeaders(res, csp, nonce, isNew);
+  }
+
   if (isLandingPage || isTrackPage || isInvitePage || isSignupPage || isDemoPage) {
     const requestHeaders = new Headers(req.headers);
     requestHeaders.set("x-nonce", nonce);

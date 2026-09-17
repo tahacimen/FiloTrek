@@ -7,7 +7,13 @@ import { ArrowLeft, ArrowRight, Eye, EyeOff, Loader2, Lock, Mail } from "lucide-
 import { loginAction } from "@/app/login/actions";
 import { Logo } from "@/components/logo";
 
-export function LoginForm({ callbackUrl }: { callbackUrl: string }) {
+export function LoginForm({
+  callbackUrl,
+  demoExpired = false,
+}: {
+  callbackUrl: string;
+  demoExpired?: boolean;
+}) {
   const [error, formAction, isPending] = useActionState(
     loginAction.bind(null, callbackUrl),
     undefined
@@ -32,6 +38,13 @@ export function LoginForm({ callbackUrl }: { callbackUrl: string }) {
         <p className="mb-8 text-[15px] leading-relaxed text-muted-foreground">
           Filo ve sevkiyatlarınızı yönetmek için hesabınıza giriş yapın.
         </p>
+
+        {demoExpired && (
+          <div className="mb-6 rounded-xl border-[1.5px] border-[#f5b301]/50 bg-[#fff6d9] px-4 py-3 text-[13.5px] text-[#7a5c00]">
+            Demo erişiminizin süresi doldu. Ürünü kullanmaya devam etmek için
+            demo talep edebilir veya mevcut hesabınızla giriş yapabilirsiniz.
+          </div>
+        )}
 
         <form action={formAction} className="flex flex-col">
           <label

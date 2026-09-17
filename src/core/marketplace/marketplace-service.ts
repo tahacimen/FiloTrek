@@ -10,7 +10,10 @@ import { CompanyType, ShipmentBidStatus } from "@/generated/prisma/client";
 
 export async function listOpenShipmentsForBidding(ctx: TenantContext) {
   requireCompanyType(ctx, CompanyType.SUPPLIER);
-  return marketplaceRepository.listOpenShipmentsForBidding(ctx.companyId);
+  return marketplaceRepository.listOpenShipmentsForBidding(
+    ctx.companyId,
+    ctx.isDemo
+  );
 }
 
 /**
@@ -27,7 +30,10 @@ export async function submitBid(
   requireCompanyType(ctx, CompanyType.SUPPLIER);
   const input = bidInputSchema.parse(rawInput);
 
-  const shipment = await marketplaceRepository.getOpenShipmentById(shipmentId);
+  const shipment = await marketplaceRepository.getOpenShipmentById(
+    shipmentId,
+    ctx.isDemo
+  );
   if (!shipment) {
     throw new NotFoundError("Sefer bulunamadı veya artık pazarda değil.");
   }

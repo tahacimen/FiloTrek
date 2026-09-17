@@ -143,6 +143,12 @@ model Company {
   address       String?
   phone         String?
   status        CompanyStatus @default(ACTIVE)
+  // Sandbox flag: a demo company provisioned for a prospect (see
+  // src/core/demo/demo-provision.ts). Demo companies form their own isolated
+  // realm — cross-company discovery (supplier/customer pickers, the open
+  // marketplace) filters on this so real and demo tenants never see or
+  // message each other. Real companies are always isDemo=false.
+  isDemo        Boolean       @default(false) @map("is_demo")
   // Read-only API access (see src/core/company/api-key-context.ts and
   // src/app/api/v1/) — a company's own ADMIN generates/rotates this from
   // /settings; shown in full only once, at generation time, same
@@ -193,6 +199,14 @@ model User {
   // gets to invite new tenant companies is not a decision any UI should
   // expose (see the schema comment above Invitation).
   isPlatformAdmin     Boolean     @default(false) @map("is_platform_admin")
+  // Time-limited sandbox login (see src/core/demo/demo-provision.ts). A demo
+  // user belongs to a demo Company, logs in through the demoLoginToken
+  // magic-link (the "demo-token" provider in src/lib/auth.ts), and is bounced
+  // out once demoExpiresAt passes (enforced in src/proxy.ts). All null/false
+  // for real users.
+  isDemo              Boolean     @default(false) @map("is_demo")
+  demoExpiresAt       DateTime?   @map("demo_expires_at")
+  demoLoginToken      String?     @unique @map("demo_login_token")
   createdAt           DateTime    @default(now()) @map("created_at")
   updatedAt           DateTime    @updatedAt @map("updated_at")
 
@@ -296,6 +310,40 @@ model DemoRequest {
 
   @@index([status, createdAt])
   @@map("demo_requests")
+}
+
+enum DemoInstanceStatus {
+  ACTIVE
+  EXPIRED
+  REVOKED
+}
+
+/// A provisioned, time-limited sandbox demo (see src/core/demo/demo-provision.ts).
+/// The owner creates one from a DemoRequest in /admin; it spins up an isolated
+/// realm — one demo SUPPLIER company + one demo CUSTOMER company, each with a
+/// magic-link demo user and sample data — that expires after `expiresAt`. The
+/// company/user ids are recorded here so the whole world can be torn down on
+/// expiry or revoke (see purgeDemoInstance). Tokens are the shown-once
+/// magic-links the owner forwards to the prospect.
+model DemoInstance {
+  id                String             @id @default(uuid(7)) @db.Uuid
+  demoRequestId     String?            @map("demo_request_id") @db.Uuid
+  createdByUserId   String?            @map("created_by_user_id") @db.Uuid
+  supplierCompanyId String             @map("supplier_company_id") @db.Uuid
+  customerCompanyId String             @map("customer_company_id") @db.Uuid
+  supplierUserId    String             @map("supplier_user_id") @db.Uuid
+  customerUserId    String             @map("customer_user_id") @db.Uuid
+  supplierEmail     String             @map("supplier_email")
+  customerEmail     String             @map("customer_email")
+  supplierToken     String             @unique @map("supplier_token")
+  customerToken     String             @unique @map("customer_token")
+  status            DemoInstanceStatus @default(ACTIVE)
+  expiresAt         DateTime           @map("expires_at")
+  createdAt         DateTime           @default(now()) @map("created_at")
+  updatedAt         DateTime           @updatedAt @map("updated_at")
+
+  @@index([status, expiresAt])
+  @@map("demo_instances")
 }
 
 model Vehicle {

@@ -4,6 +4,10 @@ import { requireTenantContext } from "@/core/shared/tenant-context";
 import { listInvitations } from "@/core/invitation/invitation-service";
 import { listSignupRequests } from "@/core/signup/signup-service";
 import { listDemoRequests } from "@/core/demo/demo-service";
+import {
+  listDemoInstances,
+  purgeExpiredDemoInstances,
+} from "@/core/demo/demo-provision";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getRequestOrigin } from "@/lib/request-origin";
 import { InvitationFormDialog } from "@/app/(dashboard)/admin/invitation-form-dialog";
@@ -11,6 +15,7 @@ import { ManualAccountFormDialog } from "@/app/(dashboard)/admin/manual-account-
 import { InvitationTable } from "@/app/(dashboard)/admin/invitation-table";
 import { SignupRequestTable } from "@/app/(dashboard)/admin/signup-request-table";
 import { DemoRequestTable } from "@/app/(dashboard)/admin/demo-request-table";
+import { DemoInstanceTable } from "@/app/(dashboard)/admin/demo-instance-table";
 
 export default async function AdminPage() {
   const ctx = await requireTenantContext();
@@ -18,14 +23,29 @@ export default async function AdminPage() {
     redirect("/dashboard");
   }
 
-  const [invitations, signupRequests, demoRequests, origin] = await Promise.all([
-    listInvitations(ctx),
-    listSignupRequests(ctx),
-    listDemoRequests(ctx),
-    getRequestOrigin(),
-  ]);
+  // Sweep expired sandboxes opportunistically on each admin visit — no cron.
+  await purgeExpiredDemoInstances();
+
+  const [invitations, signupRequests, demoRequests, demoInstances, origin] =
+    await Promise.all([
+      listInvitations(ctx),
+      listSignupRequests(ctx),
+      listDemoRequests(ctx),
+      listDemoInstances(ctx),
+      getRequestOrigin(),
+    ]);
 
   const newDemoCount = demoRequests.filter((r) => r.status === "NEW").length;
+
+  const demoInstanceRows = demoInstances.map((i) => ({
+    id: i.id,
+    customerLabel: i.customerEmail,
+    supplierUrl: `${origin}/api/demo-login/${i.supplierToken}`,
+    customerUrl: `${origin}/api/demo-login/${i.customerToken}`,
+    expiresAt: i.expiresAt,
+    createdAt: i.createdAt,
+    expired: i.expiresAt.getTime() < Date.now(),
+  }));
 
   const rows = invitations.map((invitation) => ({
     id: invitation.id,
@@ -67,6 +87,15 @@ export default async function AdminPage() {
         </CardHeader>
         <CardContent>
           <DemoRequestTable requests={demoRequests} />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Demo Ortamları ({demoInstanceRows.length})</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <DemoInstanceTable instances={demoInstanceRows} />
         </CardContent>
       </Card>
 

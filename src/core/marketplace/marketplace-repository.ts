@@ -10,9 +10,19 @@ const openShipmentListInclude = {
  * scoped to a single tenant. `myBid` narrows to the calling supplier's own
  * (if any) so the UI can show "teklifiniz: X ₺" instead of a bare list.
  */
-export function listOpenShipmentsForBidding(supplierCompanyId: string) {
+// `isDemo` keeps the pool realm-scoped: a demo supplier only ever sees demo
+// customers' open shipments, and real suppliers never see the sandbox (and
+// vice versa). Matched on the owning customer company's realm.
+export function listOpenShipmentsForBidding(
+  supplierCompanyId: string,
+  isDemo: boolean
+) {
   return prisma.shipment.findMany({
-    where: { supplierCompanyId: null, status: ShipmentStatus.PENDING },
+    where: {
+      supplierCompanyId: null,
+      status: ShipmentStatus.PENDING,
+      customerCompany: { isDemo },
+    },
     include: {
       ...openShipmentListInclude,
       bids: { where: { supplierCompanyId }, take: 1 },
@@ -21,12 +31,13 @@ export function listOpenShipmentsForBidding(supplierCompanyId: string) {
   });
 }
 
-export function getOpenShipmentById(shipmentId: string) {
+export function getOpenShipmentById(shipmentId: string, isDemo: boolean) {
   return prisma.shipment.findFirst({
     where: {
       id: shipmentId,
       supplierCompanyId: null,
       status: ShipmentStatus.PENDING,
+      customerCompany: { isDemo },
     },
   });
 }

@@ -7,6 +7,7 @@ import * as invitationService from "@/core/invitation/invitation-service";
 import * as notificationService from "@/core/notification/notification-service";
 import * as signupService from "@/core/signup/signup-service";
 import * as demoService from "@/core/demo/demo-service";
+import * as demoProvision from "@/core/demo/demo-provision";
 import { getRequestOrigin } from "@/lib/request-origin";
 import { toActionErrorMessage } from "@/lib/action-error";
 import {
@@ -23,6 +24,46 @@ export async function setDemoRequestStatusAction(
   try {
     const ctx = await requireTenantContext();
     await demoService.setDemoRequestStatus(ctx, id, status);
+  } catch (error) {
+    return { error: toActionErrorMessage(error) };
+  }
+  revalidatePath("/admin");
+  return undefined;
+}
+
+/**
+ * Owner provisions an isolated, time-limited sandbox demo for a request and
+ * marks the request contacted. The magic-links surface in the "Demo Ortamları"
+ * list for the owner to forward.
+ */
+export async function provisionDemoInstanceAction(
+  demoRequestId: string,
+  companyLabel: string
+): Promise<InvitationFormState> {
+  try {
+    const ctx = await requireTenantContext();
+    await demoProvision.provisionDemoInstance(ctx, {
+      demoRequestId,
+      companyLabel,
+    });
+    await demoService.setDemoRequestStatus(
+      ctx,
+      demoRequestId,
+      DemoRequestStatus.CONTACTED
+    );
+  } catch (error) {
+    return { error: toActionErrorMessage(error) };
+  }
+  revalidatePath("/admin");
+  return undefined;
+}
+
+export async function revokeDemoInstanceAction(
+  id: string
+): Promise<InvitationFormState> {
+  try {
+    const ctx = await requireTenantContext();
+    await demoProvision.revokeDemoInstance(ctx, id);
   } catch (error) {
     return { error: toActionErrorMessage(error) };
   }

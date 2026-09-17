@@ -17,6 +17,10 @@ export type CompanyUserSession = BaseSessionUser & {
   companyName: string;
   companyRole: CompanyRole;
   isPlatformAdmin: boolean;
+  // Time-limited sandbox login (see src/core/demo). Both absent/false for
+  // real users; demoExpiresAt is epoch ms, checked in src/proxy.ts.
+  isDemo: boolean;
+  demoExpiresAt: number | null;
 };
 
 /** A driver's own scoped login — deliberately has no companyType/companyRole. */
@@ -45,6 +49,8 @@ declare module "next-auth" {
     companyName?: string;
     companyRole?: CompanyRole;
     isPlatformAdmin?: boolean;
+    isDemo?: boolean;
+    demoExpiresAt?: number | null;
     driverId?: string;
     gateGuardId?: string;
   }
@@ -62,6 +68,8 @@ declare module "next-auth/jwt" {
     companyName?: string;
     companyRole?: CompanyRole;
     isPlatformAdmin?: boolean;
+    isDemo?: boolean;
+    demoExpiresAt?: number | null;
     driverId?: string;
     gateGuardId?: string;
   }

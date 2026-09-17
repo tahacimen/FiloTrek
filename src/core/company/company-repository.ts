@@ -1,16 +1,19 @@
 import { prisma } from "@/lib/db";
 import { CompanyStatus, CompanyType } from "@/generated/prisma/client";
 
-export function listCustomerCompanies() {
+// `isDemo` scopes discovery to the caller's realm: real tenants only ever see
+// real companies, demo (sandbox) tenants only ever see the demo world. Passing
+// it is mandatory so a new call site can't accidentally leak across realms.
+export function listCustomerCompanies(isDemo: boolean) {
   return prisma.company.findMany({
-    where: { type: CompanyType.CUSTOMER, status: CompanyStatus.ACTIVE },
+    where: { type: CompanyType.CUSTOMER, status: CompanyStatus.ACTIVE, isDemo },
     orderBy: { name: "asc" },
   });
 }
 
-export function listSupplierCompanies() {
+export function listSupplierCompanies(isDemo: boolean) {
   return prisma.company.findMany({
-    where: { type: CompanyType.SUPPLIER, status: CompanyStatus.ACTIVE },
+    where: { type: CompanyType.SUPPLIER, status: CompanyStatus.ACTIVE, isDemo },
     orderBy: { name: "asc" },
   });
 }

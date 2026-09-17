@@ -24,14 +24,14 @@ const FEATURES = [
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ callbackUrl?: string }>;
+  searchParams: Promise<{ callbackUrl?: string; demo?: string }>;
 }) {
-  const { callbackUrl } = await searchParams;
+  const { callbackUrl, demo } = await searchParams;
 
   return (
     <div className="grid min-h-screen lg:grid-cols-2">
       {/* LEFT: form */}
-      <LoginForm callbackUrl={callbackUrl ?? ""} />
+      <LoginForm callbackUrl={callbackUrl ?? ""} demoExpired={demo === "expired"} />
 
       {/* RIGHT: brand panel (desktop only) */}
       <div className="relative hidden overflow-hidden bg-[#1e1e1e] lg:flex lg:flex-col lg:justify-center lg:p-16">

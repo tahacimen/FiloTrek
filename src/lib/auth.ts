@@ -52,6 +52,10 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
               companyName: user.company.name,
               companyRole: user.companyRole,
               isPlatformAdmin: user.isPlatformAdmin,
+              isDemo: user.isDemo,
+              demoExpiresAt: user.demoExpiresAt
+                ? user.demoExpiresAt.getTime()
+                : null,
             };
           }
           await recordFailedLogin("user", user.id, user.failedLoginAttempts);
@@ -130,6 +134,43 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         };
       },
     }),
+    // Third provider — a time-limited sandbox demo login (see
+    // src/core/demo/demo-provision.ts). Authenticates a demo COMPANY_USER by
+    // the magic-link token the owner forwarded to a prospect, instead of
+    // email+password. Refuses once the demo has expired; ongoing sessions are
+    // additionally bounced by the expiry check in src/proxy.ts.
+    Credentials({
+      id: "demo-token",
+      name: "Demo Bağlantısı",
+      credentials: { token: { label: "Token", type: "text" } },
+      authorize: async (credentials) => {
+        const token = credentials?.token;
+        if (typeof token !== "string" || !token) return null;
+
+        const user = await prisma.user.findUnique({
+          where: { demoLoginToken: token },
+          include: { company: true },
+        });
+        if (!user || !user.isDemo || !user.isActive) return null;
+        if (!user.demoExpiresAt || user.demoExpiresAt.getTime() < Date.now()) {
+          return null;
+        }
+
+        return {
+          id: user.id,
+          email: user.email,
+          name: user.fullName,
+          accountType: "COMPANY_USER",
+          companyId: user.companyId,
+          companyType: user.company.type,
+          companyName: user.company.name,
+          companyRole: user.companyRole,
+          isPlatformAdmin: false,
+          isDemo: true,
+          demoExpiresAt: user.demoExpiresAt.getTime(),
+        };
+      },
+    }),
   ],
   callbacks: {
     jwt: async ({ token, user }) => {
@@ -145,6 +186,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           token.companyName = user.companyName;
           token.companyRole = user.companyRole;
           token.isPlatformAdmin = user.isPlatformAdmin;
+          token.isDemo = user.isDemo ?? false;
+          token.demoExpiresAt = user.demoExpiresAt ?? null;
         }
       }
       return token;
@@ -177,6 +220,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           companyName: token.companyName!,
           companyRole: token.companyRole!,
           isPlatformAdmin: token.isPlatformAdmin ?? false,
+          isDemo: token.isDemo ?? false,
+          demoExpiresAt: token.demoExpiresAt ?? null,
         };
       }
       return session;

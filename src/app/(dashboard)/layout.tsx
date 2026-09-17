@@ -36,6 +36,7 @@ export default async function DashboardLayout({
     companyType: user.companyType,
     companyRole: user.companyRole,
     isPlatformAdmin: user.isPlatformAdmin,
+    isDemo: user.isDemo,
   } satisfies TenantContext);
 
   return (

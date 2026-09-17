@@ -8,6 +8,10 @@ export type TenantContext = {
   companyType: CompanyType;
   companyRole: CompanyRole;
   isPlatformAdmin: boolean;
+  // Sandbox realm flag. Cross-company discovery (supplier/customer pickers,
+  // the open marketplace) filters on this so demo and real tenants stay
+  // isolated from each other. See src/core/company/company-repository.ts.
+  isDemo: boolean;
 };
 
 /**
@@ -33,5 +37,6 @@ export async function requireTenantContext(): Promise<TenantContext> {
     companyType: session.user.companyType,
     companyRole: session.user.companyRole,
     isPlatformAdmin: session.user.isPlatformAdmin,
+    isDemo: session.user.isDemo,
   };
 }

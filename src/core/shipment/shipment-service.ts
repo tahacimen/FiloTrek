@@ -121,13 +121,18 @@ export async function getStatusHistory(shipmentId: string) {
 async function resolveCounterparty(
   companyId: string,
   expectedType: CompanyType,
-  errorMessage: string
+  errorMessage: string,
+  callerIsDemo: boolean
 ) {
   const company = await companyRepository.getCompanyById(companyId);
   if (
     !company ||
     company.type !== expectedType ||
-    company.status !== CompanyStatus.ACTIVE
+    company.status !== CompanyStatus.ACTIVE ||
+    // Realm guard: a real tenant can never transact with a demo company and
+    // vice versa, even if a counterparty id is supplied directly (bypassing
+    // the realm-scoped picker). Keeps the sandbox isolated end to end.
+    company.isDemo !== callerIsDemo
   ) {
     throw new ValidationError(errorMessage);
   }
@@ -142,7 +147,8 @@ export async function createShipment(ctx: TenantContext, rawInput: unknown) {
   const customer = await resolveCounterparty(
     input.customerCompanyId,
     CompanyType.CUSTOMER,
-    "Geçersiz müşteri firma seçimi."
+    "Geçersiz müşteri firma seçimi.",
+    ctx.isDemo
   );
 
   return shipmentRepository.createShipmentRecord({
@@ -174,7 +180,8 @@ export async function createShipmentRequest(
     ? await resolveCounterparty(
         input.supplierCompanyId,
         CompanyType.SUPPLIER,
-        "Geçersiz tedarikçi firma seçimi."
+        "Geçersiz tedarikçi firma seçimi.",
+        ctx.isDemo
       )
     : null;
 

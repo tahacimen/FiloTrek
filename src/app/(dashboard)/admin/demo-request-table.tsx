@@ -1,10 +1,13 @@
 "use client";
 
 import { useTransition } from "react";
-import { Check, RotateCcw } from "lucide-react";
+import { Check, RotateCcw, Rocket } from "lucide-react";
 import { toast } from "sonner";
 
-import { setDemoRequestStatusAction } from "@/app/(dashboard)/admin/actions";
+import {
+  setDemoRequestStatusAction,
+  provisionDemoInstanceAction,
+} from "@/app/(dashboard)/admin/actions";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -46,6 +49,17 @@ export function DemoRequestTable({ requests }: { requests: DemoRequestRow[] }) {
           next === "CONTACTED"
             ? "İletişime geçildi olarak işaretlendi."
             : "Yeni olarak işaretlendi."
+        );
+    });
+  }
+
+  function handleProvision(id: string, companyName: string) {
+    startTransition(async () => {
+      const result = await provisionDemoInstanceAction(id, companyName);
+      if (result?.error) toast.error(result.error);
+      else
+        toast.success(
+          "Demo ortamı oluşturuldu — bağlantılar 'Demo Ortamları' listesinde."
         );
     });
   }
@@ -97,7 +111,17 @@ export function DemoRequestTable({ requests }: { requests: DemoRequestRow[] }) {
             </TableCell>
             <TableCell>{formatDateTime(r.createdAt)}</TableCell>
             <TableCell>
-              <div className="flex items-center justify-end">
+              <div className="flex items-center justify-end gap-1">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={isPending}
+                  title="İzole, 7 gün geçerli demo ortamı oluştur"
+                  onClick={() => handleProvision(r.id, r.companyName)}
+                >
+                  <Rocket className="mr-1 size-4" />
+                  Demo Erişimi Oluştur
+                </Button>
                 {r.status === "NEW" ? (
                   <Button
                     variant="ghost"

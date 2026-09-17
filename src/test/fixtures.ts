@@ -26,9 +26,12 @@ function unique(prefix: string) {
   return `${prefix}-${random}`;
 }
 
-export async function createTestCompany(type: CompanyType) {
+export async function createTestCompany(
+  type: CompanyType,
+  overrides: Partial<{ isDemo: boolean }> = {}
+) {
   return prisma.company.create({
-    data: { name: unique("company"), type },
+    data: { name: unique("company"), type, isDemo: overrides.isDemo ?? false },
   });
 }
 
@@ -57,6 +60,7 @@ export async function createSupplierContext(): Promise<TenantContext> {
     companyType: CompanyType.SUPPLIER,
     companyRole: CompanyRole.ADMIN,
     isPlatformAdmin: false,
+    isDemo: false,
   };
 }
 
@@ -69,6 +73,7 @@ export async function createCustomerContext(): Promise<TenantContext> {
     companyType: CompanyType.CUSTOMER,
     companyRole: CompanyRole.ADMIN,
     isPlatformAdmin: false,
+    isDemo: false,
   };
 }
 
@@ -82,6 +87,7 @@ export async function createPlatformAdminContext(): Promise<TenantContext> {
     companyType: CompanyType.CUSTOMER,
     companyRole: CompanyRole.ADMIN,
     isPlatformAdmin: true,
+    isDemo: false,
   };
 }
 

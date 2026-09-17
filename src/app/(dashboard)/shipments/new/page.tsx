@@ -11,7 +11,7 @@ export default async function NewShipmentPage() {
     redirect("/shipments");
   }
 
-  const customers = await listCustomerCompanies();
+  const customers = await listCustomerCompanies(ctx.isDemo);
 
   return (
     <div className="mx-auto flex max-w-2xl flex-col gap-6">
