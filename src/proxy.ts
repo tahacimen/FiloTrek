@@ -220,6 +220,6 @@ export const config = {
   // once already: favicon.ico was excluded by name but no other image
   // extension was, so /logo-icon.png 307'd to /login until this was added.
   matcher: [
-    "/((?!api|_next/static|_next/image|favicon.ico|.*\\.(?:png|jpg|jpeg|svg|webp|ico)$).*)",
+    "/((?!api|_next/static|_next/image|favicon.ico|.*\\.(?:png|jpg|jpeg|svg|webp|ico|pdf)$).*)",
   ],
 };

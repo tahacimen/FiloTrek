@@ -8,6 +8,7 @@ import {
   ClipboardList,
   Clock,
   Container,
+  Download,
   FileCheck,
   Handshake,
   Leaf,
@@ -348,6 +349,14 @@ export default function LandingPage() {
               >
                 Giriş Yap
               </Link>
+              <a
+                href="/logigo-kullanim-rehberi.pdf"
+                download
+                className="inline-flex items-center gap-2 rounded-[10px] border-[1.5px] border-[#f5b301] bg-[#fff6d9] px-6 py-3 text-[15px] font-semibold text-[#1a1a1a] transition hover:bg-[#ffefb8]"
+              >
+                <Download className="size-[17px]" />
+                Kullanım Rehberi (PDF)
+              </a>
             </div>
           </Reveal>
         </div>
@@ -393,13 +402,23 @@ export default function LandingPage() {
             Ürünü kendi operasyonunuza göre değerlendirmek için kısa bir demo
             planlayalım.
           </p>
-          <Link
-            href="/demo"
-            className="mt-1 inline-flex items-center gap-2 rounded-xl bg-[#1e1e1e] px-7 py-3.5 text-[15px] font-semibold text-white transition hover:bg-[#0a0a0a]"
-          >
-            <CalendarCheck className="size-[18px]" />
-            Demo Talep Et
-          </Link>
+          <div className="mt-1 flex flex-wrap items-center justify-center gap-3">
+            <Link
+              href="/demo"
+              className="inline-flex items-center gap-2 rounded-xl bg-[#1e1e1e] px-7 py-3.5 text-[15px] font-semibold text-white transition hover:bg-[#0a0a0a]"
+            >
+              <CalendarCheck className="size-[18px]" />
+              Demo Talep Et
+            </Link>
+            <a
+              href="/logigo-kullanim-rehberi.pdf"
+              download
+              className="inline-flex items-center gap-2 rounded-xl border-[1.5px] border-[#1e1e1e]/25 bg-white/70 px-7 py-3.5 text-[15px] font-semibold text-[#1a1a1a] transition hover:bg-white"
+            >
+              <Download className="size-[18px]" />
+              Kullanım Rehberi (PDF)
+            </a>
+          </div>
         </div>
       </section>
 
@@ -423,6 +442,7 @@ export default function LandingPage() {
               <a href="#hakkimizda" className="hover:text-white">Hakkımızda</a>
               <Link href="/login" className="hover:text-white">Giriş Yap</Link>
               <Link href="/demo" className="hover:text-white">Demo Talep Et</Link>
+              <a href="/logigo-kullanim-rehberi.pdf" download className="hover:text-white">Kullanım Rehberi (PDF)</a>
             </div>
           </div>
           <div>
