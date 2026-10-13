@@ -467,6 +467,11 @@ enum GateEventType {
   VEHICLE_EXITED
 }
 
+enum PaymentStatus {
+  PENDING
+  PAID
+}
+
 model Shipment {
   id                       String         @id @default(uuid(7)) @db.Uuid
   // Human-friendly 8-digit tracking number (10000000+) surfaced to end
@@ -543,6 +548,14 @@ model Shipment {
   requiresColdChain        Boolean        @default(false) @map("requires_cold_chain")
   temperatureMinC          Decimal?       @map("temperature_min_c") @db.Decimal(5, 2)
   temperatureMaxC          Decimal?       @map("temperature_max_c") @db.Decimal(5, 2)
+  // Payment tracking (see src/core/shipment/shipment-payment.ts). The
+  // SUPPLIER who runs the shipment marks it paid/pending and can set a due
+  // date; the CUSTOMER sees the status and dates read-only on their own
+  // shipments. Separate from the price-agreement fields above (agreedPrice /
+  // priceApprovedAt), which settle *how much*, not *whether it was paid*.
+  paymentStatus            PaymentStatus  @default(PENDING) @map("payment_status")
+  paymentDueDate           DateTime?      @map("payment_due_date")
+  paidAt                   DateTime?      @map("paid_at")
   createdAt                DateTime       @default(now()) @map("created_at")
   updatedAt                DateTime       @updatedAt @map("updated_at")
   completedAt              DateTime?      @map("completed_at")

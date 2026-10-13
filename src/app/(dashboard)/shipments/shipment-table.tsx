@@ -11,6 +11,8 @@ import {
 } from "@/components/ui/table";
 import {
   customerShipmentStatusLabels,
+  paymentStatusBadgeVariant,
+  paymentStatusLabels,
   shipmentStatusLabels,
   statusBadgeVariant,
 } from "@/lib/labels";
@@ -58,6 +60,7 @@ export function ShipmentTable({
           <TableHead>Araç</TableHead>
           <TableHead>Şoför</TableHead>
           <TableHead>Fiyat</TableHead>
+          <TableHead>Ödeme</TableHead>
           <TableHead>Durum</TableHead>
           <TableHead />
         </TableRow>
@@ -118,6 +121,22 @@ export function ShipmentTable({
               ) : (
                 "—"
               )}
+            </TableCell>
+            <TableCell>
+              <div className="flex flex-col gap-1">
+                <Badge variant={paymentStatusBadgeVariant[shipment.paymentStatus]}>
+                  {paymentStatusLabels[shipment.paymentStatus]}
+                </Badge>
+                {shipment.paymentStatus === "PENDING" &&
+                  shipment.paymentDueDate && (
+                    <span className="text-muted-foreground text-xs">
+                      Vade:{" "}
+                      {new Date(shipment.paymentDueDate).toLocaleDateString(
+                        "tr-TR"
+                      )}
+                    </span>
+                  )}
+              </div>
             </TableCell>
             <TableCell>
               <div className="flex flex-col gap-1">

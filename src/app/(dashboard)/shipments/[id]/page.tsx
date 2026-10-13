@@ -27,6 +27,7 @@ import { ShipmentStatusActions } from "@/app/(dashboard)/shipments/[id]/shipment
 import { LoadReadyCard } from "@/app/(dashboard)/shipments/[id]/load-ready-card";
 import { PickupEtaCard } from "@/app/(dashboard)/shipments/[id]/pickup-eta-card";
 import { PriceApprovalCard } from "@/app/(dashboard)/shipments/[id]/price-approval-card";
+import { PaymentCard } from "@/app/(dashboard)/shipments/[id]/payment-card";
 import { IncidentCard } from "@/app/(dashboard)/shipments/[id]/incident-card";
 import { StatusTimelineCard } from "@/app/(dashboard)/shipments/[id]/status-timeline-card";
 import { DockReservationCard } from "@/app/(dashboard)/shipments/[id]/dock-reservation-card";
@@ -475,6 +476,14 @@ export default async function ShipmentDetailPage({
         priceProposedBy={shipment.priceProposedBy}
         priceApprovedAt={shipment.priceApprovedAt}
         priceRejectedAt={shipment.priceRejectedAt}
+      />
+
+      <PaymentCard
+        shipmentId={shipment.id}
+        companyType={ctx.companyType}
+        paymentStatus={shipment.paymentStatus}
+        paymentDueDate={shipment.paymentDueDate}
+        paidAt={shipment.paidAt}
       />
 
       <PickupEtaCard

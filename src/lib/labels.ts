@@ -6,12 +6,26 @@ import {
   DriverStatus,
   InvitationRole,
   InvitationStatus,
+  PaymentStatus,
   ShipmentStatus,
   SignupRequestStatus,
   VehicleBedType,
   VehicleStatus,
   VehicleType,
 } from "@/generated/prisma/enums";
+
+export const paymentStatusLabels: Record<PaymentStatus, string> = {
+  [PaymentStatus.PENDING]: "Ödeme Bekliyor",
+  [PaymentStatus.PAID]: "Ödendi",
+};
+
+export const paymentStatusBadgeVariant: Record<
+  PaymentStatus,
+  "default" | "secondary" | "outline" | "destructive" | "success" | "warning"
+> = {
+  [PaymentStatus.PENDING]: "warning",
+  [PaymentStatus.PAID]: "success",
+};
 
 export const vehicleTypeLabels: Record<VehicleType, string> = {
   [VehicleType.TIR]: "Tır",
