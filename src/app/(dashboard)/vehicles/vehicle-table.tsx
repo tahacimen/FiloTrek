@@ -31,7 +31,27 @@ import {
   vehicleStatusLabels,
   vehicleTypeLabels,
 } from "@/lib/labels";
+import { docExpiryStatus, docStatusLabel } from "@/lib/vehicle-docs";
 import type { SerializableVehicle } from "@/app/(dashboard)/vehicles/types";
+
+/** Compact badge for a single tracked document's expiry; null when unset. */
+function DocBadge({
+  label,
+  date,
+}: {
+  label: string;
+  date: Date | string | null;
+}) {
+  const { status } = docExpiryStatus(date);
+  if (status === "none") return null;
+  const variant =
+    status === "expired" ? "destructive" : status === "soon" ? "warning" : "success";
+  return (
+    <Badge variant={variant} className="whitespace-nowrap">
+      {label}: {docStatusLabel(date)}
+    </Badge>
+  );
+}
 
 export function VehicleTable({ vehicles }: { vehicles: SerializableVehicle[] }) {
   const [isPending, startTransition] = useTransition();
@@ -82,6 +102,7 @@ export function VehicleTable({ vehicles }: { vehicles: SerializableVehicle[] }) 
           <TableHead>Kasa</TableHead>
           <TableHead>Tonaj</TableHead>
           <TableHead>Durum</TableHead>
+          <TableHead>Belgeler</TableHead>
           <TableHead className="w-0" />
         </TableRow>
       </TableHeader>
@@ -96,6 +117,16 @@ export function VehicleTable({ vehicles }: { vehicles: SerializableVehicle[] }) 
               <Badge variant={statusBadgeVariant[vehicle.status]}>
                 {vehicleStatusLabels[vehicle.status]}
               </Badge>
+            </TableCell>
+            <TableCell>
+              {vehicle.inspectionExpiry || vehicle.insuranceExpiry ? (
+                <div className="flex flex-col items-start gap-1">
+                  <DocBadge label="Muayene" date={vehicle.inspectionExpiry} />
+                  <DocBadge label="Sigorta" date={vehicle.insuranceExpiry} />
+                </div>
+              ) : (
+                <span className="text-muted-foreground text-xs">—</span>
+              )}
             </TableCell>
             <TableCell>
               <div className="flex items-center justify-end gap-1">

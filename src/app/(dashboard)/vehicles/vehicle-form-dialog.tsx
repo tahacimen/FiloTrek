@@ -30,6 +30,14 @@ import { vehicleBedTypeLabels, vehicleTypeLabels } from "@/lib/labels";
 import { confirmSubmit } from "@/lib/confirm-submit";
 import type { SerializableVehicle } from "@/app/(dashboard)/vehicles/types";
 
+/** Format a date (or ISO string) as YYYY-MM-DD for an <input type="date">. */
+function toDateInput(value: Date | string | null | undefined): string {
+  if (!value) return "";
+  const d = typeof value === "string" ? new Date(value) : value;
+  if (Number.isNaN(d.getTime())) return "";
+  return d.toISOString().slice(0, 10);
+}
+
 export function VehicleFormDialog({
   vehicle,
 }: {
@@ -137,6 +145,48 @@ export function VehicleFormDialog({
               required
               defaultValue={vehicle?.tonnageCapacity.toString()}
             />
+          </div>
+
+          <div className="mt-1 border-t pt-4">
+            <p className="mb-3 text-sm font-medium">Belge & Geçerlilik (opsiyonel)</p>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="flex flex-col gap-2">
+                <Label htmlFor="registrationNumber">Ruhsat / Tescil No</Label>
+                <Input
+                  id="registrationNumber"
+                  name="registrationNumber"
+                  defaultValue={vehicle?.registrationNumber ?? ""}
+                  placeholder="örn. AB123456"
+                />
+              </div>
+              <div className="flex flex-col gap-2">
+                <Label htmlFor="inspectionExpiry">Muayene Bitiş</Label>
+                <Input
+                  id="inspectionExpiry"
+                  name="inspectionExpiry"
+                  type="date"
+                  defaultValue={toDateInput(vehicle?.inspectionExpiry)}
+                />
+              </div>
+              <div className="flex flex-col gap-2">
+                <Label htmlFor="insurancePolicyNumber">Trafik Sig. Poliçe No</Label>
+                <Input
+                  id="insurancePolicyNumber"
+                  name="insurancePolicyNumber"
+                  defaultValue={vehicle?.insurancePolicyNumber ?? ""}
+                  placeholder="örn. 1234567890"
+                />
+              </div>
+              <div className="flex flex-col gap-2">
+                <Label htmlFor="insuranceExpiry">Sigorta Bitiş</Label>
+                <Input
+                  id="insuranceExpiry"
+                  name="insuranceExpiry"
+                  type="date"
+                  defaultValue={toDateInput(vehicle?.insuranceExpiry)}
+                />
+              </div>
+            </div>
           </div>
           {state?.error && (
             <p className="text-sm text-destructive" role="alert">

@@ -355,6 +355,15 @@ model Vehicle {
   bedType         VehicleBedType @map("bed_type")
   tonnageCapacity Decimal        @map("tonnage_capacity") @db.Decimal(10, 2)
   status          VehicleStatus  @default(AVAILABLE)
+  // Belge geçerlilik takibi (bkz. src/lib/vehicle-docs.ts): muayene ve trafik
+  // sigortası bitiş tarihleri + ilgili belge/poliçe numaraları. Hepsi
+  // opsiyonel; girildiğinde Araçlar listesinde ve panelde yaklaşan/süresi
+  // geçen uyarısı gösterilir. (Belge GÖRSELİ yükleme ayrı bir kalıcı
+  // depolama gerektirir ve burada kapsam dışıdır.)
+  registrationNumber    String?   @map("registration_number")
+  insurancePolicyNumber String?   @map("insurance_policy_number")
+  inspectionExpiry      DateTime? @map("inspection_expiry")
+  insuranceExpiry       DateTime? @map("insurance_expiry")
   createdAt       DateTime       @default(now()) @map("created_at")
   updatedAt       DateTime       @updatedAt @map("updated_at")
 

@@ -42,6 +42,42 @@ describe("vehicle-service", () => {
     await expect(vehicleService.getVehicle(ctx, created.id)).rejects.toThrow();
   });
 
+  it("persists and clears vehicle document fields", async () => {
+    const ctx = await createSupplierContext();
+    companyIds.push(ctx.companyId);
+
+    const created = await vehicleService.createVehicle(ctx, {
+      plate: "34 DOC 001",
+      vehicleType: "KAMYON",
+      bedType: "KAPALI_KASA",
+      tonnageCapacity: "10",
+      registrationNumber: "AB123456",
+      insurancePolicyNumber: "POL-9988",
+      inspectionExpiry: "2027-03-01",
+      insuranceExpiry: "2027-01-15",
+    });
+    expect(created.registrationNumber).toBe("AB123456");
+    expect(created.insurancePolicyNumber).toBe("POL-9988");
+    expect(created.inspectionExpiry?.toISOString().slice(0, 10)).toBe("2027-03-01");
+    expect(created.insuranceExpiry?.toISOString().slice(0, 10)).toBe("2027-01-15");
+
+    // Empty strings clear the fields back to null.
+    await vehicleService.updateVehicle(ctx, created.id, {
+      plate: "34 DOC 001",
+      vehicleType: "KAMYON",
+      bedType: "KAPALI_KASA",
+      tonnageCapacity: "10",
+      registrationNumber: "",
+      insurancePolicyNumber: "",
+      inspectionExpiry: "",
+      insuranceExpiry: "",
+    });
+    const cleared = await vehicleService.getVehicle(ctx, created.id);
+    expect(cleared.registrationNumber).toBeNull();
+    expect(cleared.inspectionExpiry).toBeNull();
+    expect(cleared.insuranceExpiry).toBeNull();
+  });
+
   it("rejects creating a vehicle with a plate already used by another company", async () => {
     const ctxA = await createSupplierContext();
     const ctxB = await createSupplierContext();
