@@ -170,6 +170,7 @@ model Company {
   warehouses          Warehouse[]
   shipmentsAsCustomer Shipment[]     @relation("CustomerShipments")
   shipmentsAsSupplier Shipment[]     @relation("SupplierShipments")
+  driverBlocks        CustomerDriverBlock[]
   notifications       Notification[]
   bids                ShipmentBid[]
   ratingsGiven        Rating[]       @relation("CustomerRatings")
@@ -470,6 +471,25 @@ enum GateEventType {
 enum PaymentStatus {
   PENDING
   PAID
+}
+
+/// A customer's block ("kara liste") on a specific person by TC and/or driver
+/// license number (see src/core/driver-block). When a supplier tries to assign
+/// a driver whose TC or license matches one of the shipment customer's blocks,
+/// the assignment is refused — so a blocked person is never sent to that
+/// customer. At least one of tcNumber / licenseNumber is always set.
+model CustomerDriverBlock {
+  id                String   @id @default(uuid(7)) @db.Uuid
+  customerCompanyId String   @map("customer_company_id") @db.Uuid
+  customerCompany   Company  @relation(fields: [customerCompanyId], references: [id], onDelete: Cascade)
+  fullName          String?  @map("full_name")
+  tcNumber          String?  @map("tc_number")
+  licenseNumber     String?  @map("license_number")
+  reason            String?
+  createdAt         DateTime @default(now()) @map("created_at")
+
+  @@index([customerCompanyId])
+  @@map("customer_driver_blocks")
 }
 
 model Shipment {

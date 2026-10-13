@@ -15,6 +15,7 @@ import {
   ValidationError,
 } from "@/core/shared/errors";
 import { requireCompanyType } from "@/core/shared/authorization";
+import { assertDriverNotBlockedForCustomer } from "@/core/driver-block/driver-block-service";
 import type { TenantContext } from "@/core/shared/tenant-context";
 import type { DriverContext } from "@/core/shared/driver-context";
 import type { GateGuardContext } from "@/core/shared/gate-guard-context";
@@ -93,6 +94,13 @@ export async function assignVehicleAndDriver(
       if (driver.status !== DriverStatus.AVAILABLE) {
         throw new ValidationError("Seçilen şoför şu anda müsait değil.");
       }
+      // Customer "kara liste": never send a driver this shipment's customer
+      // has blocked (by TC or license). See src/core/driver-block.
+      await assertDriverNotBlockedForCustomer(
+        tx,
+        shipment.customerCompanyId,
+        driver
+      );
 
       const updatedShipment = await tx.shipment.update({
         where: { id: shipment.id },

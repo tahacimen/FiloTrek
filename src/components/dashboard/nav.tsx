@@ -10,6 +10,7 @@ import {
   ClipboardList,
   Settings,
   ShieldCheck,
+  ShieldBan,
   SlidersHorizontal,
   Warehouse,
   HandCoins,
@@ -31,6 +32,7 @@ const customerNavItems = [
   { href: "/shipments", label: "Seferlerim", icon: Package },
   { href: "/gate-guards", label: "Nizamiye", icon: ShieldCheck },
   { href: "/warehouses", label: "Depo & Rampa", icon: Warehouse },
+  { href: "/blocked-drivers", label: "Engelli Sürücüler", icon: ShieldBan },
 ];
 
 export function DashboardNav({
