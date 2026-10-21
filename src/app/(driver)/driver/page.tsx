@@ -179,6 +179,26 @@ export default async function DriverPage() {
                     targetStatus={nextTargetStatus}
                     label={driverNextStepLabels[shipment.status]!}
                   />
+                ) : shipment.status === "ASSIGNED" ? (
+                  shipment.loadReadyAt && shipment.priceApprovedAt ? (
+                    // N6: cargo ready + price approved → green light to head out.
+                    <div className="flex flex-col gap-3">
+                      <div className="rounded-lg border-[1.5px] border-emerald-300 bg-emerald-50 px-3 py-2.5 text-sm font-medium text-emerald-900">
+                        ✅ Yük hazır — yükleme noktasına gidebilirsiniz.
+                      </div>
+                      <DriverShipmentActions
+                        shipmentId={shipment.id}
+                        targetStatus="HEADING_TO_PICKUP"
+                        label="Yükleme Noktasına Gidiyorum"
+                      />
+                    </div>
+                  ) : (
+                    <p className="text-muted-foreground text-sm">
+                      {shipment.loadReadyAt
+                        ? "Fiyat onayı bekleniyor — onaylanınca yola çıkabilirsiniz."
+                        : "Yük henüz hazır değil. Müşteri yükü hazırladığında buradan yola çıkabileceksiniz."}
+                    </p>
+                  )
                 ) : (
                   <p className="text-muted-foreground text-sm">
                     Sevkiyat bekleniyor — tedarikçi aracı yola çıkardığında

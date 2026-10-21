@@ -5,13 +5,19 @@ import { requireCompanyType } from "@/core/shared/authorization";
 import type { TenantContext } from "@/core/shared/tenant-context";
 import { NotFoundError, ValidationError } from "@/core/shared/errors";
 import * as driverRepository from "@/core/driver/driver-repository";
-import { driverInputSchema } from "@/lib/validation/driver";
+import {
+  driverDeactivationSchema,
+  driverInputSchema,
+  driverLeaveSchema,
+  driverManualStatusSchema,
+} from "@/lib/validation/driver";
+import { isDriverAssignable } from "@/lib/driver-status";
 import { generateLoginToken } from "@/lib/tokens";
 import { CompanyType, DriverStatus } from "@/generated/prisma/client";
 
 export async function listDrivers(
   ctx: TenantContext,
-  filter?: { status?: DriverStatus }
+  filter?: { status?: DriverStatus; assignableOnly?: boolean }
 ) {
   requireCompanyType(ctx, CompanyType.SUPPLIER);
   return driverRepository.listDriversForTenant(ctx, filter);
@@ -250,8 +256,99 @@ export async function assertDriverAvailableForAssignment(
     where: { id: driverId, companyId: ctx.companyId },
   });
   if (!driver) throw new NotFoundError("Şoför bulunamadı.");
-  if (driver.status !== DriverStatus.AVAILABLE) {
+  // N2/N7: assignability spans stored status + leave window + deactivation.
+  if (!isDriverAssignable(driver)) {
     throw new ValidationError("Seçilen şoför şu anda müsait değil.");
   }
   return driver;
+}
+
+/**
+ * N2: the dispatcher's manual Müsait ↔ Görevde Değil toggle. ON_TRIP is driven
+ * only by the shipment lifecycle, never set here, and a driver mid-trip can't
+ * have their status hand-edited (it would desync the projection). A
+ * deactivated driver must be reactivated before their day-to-day status means
+ * anything.
+ */
+export async function setDriverStatus(
+  ctx: TenantContext,
+  driverId: string,
+  rawInput: unknown
+) {
+  requireCompanyType(ctx, CompanyType.SUPPLIER);
+  const { status } = driverManualStatusSchema.parse(rawInput);
+
+  const existing = await driverRepository.getDriverForTenant(ctx, driverId);
+  if (!existing) throw new NotFoundError("Şoför bulunamadı.");
+  if (!existing.isActive) {
+    throw new ValidationError(
+      "Devre dışı bir şoförün durumu değiştirilemez. Önce yeniden etkinleştirin."
+    );
+  }
+  if (existing.status === DriverStatus.ON_TRIP) {
+    throw new ValidationError(
+      "Seferdeki bir şoförün durumu elle değiştirilemez."
+    );
+  }
+  await driverRepository.setDriverStatusRecord(ctx, driverId, status);
+}
+
+/** N2: set or clear a driver's leave window. */
+export async function setDriverLeave(
+  ctx: TenantContext,
+  driverId: string,
+  rawInput: unknown
+) {
+  requireCompanyType(ctx, CompanyType.SUPPLIER);
+  const { leaveStartDate, leaveEndDate } = driverLeaveSchema.parse(rawInput);
+
+  const existing = await driverRepository.getDriverForTenant(ctx, driverId);
+  if (!existing) throw new NotFoundError("Şoför bulunamadı.");
+
+  await driverRepository.setDriverLeaveRecord(ctx, driverId, {
+    leaveStartDate,
+    leaveEndDate,
+  });
+}
+
+/**
+ * N7: permanently deactivate a driver with a required reason. Refused mid-trip
+ * (finish/cancel the shipment first) — same guard shape as deleteDriver.
+ */
+export async function deactivateDriver(
+  ctx: TenantContext,
+  driverId: string,
+  rawInput: unknown
+) {
+  requireCompanyType(ctx, CompanyType.SUPPLIER);
+  const { reason, note } = driverDeactivationSchema.parse(rawInput);
+
+  const existing = await driverRepository.getDriverForTenant(ctx, driverId);
+  if (!existing) throw new NotFoundError("Şoför bulunamadı.");
+  if (existing.status === DriverStatus.ON_TRIP) {
+    throw new ValidationError(
+      "Aktif seferde olan bir şoför devre dışı bırakılamaz. Önce seferi tamamlayın veya iptal edin."
+    );
+  }
+
+  await driverRepository.setDriverActivationRecord(ctx, driverId, {
+    isActive: false,
+    deactivationReason: reason,
+    deactivationNote: note,
+    deactivatedAt: new Date(),
+  });
+}
+
+/** N7: reactivate a previously deactivated driver, clearing the reason trail. */
+export async function reactivateDriver(ctx: TenantContext, driverId: string) {
+  requireCompanyType(ctx, CompanyType.SUPPLIER);
+  const existing = await driverRepository.getDriverForTenant(ctx, driverId);
+  if (!existing) throw new NotFoundError("Şoför bulunamadı.");
+
+  await driverRepository.setDriverActivationRecord(ctx, driverId, {
+    isActive: true,
+    deactivationReason: null,
+    deactivationNote: null,
+    deactivatedAt: null,
+  });
 }

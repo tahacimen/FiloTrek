@@ -6,7 +6,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { VehicleFormDialog } from "@/app/(dashboard)/vehicles/vehicle-form-dialog";
 import { VehicleTable } from "@/app/(dashboard)/vehicles/vehicle-table";
 import { toSerializableVehicle } from "@/app/(dashboard)/vehicles/types";
-import { vehicleNeedsDocAttention } from "@/lib/vehicle-docs";
+import {
+  vehicleHasMissingDocs,
+  vehicleNeedsDocAttention,
+} from "@/lib/vehicle-docs";
 
 export default async function VehiclesPage() {
   const ctx = await requireTenantContext();
@@ -15,6 +18,8 @@ export default async function VehiclesPage() {
   }
   const vehicles = (await listVehicles(ctx)).map(toSerializableVehicle);
   const docAttentionCount = vehicles.filter(vehicleNeedsDocAttention).length;
+  // N1: pre-existing vehicles created before documents became mandatory.
+  const missingDocCount = vehicles.filter(vehicleHasMissingDocs).length;
 
   return (
     <div className="flex flex-col gap-6">
@@ -32,6 +37,13 @@ export default async function VehiclesPage() {
           <span className="font-semibold">{docAttentionCount} araçta</span> belge
           süresi yaklaşıyor veya dolmuş (muayene / trafik sigortası). Aşağıdaki
           “Belgeler” sütununu kontrol edin.
+        </div>
+      )}
+      {missingDocCount > 0 && (
+        <div className="rounded-lg border-[1.5px] border-red-300 bg-red-50 px-4 py-3 text-sm text-red-900">
+          <span className="font-semibold">{missingDocCount} araçta</span> zorunlu
+          belge bilgisi eksik (ruhsat / poliçe no veya geçerlilik tarihi). Aracı
+          düzenleyip bilgileri tamamlayın.
         </div>
       )}
       <Card>

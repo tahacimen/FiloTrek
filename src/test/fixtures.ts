@@ -109,16 +109,29 @@ export async function createTestVehicle(
 
 export async function createTestDriver(
   companyId: string,
-  overrides: Partial<{ status: DriverStatus; email: string }> = {}
+  overrides: Partial<{
+    status: DriverStatus;
+    email: string;
+    isActive: boolean;
+    leaveStartDate: Date | null;
+    leaveEndDate: Date | null;
+    tcNumber: string | null;
+  }> = {}
 ) {
   return prisma.driver.create({
     data: {
       companyId,
       fullName: "Test Driver",
       phone: "0500 000 00 00",
-      licenseNumber: unique("LIC").toUpperCase(),
+      // Alphanumeric only — matches the ehliyet-no rule (N3) so fixtures that
+      // round-trip through driverInputSchema aren't rejected.
+      licenseNumber: unique("LIC").replace(/-/g, "").toUpperCase(),
       email: overrides.email,
       status: overrides.status ?? DriverStatus.AVAILABLE,
+      isActive: overrides.isActive ?? true,
+      leaveStartDate: overrides.leaveStartDate ?? null,
+      leaveEndDate: overrides.leaveEndDate ?? null,
+      tcNumber: overrides.tcNumber ?? null,
     },
   });
 }

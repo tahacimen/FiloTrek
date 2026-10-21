@@ -57,6 +57,14 @@ export function LoadReadyCard({
         <CardTitle>Yükleme Bilgileri</CardTitle>
       </CardHeader>
       <CardContent className="flex flex-col gap-4">
+        {/* N6: once the customer marks the cargo ready, cue the supplier that
+            they can dispatch the driver (the WhatsApp handoff lives in the
+            separate NotifyDriverCard). */}
+        {loadReadyAt && companyType === "SUPPLIER" && status === "ASSIGNED" && (
+          <div className="rounded-lg border-[1.5px] border-emerald-300 bg-emerald-50 px-3 py-2.5 text-sm font-medium text-emerald-900">
+            ✅ Müşteri yükün hazır olduğunu bildirdi — şoförü yönlendirebilirsiniz.
+          </div>
+        )}
         {loadReadyAt ? (
           <div className="grid grid-cols-2 gap-4">
             <Field label="Kapı / Rampa Bilgisi" value={pickupGateInfo} />

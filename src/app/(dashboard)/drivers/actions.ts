@@ -155,3 +155,74 @@ export async function deleteDriverAction(
   revalidatePath("/dashboard");
   return undefined;
 }
+
+/** N2: manual Müsait ↔ Görevde Değil toggle. */
+export async function setDriverStatusAction(
+  driverId: string,
+  status: string
+): Promise<DriverFormState> {
+  try {
+    const ctx = await requireTenantContext();
+    await driverService.setDriverStatus(ctx, driverId, { status });
+  } catch (error) {
+    return { error: toActionErrorMessage(error) };
+  }
+  revalidatePath("/drivers");
+  revalidatePath("/dashboard");
+  return undefined;
+}
+
+/** N2: set or clear a driver's leave window. */
+export async function setDriverLeaveAction(
+  driverId: string,
+  _prevState: DriverFormState,
+  formData: FormData
+): Promise<DriverFormState> {
+  try {
+    const ctx = await requireTenantContext();
+    await driverService.setDriverLeave(ctx, driverId, {
+      leaveStartDate: formData.get("leaveStartDate"),
+      leaveEndDate: formData.get("leaveEndDate"),
+    });
+  } catch (error) {
+    return { error: toActionErrorMessage(error) };
+  }
+  revalidatePath("/drivers");
+  revalidatePath("/dashboard");
+  return undefined;
+}
+
+/** N7: permanently deactivate a driver with a reason. */
+export async function deactivateDriverAction(
+  driverId: string,
+  _prevState: DriverFormState,
+  formData: FormData
+): Promise<DriverFormState> {
+  try {
+    const ctx = await requireTenantContext();
+    await driverService.deactivateDriver(ctx, driverId, {
+      reason: formData.get("reason"),
+      note: formData.get("note"),
+    });
+  } catch (error) {
+    return { error: toActionErrorMessage(error) };
+  }
+  revalidatePath("/drivers");
+  revalidatePath("/dashboard");
+  return undefined;
+}
+
+/** N7: reactivate a deactivated driver. */
+export async function reactivateDriverAction(
+  driverId: string
+): Promise<DriverFormState> {
+  try {
+    const ctx = await requireTenantContext();
+    await driverService.reactivateDriver(ctx, driverId);
+  } catch (error) {
+    return { error: toActionErrorMessage(error) };
+  }
+  revalidatePath("/drivers");
+  revalidatePath("/dashboard");
+  return undefined;
+}

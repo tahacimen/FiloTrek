@@ -52,6 +52,38 @@ export function vehicleNeedsDocAttention(vehicle: {
   return s === "expired" || s === "soon";
 }
 
+/**
+ * N1: which legally-required document fields are still empty on a vehicle.
+ * Pre-existing vehicles (created before documents became mandatory) keep null
+ * values; this drives the "belge eksik" flag instead of blocking them. The
+ * labels match the vehicle form's own field labels.
+ */
+export type VehicleDocFields = {
+  registrationNumber: string | null;
+  insurancePolicyNumber: string | null;
+  inspectionExpiry: Date | string | null;
+  insuranceExpiry: Date | string | null;
+};
+
+const DOC_FIELD_LABELS: { key: keyof VehicleDocFields; label: string }[] = [
+  { key: "registrationNumber", label: "Ruhsat No" },
+  { key: "insurancePolicyNumber", label: "Trafik Sigortası Poliçe No" },
+  { key: "inspectionExpiry", label: "Muayene Bitiş" },
+  { key: "insuranceExpiry", label: "Sigorta Bitiş" },
+];
+
+export function vehicleMissingDocFields(vehicle: VehicleDocFields): string[] {
+  return DOC_FIELD_LABELS.filter(({ key }) => {
+    const v = vehicle[key];
+    return v === null || v === undefined || (typeof v === "string" && v.trim() === "");
+  }).map(({ label }) => label);
+}
+
+/** True when a vehicle is missing any legally-required document field. */
+export function vehicleHasMissingDocs(vehicle: VehicleDocFields): boolean {
+  return vehicleMissingDocFields(vehicle).length > 0;
+}
+
 /** Short human label for a document's status, e.g. "12 gün" / "Süresi doldu". */
 export function docStatusLabel(
   date: Date | string | null | undefined

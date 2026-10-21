@@ -24,6 +24,10 @@ describe("vehicle-service", () => {
       vehicleType: "TIR",
       bedType: "TENTELI",
       tonnageCapacity: "20",
+      registrationNumber: "AB123456",
+      insurancePolicyNumber: "POL9988",
+      inspectionExpiry: "2027-03-01",
+      insuranceExpiry: "2027-01-15",
     });
     expect(created.plate).toBe("34 SVC 001");
     expect(created.tonnageCapacity.toNumber()).toBe(20);
@@ -33,6 +37,10 @@ describe("vehicle-service", () => {
       vehicleType: "TIR",
       bedType: "FRIGORIFIK",
       tonnageCapacity: "22.5",
+      registrationNumber: "AB123456",
+      insurancePolicyNumber: "POL9988",
+      inspectionExpiry: "2027-03-01",
+      insuranceExpiry: "2027-01-15",
     });
     const edited = await vehicleService.getVehicle(ctx, created.id);
     expect(edited.bedType).toBe("FRIGORIFIK");
@@ -42,7 +50,7 @@ describe("vehicle-service", () => {
     await expect(vehicleService.getVehicle(ctx, created.id)).rejects.toThrow();
   });
 
-  it("persists and clears vehicle document fields", async () => {
+  it("persists vehicle document fields and requires them (N1)", async () => {
     const ctx = await createSupplierContext();
     companyIds.push(ctx.companyId);
 
@@ -52,30 +60,38 @@ describe("vehicle-service", () => {
       bedType: "KAPALI_KASA",
       tonnageCapacity: "10",
       registrationNumber: "AB123456",
-      insurancePolicyNumber: "POL-9988",
+      insurancePolicyNumber: "POL9988",
       inspectionExpiry: "2027-03-01",
       insuranceExpiry: "2027-01-15",
     });
     expect(created.registrationNumber).toBe("AB123456");
-    expect(created.insurancePolicyNumber).toBe("POL-9988");
+    expect(created.insurancePolicyNumber).toBe("POL9988");
     expect(created.inspectionExpiry?.toISOString().slice(0, 10)).toBe("2027-03-01");
     expect(created.insuranceExpiry?.toISOString().slice(0, 10)).toBe("2027-01-15");
 
-    // Empty strings clear the fields back to null.
-    await vehicleService.updateVehicle(ctx, created.id, {
-      plate: "34 DOC 001",
-      vehicleType: "KAMYON",
-      bedType: "KAPALI_KASA",
-      tonnageCapacity: "10",
-      registrationNumber: "",
-      insurancePolicyNumber: "",
-      inspectionExpiry: "",
-      insuranceExpiry: "",
-    });
-    const cleared = await vehicleService.getVehicle(ctx, created.id);
-    expect(cleared.registrationNumber).toBeNull();
-    expect(cleared.inspectionExpiry).toBeNull();
-    expect(cleared.insuranceExpiry).toBeNull();
+    // N1: document fields are now mandatory — blank values are rejected.
+    await expect(
+      vehicleService.updateVehicle(ctx, created.id, {
+        plate: "34 DOC 001",
+        vehicleType: "KAMYON",
+        bedType: "KAPALI_KASA",
+        tonnageCapacity: "10",
+        registrationNumber: "",
+        insurancePolicyNumber: "",
+        inspectionExpiry: "",
+        insuranceExpiry: "",
+      })
+    ).rejects.toThrow();
+
+    // Creating a vehicle without documents is likewise rejected.
+    await expect(
+      vehicleService.createVehicle(ctx, {
+        plate: "34 DOC 002",
+        vehicleType: "KAMYON",
+        bedType: "KAPALI_KASA",
+        tonnageCapacity: "10",
+      })
+    ).rejects.toThrow();
   });
 
   it("rejects creating a vehicle with a plate already used by another company", async () => {
@@ -90,6 +106,10 @@ describe("vehicle-service", () => {
         vehicleType: "KAMYON",
         bedType: "ACIK_KASA",
         tonnageCapacity: "10",
+        registrationNumber: "AB123456",
+        insurancePolicyNumber: "POL9988",
+        inspectionExpiry: "2027-03-01",
+        insuranceExpiry: "2027-01-15",
       })
     ).rejects.toThrow(ValidationError);
   });

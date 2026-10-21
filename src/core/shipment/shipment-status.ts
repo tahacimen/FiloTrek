@@ -15,6 +15,7 @@ import {
   ValidationError,
 } from "@/core/shared/errors";
 import { requireCompanyType } from "@/core/shared/authorization";
+import { isDriverAssignable } from "@/lib/driver-status";
 import { assertDriverNotBlockedForCustomer } from "@/core/driver-block/driver-block-service";
 import type { TenantContext } from "@/core/shared/tenant-context";
 import type { DriverContext } from "@/core/shared/driver-context";
@@ -91,7 +92,8 @@ export async function assignVehicleAndDriver(
         where: { id: params.driverId, companyId: ctx.companyId },
       });
       if (!driver) throw new NotFoundError("Şoför bulunamadı.");
-      if (driver.status !== DriverStatus.AVAILABLE) {
+      // N2/N7: müsaitlik, saklı durum + izin aralığı + deaktif durumunu kapsar.
+      if (!isDriverAssignable(driver)) {
         throw new ValidationError("Seçilen şoför şu anda müsait değil.");
       }
       // Customer "kara liste": never send a driver this shipment's customer
@@ -398,12 +400,19 @@ export async function advanceShipmentStatus(
 }
 
 /**
- * The four steps a driver can report themselves from their own scoped view.
+ * The steps a driver can report themselves from their own scoped view.
  * Deliberately excludes ASSIGNED (needs a vehicle+driver pick, dispatcher
- * only), HEADING_TO_PICKUP (dispatcher confirms the price-approved vehicle
- * is actually leaving) and CANCELLED (a dispatcher-level business decision).
+ * only) and CANCELLED (a dispatcher-level business decision).
+ *
+ * HEADING_TO_PICKUP is included (N6): once the customer marks the cargo ready
+ * ("yük hazır") AND the price is approved, the driver gets the green light to
+ * head to the pickup themselves, rather than waiting on the dispatcher to push
+ * them off. Both gates still hold — the price-approval check lives in
+ * advanceShipmentStatusCore, the load-ready check is enforced below before the
+ * transition runs — so this never lets a driver leave prematurely.
  */
 const DRIVER_ALLOWED_TARGET_STATUSES: ReadonlySet<ShipmentStatus> = new Set([
+  ShipmentStatus.HEADING_TO_PICKUP,
   ShipmentStatus.LOADING,
   ShipmentStatus.AT_PICKUP_GATE,
   ShipmentStatus.EN_ROUTE,
@@ -475,6 +484,23 @@ export async function advanceShipmentStatusAsDriver(
     throw new InvalidTransitionError("Şoförler bu durum değişikliğini yapamaz.");
   }
 
+  // N6: a driver may only start heading once the customer has confirmed the
+  // cargo is ready. Checked here (the driver entry point) rather than in the
+  // shared core — the dispatcher's own HEADING_TO_PICKUP push is unaffected.
+  // The price-approval gate is enforced for both paths inside the core.
+  if (params.targetStatus === ShipmentStatus.HEADING_TO_PICKUP) {
+    const ready = await prisma.shipment.findFirst({
+      where: { id: params.shipmentId, driverId: driverCtx.driverId },
+      select: { loadReadyAt: true },
+    });
+    if (!ready) throw new NotFoundError("Sefer bulunamadı.");
+    if (!ready.loadReadyAt) {
+      throw new ValidationError(
+        "Müşteri henüz yükün hazır olduğunu bildirmedi. Lütfen bekleyin."
+      );
+    }
+  }
+
   const hasRealPhoto = params.photo instanceof File && params.photo.size > 0;
   if (PHOTO_REQUIRED_TARGET_STATUSES.has(params.targetStatus) && !hasRealPhoto) {
     throw new ValidationError(
@@ -508,6 +534,25 @@ export async function advanceShipmentStatusAsDriver(
     changedByDriverId: driverCtx.driverId,
     photoUrl,
   });
+
+  // N6: a driver-initiated departure tells the customer their vehicle is on
+  // its way, same as the dispatcher's own HEADING_TO_PICKUP push does. Kept
+  // separate from DRIVER_NOTIFY_BY_STATUS because notifyVehicleDeparted has a
+  // different signature (no driver/customer-name fields).
+  if (params.targetStatus === ShipmentStatus.HEADING_TO_PICKUP) {
+    try {
+      const supplierCompany = updatedShipment.supplierCompanyId
+        ? await companyRepository.getCompanyById(updatedShipment.supplierCompanyId)
+        : null;
+      await notificationService.notifyVehicleDeparted({
+        customerCompanyId: updatedShipment.customerCompanyId,
+        supplierCompanyName: supplierCompany?.name ?? "Tedarikçi",
+        shipment: updatedShipment,
+      });
+    } catch (error) {
+      console.error("Araç yola çıktı bildirimi oluşturulamadı:", error);
+    }
+  }
 
   const notify = DRIVER_NOTIFY_BY_STATUS[params.targetStatus];
   if (notify) {

@@ -36,15 +36,19 @@ export function AssignDialog({
   route,
   availableVehicles,
   availableDrivers,
+  blockedDriverIds = [],
   agreedPrice,
 }: {
   shipmentId: string;
   route: string;
   availableVehicles: SerializableVehicle[];
   availableDrivers: SerializableDriver[];
+  /** N7: driver ids this shipment's customer has blocked — shown disabled. */
+  blockedDriverIds?: string[];
   /** Non-null when the price is already agreed (an accepted marketplace bid) — the dialog then skips asking for a price. */
   agreedPrice: number | null;
 }) {
+  const blocked = new Set(blockedDriverIds);
   const [open, setOpen] = useState(false);
   const [state, formAction, isPending] = useActionState<
     AssignFormState,
@@ -115,8 +119,15 @@ export function AssignDialog({
                 </SelectTrigger>
                 <SelectContent>
                   {availableDrivers.map((driver) => (
-                    <SelectItem key={driver.id} value={driver.id}>
+                    <SelectItem
+                      key={driver.id}
+                      value={driver.id}
+                      disabled={blocked.has(driver.id)}
+                    >
                       {driver.fullName}
+                      {blocked.has(driver.id)
+                        ? " — bu müşteri tarafından engelli"
+                        : ""}
                     </SelectItem>
                   ))}
                 </SelectContent>

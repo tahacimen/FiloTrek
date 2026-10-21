@@ -418,18 +418,66 @@ describe("advanceShipmentStatusAsDriver", () => {
         targetStatus: ShipmentStatus.CANCELLED,
       })
     ).rejects.toThrow(InvalidTransitionError);
-    await expect(
-      advanceShipmentStatusAsDriver(driverCtx, {
-        shipmentId: shipment.id,
-        targetStatus: ShipmentStatus.HEADING_TO_PICKUP,
-      })
-    ).rejects.toThrow(InvalidTransitionError);
+    // ASSIGNED stays dispatcher-only (needs a vehicle+driver pick). Note that
+    // HEADING_TO_PICKUP is NO LONGER outside the allowlist — a driver may start
+    // heading once the cargo is ready (N6), covered by its own test below.
     await expect(
       advanceShipmentStatusAsDriver(driverCtx, {
         shipmentId: shipment.id,
         targetStatus: ShipmentStatus.ASSIGNED,
       })
     ).rejects.toThrow(InvalidTransitionError);
+  });
+
+  it("lets a driver start heading only once the cargo is ready (N6)", async () => {
+    const ctx = await createSupplierContext();
+    const customer = await createTestCompany(CompanyType.CUSTOMER);
+    companyIds.push(ctx.companyId, customer.id);
+    const vehicle = await createTestVehicle(ctx.companyId);
+    const driver = await createTestDriver(ctx.companyId);
+    const shipment = await prisma.shipment.create({
+      data: {
+        customerCompanyId: customer.id,
+        supplierCompanyId: ctx.companyId,
+        originAddress: "A",
+        destinationAddress: "B",
+        distanceKm: 100,
+        tonnage: 5,
+        status: ShipmentStatus.PENDING,
+      },
+    });
+    await assignVehicleAndDriver(ctx, {
+      shipmentId: shipment.id,
+      vehicleId: vehicle.id,
+      driverId: driver.id,
+      agreedPrice: AGREED_PRICE,
+    });
+    await approvePriceDirectly(shipment.id);
+    const driverCtx = {
+      driverId: driver.id,
+      companyId: ctx.companyId,
+      fullName: driver.fullName,
+    };
+
+    // Price approved but cargo not yet marked ready → refused.
+    await expect(
+      advanceShipmentStatusAsDriver(driverCtx, {
+        shipmentId: shipment.id,
+        targetStatus: ShipmentStatus.HEADING_TO_PICKUP,
+      })
+    ).rejects.toThrow(ValidationError);
+
+    // Customer confirms the cargo is ready.
+    await prisma.shipment.update({
+      where: { id: shipment.id },
+      data: { loadReadyAt: new Date() },
+    });
+
+    const headed = await advanceShipmentStatusAsDriver(driverCtx, {
+      shipmentId: shipment.id,
+      targetStatus: ShipmentStatus.HEADING_TO_PICKUP,
+    });
+    expect(headed.status).toBe(ShipmentStatus.HEADING_TO_PICKUP);
   });
 
   it("rejects AT_PICKUP_GATE -> EN_ROUTE with no photo attached", async () => {

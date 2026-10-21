@@ -148,13 +148,17 @@ export function VehicleFormDialog({
           </div>
 
           <div className="mt-1 border-t pt-4">
-            <p className="mb-3 text-sm font-medium">Belge & Geçerlilik (opsiyonel)</p>
+            <p className="mb-1 text-sm font-medium">Belge & Geçerlilik</p>
+            <p className="text-muted-foreground mb-3 text-xs">
+              Yasal takip için tüm belge bilgileri zorunludur.
+            </p>
             <div className="grid grid-cols-2 gap-4">
               <div className="flex flex-col gap-2">
                 <Label htmlFor="registrationNumber">Ruhsat / Tescil No</Label>
                 <Input
                   id="registrationNumber"
                   name="registrationNumber"
+                  required
                   defaultValue={vehicle?.registrationNumber ?? ""}
                   placeholder="örn. AB123456"
                 />
@@ -165,6 +169,7 @@ export function VehicleFormDialog({
                   id="inspectionExpiry"
                   name="inspectionExpiry"
                   type="date"
+                  required
                   defaultValue={toDateInput(vehicle?.inspectionExpiry)}
                 />
               </div>
@@ -173,6 +178,7 @@ export function VehicleFormDialog({
                 <Input
                   id="insurancePolicyNumber"
                   name="insurancePolicyNumber"
+                  required
                   defaultValue={vehicle?.insurancePolicyNumber ?? ""}
                   placeholder="örn. 1234567890"
                 />
@@ -183,6 +189,7 @@ export function VehicleFormDialog({
                   id="insuranceExpiry"
                   name="insuranceExpiry"
                   type="date"
+                  required
                   defaultValue={toDateInput(vehicle?.insuranceExpiry)}
                 />
               </div>

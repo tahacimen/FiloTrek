@@ -3,6 +3,7 @@ import {
   DemoRequestStatus,
   DockReservationStatus,
   DockReservationType,
+  DriverDeactivationReason,
   DriverStatus,
   InvitationRole,
   InvitationStatus,
@@ -56,7 +57,20 @@ export const vehicleStatusLabels: Record<VehicleStatus, string> = {
 export const driverStatusLabels: Record<DriverStatus, string> = {
   [DriverStatus.AVAILABLE]: "Müsait",
   [DriverStatus.ON_TRIP]: "Seferde",
-  [DriverStatus.OFF_DUTY]: "İzinde",
+  // The date-range "İzinli" is a separate, derived state (see
+  // src/lib/driver-status.ts); the stored OFF_DUTY is the manual "not on duty".
+  [DriverStatus.OFF_DUTY]: "Görevde Değil",
+};
+
+export const driverDeactivationReasonLabels: Record<
+  DriverDeactivationReason,
+  string
+> = {
+  [DriverDeactivationReason.LEFT_JOB]: "İşten Ayrıldı",
+  [DriverDeactivationReason.DISCIPLINE]: "Disiplin",
+  [DriverDeactivationReason.HEALTH]: "Sağlık",
+  [DriverDeactivationReason.MISSING_DOCUMENTS]: "Belge Eksik",
+  [DriverDeactivationReason.OTHER]: "Diğer",
 };
 
 export const shipmentStatusLabels: Record<ShipmentStatus, string> = {

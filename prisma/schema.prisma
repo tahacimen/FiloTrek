@@ -70,7 +70,23 @@ enum VehicleStatus {
 enum DriverStatus {
   AVAILABLE
   ON_TRIP
+  // Manually set by the dispatcher — "Görevde Değil" (not on duty). Distinct
+  // from the date-range leave (leaveStartDate/leaveEndDate) and from the hard
+  // DEACTIVATED state (isActive=false); the effective display/assignability
+  // status is computed across all three in src/lib/driver-status.ts.
   OFF_DUTY
+}
+
+// Why a supplier permanently deactivated a driver (N7) — kept as a fixed,
+// reportable set rather than free text (an "OTHER" + free-text note covers
+// the long tail). Orthogonal to DriverStatus/leave: a deactivated driver is
+// never assignable regardless of status.
+enum DriverDeactivationReason {
+  LEFT_JOB
+  DISCIPLINE
+  HEALTH
+  MISSING_DOCUMENTS
+  OTHER
 }
 
 // Shipment ("sefer") status is the authoritative state machine; Vehicle/Driver
@@ -397,6 +413,21 @@ model Driver {
   loginToken          String?      @unique @map("login_token")
   tcNumber            String?      @map("tc_number")
   experienceYears     Int?         @map("experience_years")
+  // Date-range leave (N2) — an "İzinli" window. Stored as plain dates
+  // (TIMESTAMP(3), midnight-anchored like the rest of the schema); while
+  // today falls inside [start, end] the driver reads as "İzinli" and is not
+  // assignable, reverting to its stored status automatically once the window
+  // passes. Both null = no leave scheduled. See src/lib/driver-status.ts.
+  leaveStartDate      DateTime?    @map("leave_start_date")
+  leaveEndDate        DateTime?    @map("leave_end_date")
+  // Hard deactivation (N7) — a permanently-inactive driver (left the company,
+  // disciplinary, etc.). Never assignable while isActive=false, independent
+  // of status/leave. A reason is required when deactivating; the note carries
+  // the free-text detail for OTHER. Reactivating clears all three.
+  isActive            Boolean      @default(true) @map("is_active")
+  deactivationReason  DriverDeactivationReason? @map("deactivation_reason")
+  deactivationNote    String?      @map("deactivation_note")
+  deactivatedAt       DateTime?    @map("deactivated_at")
   lastLoginAt         DateTime?    @map("last_login_at")
   // Brute-force lockout for the email+password path only — the driver-token
   // link isn't password-guessable, so it doesn't touch these fields.

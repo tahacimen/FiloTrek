@@ -2,13 +2,24 @@ import { afterAll, describe, expect, it } from "vitest";
 import { compare } from "bcryptjs";
 
 import * as driverService from "@/core/driver/driver-service";
+import * as driverRepository from "@/core/driver/driver-repository";
 import { ValidationError } from "@/core/shared/errors";
+import {
+  DriverDeactivationReason,
+  DriverStatus,
+} from "@/generated/prisma/client";
 import {
   cleanupCompanies,
   createSupplierContext,
   createTestDriver,
   createTestUser,
 } from "@/test/fixtures";
+
+function daysFromNow(n: number): Date {
+  const d = new Date();
+  d.setDate(d.getDate() + n);
+  return d;
+}
 
 describe("driver-service", () => {
   const companyIds: string[] = [];
@@ -23,14 +34,14 @@ describe("driver-service", () => {
     const created = await driverService.createDriver(ctx, {
       fullName: "Ahmet Yıldırım",
       phone: "0532 999 99 99",
-      licenseNumber: "SVC-LIC-001",
+      licenseNumber: "SVCLIC001",
     });
     expect(created.fullName).toBe("Ahmet Yıldırım");
 
     await driverService.updateDriver(ctx, created.id, {
       fullName: "Ahmet Yıldırım",
       phone: "0532 888 88 88",
-      licenseNumber: "SVC-LIC-001",
+      licenseNumber: "SVCLIC001",
     });
     const edited = await driverService.getDriver(ctx, created.id);
     expect(edited.phone).toBe("0532 888 88 88");
@@ -79,7 +90,7 @@ describe("driver-service: login credentials (email/password)", () => {
     const driver = await driverService.createDriver(ctx, {
       fullName: "Login Driver",
       phone: "0532 111 22 33",
-      licenseNumber: "LOGIN-LIC-001",
+      licenseNumber: "LOGINLIC001",
       email: "login-driver@test.local",
       password: "SuperSecret1!",
     });
@@ -97,7 +108,7 @@ describe("driver-service: login credentials (email/password)", () => {
     const driver = await driverService.createDriver(ctx, {
       fullName: "No Login Driver",
       phone: "0532 111 22 34",
-      licenseNumber: "LOGIN-LIC-002",
+      licenseNumber: "LOGINLIC002",
     });
 
     expect(driver.email).toBeNull();
@@ -112,7 +123,7 @@ describe("driver-service: login credentials (email/password)", () => {
       driverService.createDriver(ctx, {
         fullName: "Missing Password Driver",
         phone: "0532 111 22 35",
-        licenseNumber: "LOGIN-LIC-003",
+        licenseNumber: "LOGINLIC003",
         email: "missing-password@test.local",
       })
     ).rejects.toThrow(ValidationError);
@@ -127,7 +138,7 @@ describe("driver-service: login credentials (email/password)", () => {
       driverService.createDriver(ctx, {
         fullName: "Colliding Email Driver",
         phone: "0532 111 22 36",
-        licenseNumber: "LOGIN-LIC-004",
+        licenseNumber: "LOGINLIC004",
         email: user.email,
         password: "SuperSecret1!",
       })
@@ -140,7 +151,7 @@ describe("driver-service: login credentials (email/password)", () => {
     const driver = await driverService.createDriver(ctx, {
       fullName: "Keep Hash Driver",
       phone: "0532 111 22 37",
-      licenseNumber: "LOGIN-LIC-005",
+      licenseNumber: "LOGINLIC005",
       email: "keep-hash@test.local",
       password: "SuperSecret1!",
     });
@@ -148,7 +159,7 @@ describe("driver-service: login credentials (email/password)", () => {
     await driverService.updateDriver(ctx, driver.id, {
       fullName: "Keep Hash Driver",
       phone: "0532 111 22 37",
-      licenseNumber: "LOGIN-LIC-005",
+      licenseNumber: "LOGINLIC005",
       email: "keep-hash@test.local",
       // password intentionally omitted
     });
@@ -163,7 +174,7 @@ describe("driver-service: login credentials (email/password)", () => {
     const driver = await driverService.createDriver(ctx, {
       fullName: "Clear Login Driver",
       phone: "0532 111 22 38",
-      licenseNumber: "LOGIN-LIC-006",
+      licenseNumber: "LOGINLIC006",
       email: "clear-login@test.local",
       password: "SuperSecret1!",
     });
@@ -171,7 +182,7 @@ describe("driver-service: login credentials (email/password)", () => {
     await driverService.updateDriver(ctx, driver.id, {
       fullName: "Clear Login Driver",
       phone: "0532 111 22 38",
-      licenseNumber: "LOGIN-LIC-006",
+      licenseNumber: "LOGINLIC006",
       // email intentionally omitted
     });
 
@@ -186,7 +197,7 @@ describe("driver-service: login credentials (email/password)", () => {
     const driver = await driverService.createDriver(ctx, {
       fullName: "Revoke Token Driver",
       phone: "0532 111 22 41",
-      licenseNumber: "LOGIN-LIC-009",
+      licenseNumber: "LOGINLIC009",
       email: "revoke-token@test.local",
       password: "SuperSecret1!",
     });
@@ -195,7 +206,7 @@ describe("driver-service: login credentials (email/password)", () => {
     await driverService.updateDriver(ctx, driver.id, {
       fullName: "Revoke Token Driver",
       phone: "0532 111 22 41",
-      licenseNumber: "LOGIN-LIC-009",
+      licenseNumber: "LOGINLIC009",
       // email intentionally omitted
     });
 
@@ -209,14 +220,14 @@ describe("driver-service: login credentials (email/password)", () => {
     const driver = await driverService.createDriver(ctx, {
       fullName: "First Time Login Driver",
       phone: "0532 111 22 39",
-      licenseNumber: "LOGIN-LIC-007",
+      licenseNumber: "LOGINLIC007",
     });
 
     await expect(
       driverService.updateDriver(ctx, driver.id, {
         fullName: "First Time Login Driver",
         phone: "0532 111 22 39",
-        licenseNumber: "LOGIN-LIC-007",
+        licenseNumber: "LOGINLIC007",
         email: "first-time@test.local",
         // password intentionally omitted — this driver never had a hash yet
       })
@@ -293,5 +304,156 @@ describe("driver-service: login link", () => {
     const updated = await driverService.getDriver(ctx, driver.id);
     expect(updated.loginToken).toBeNull();
     expect(updated.email).toBe("revoke-link@test.local");
+  });
+});
+
+describe("driver-service: status, leave & deactivation (N2/N7)", () => {
+  const companyIds: string[] = [];
+  afterAll(async () => {
+    await cleanupCompanies(companyIds);
+  });
+
+  it("toggles manual status Müsait ↔ Görevde Değil", async () => {
+    const ctx = await createSupplierContext();
+    companyIds.push(ctx.companyId);
+    const driver = await createTestDriver(ctx.companyId);
+
+    await driverService.setDriverStatus(ctx, driver.id, {
+      status: DriverStatus.OFF_DUTY,
+    });
+    expect((await driverService.getDriver(ctx, driver.id)).status).toBe(
+      DriverStatus.OFF_DUTY
+    );
+
+    await driverService.setDriverStatus(ctx, driver.id, {
+      status: DriverStatus.AVAILABLE,
+    });
+    expect((await driverService.getDriver(ctx, driver.id)).status).toBe(
+      DriverStatus.AVAILABLE
+    );
+  });
+
+  it("refuses manual status change while the driver is on a trip", async () => {
+    const ctx = await createSupplierContext();
+    companyIds.push(ctx.companyId);
+    const driver = await createTestDriver(ctx.companyId, {
+      status: DriverStatus.ON_TRIP,
+    });
+
+    await expect(
+      driverService.setDriverStatus(ctx, driver.id, {
+        status: DriverStatus.OFF_DUTY,
+      })
+    ).rejects.toThrow(ValidationError);
+  });
+
+  it("sets and clears a leave window, and rejects end-before-start", async () => {
+    const ctx = await createSupplierContext();
+    companyIds.push(ctx.companyId);
+    const driver = await createTestDriver(ctx.companyId);
+
+    await driverService.setDriverLeave(ctx, driver.id, {
+      leaveStartDate: "2027-01-10",
+      leaveEndDate: "2027-01-05",
+    }).then(
+      () => {
+        throw new Error("should have rejected end-before-start");
+      },
+      (err) => expect(err).toBeInstanceOf(Error)
+    );
+
+    await driverService.setDriverLeave(ctx, driver.id, {
+      leaveStartDate: "2027-01-05",
+      leaveEndDate: "2027-01-10",
+    });
+    let saved = await driverService.getDriver(ctx, driver.id);
+    expect(saved.leaveStartDate?.toISOString().slice(0, 10)).toBe("2027-01-05");
+    expect(saved.leaveEndDate?.toISOString().slice(0, 10)).toBe("2027-01-10");
+
+    await driverService.setDriverLeave(ctx, driver.id, {
+      leaveStartDate: "",
+      leaveEndDate: "",
+    });
+    saved = await driverService.getDriver(ctx, driver.id);
+    expect(saved.leaveStartDate).toBeNull();
+    expect(saved.leaveEndDate).toBeNull();
+  });
+
+  it("deactivates with a reason and reactivates, clearing the trail", async () => {
+    const ctx = await createSupplierContext();
+    companyIds.push(ctx.companyId);
+    const driver = await createTestDriver(ctx.companyId);
+
+    await driverService.deactivateDriver(ctx, driver.id, {
+      reason: DriverDeactivationReason.HEALTH,
+      note: "",
+    });
+    let saved = await driverService.getDriver(ctx, driver.id);
+    expect(saved.isActive).toBe(false);
+    expect(saved.deactivationReason).toBe(DriverDeactivationReason.HEALTH);
+    expect(saved.deactivatedAt).not.toBeNull();
+
+    // A deactivated driver can't have their day-to-day status hand-edited.
+    await expect(
+      driverService.setDriverStatus(ctx, driver.id, {
+        status: DriverStatus.OFF_DUTY,
+      })
+    ).rejects.toThrow(ValidationError);
+
+    await driverService.reactivateDriver(ctx, driver.id);
+    saved = await driverService.getDriver(ctx, driver.id);
+    expect(saved.isActive).toBe(true);
+    expect(saved.deactivationReason).toBeNull();
+    expect(saved.deactivatedAt).toBeNull();
+  });
+
+  it("requires a note when the deactivation reason is OTHER", async () => {
+    const ctx = await createSupplierContext();
+    companyIds.push(ctx.companyId);
+    const driver = await createTestDriver(ctx.companyId);
+
+    await expect(
+      driverService.deactivateDriver(ctx, driver.id, {
+        reason: DriverDeactivationReason.OTHER,
+        note: "",
+      })
+    ).rejects.toThrow();
+  });
+
+  it("refuses to deactivate a driver who is on a trip", async () => {
+    const ctx = await createSupplierContext();
+    companyIds.push(ctx.companyId);
+    const driver = await createTestDriver(ctx.companyId, {
+      status: DriverStatus.ON_TRIP,
+    });
+
+    await expect(
+      driverService.deactivateDriver(ctx, driver.id, {
+        reason: DriverDeactivationReason.LEFT_JOB,
+        note: "",
+      })
+    ).rejects.toThrow(ValidationError);
+  });
+
+  it("assignableOnly excludes on-leave and deactivated drivers", async () => {
+    const ctx = await createSupplierContext();
+    companyIds.push(ctx.companyId);
+    const free = await createTestDriver(ctx.companyId);
+    const onLeave = await createTestDriver(ctx.companyId, {
+      leaveStartDate: daysFromNow(-1),
+      leaveEndDate: daysFromNow(2),
+    });
+    const deactivated = await createTestDriver(ctx.companyId, {
+      isActive: false,
+    });
+
+    const assignable = await driverRepository.listDriversForTenant(ctx, {
+      status: DriverStatus.AVAILABLE,
+      assignableOnly: true,
+    });
+    const ids = assignable.map((d) => d.id);
+    expect(ids).toContain(free.id);
+    expect(ids).not.toContain(onLeave.id);
+    expect(ids).not.toContain(deactivated.id);
   });
 });

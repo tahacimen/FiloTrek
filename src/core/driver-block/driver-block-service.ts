@@ -59,6 +59,40 @@ export async function findBlockForDriver(
   });
 }
 
+/**
+ * N7 (assignment screen): given a customer and a set of drivers, returns the
+ * ids of those the customer has blocked — so the dispatcher's assign dialog
+ * can grey them out and badge them rather than only finding out on submit.
+ * Reads only the block list's identifiers (TC/license), never exposing the
+ * customer's block reasons to the supplier. One query regardless of driver
+ * count; matching is done in memory on non-null identifiers.
+ */
+export async function listBlockedDriverIdsForCustomer(
+  client: Prisma.TransactionClient | typeof prisma,
+  customerCompanyId: string,
+  drivers: { id: string; tcNumber: string | null; licenseNumber: string | null }[]
+): Promise<string[]> {
+  if (drivers.length === 0) return [];
+  const blocks = await client.customerDriverBlock.findMany({
+    where: { customerCompanyId },
+    select: { tcNumber: true, licenseNumber: true },
+  });
+  if (blocks.length === 0) return [];
+  const blockedTc = new Set(
+    blocks.map((b) => b.tcNumber).filter((v): v is string => v !== null)
+  );
+  const blockedLicense = new Set(
+    blocks.map((b) => b.licenseNumber).filter((v): v is string => v !== null)
+  );
+  return drivers
+    .filter(
+      (d) =>
+        (d.tcNumber !== null && blockedTc.has(d.tcNumber)) ||
+        (d.licenseNumber !== null && blockedLicense.has(d.licenseNumber))
+    )
+    .map((d) => d.id);
+}
+
 /** Throws if the driver is blocked by the shipment's customer. */
 export async function assertDriverNotBlockedForCustomer(
   client: Prisma.TransactionClient | typeof prisma,

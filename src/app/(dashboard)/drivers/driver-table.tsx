@@ -10,6 +10,8 @@ import {
 } from "@/app/(dashboard)/drivers/actions";
 import { DriverFormDialog } from "@/app/(dashboard)/drivers/driver-form-dialog";
 import { DriverShareDialog } from "@/app/(dashboard)/drivers/driver-share-dialog";
+import { DriverStatusDialog } from "@/app/(dashboard)/drivers/driver-status-dialog";
+import { DriverDeactivateDialog } from "@/app/(dashboard)/drivers/driver-deactivate-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -20,7 +22,11 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { driverStatusLabels, statusBadgeVariant } from "@/lib/labels";
+import {
+  effectiveDriverStatus,
+  effectiveDriverStatusBadgeVariant,
+  effectiveDriverStatusLabels,
+} from "@/lib/driver-status";
 import type { SerializableDriver } from "@/app/(dashboard)/drivers/types";
 
 export function DriverTable({ drivers }: { drivers: SerializableDriver[] }) {
@@ -73,14 +79,16 @@ export function DriverTable({ drivers }: { drivers: SerializableDriver[] }) {
         </TableRow>
       </TableHeader>
       <TableBody>
-        {drivers.map((driver) => (
-          <TableRow key={driver.id}>
+        {drivers.map((driver) => {
+          const effective = effectiveDriverStatus(driver);
+          return (
+          <TableRow key={driver.id} className={driver.isActive ? "" : "opacity-60"}>
             <TableCell className="font-medium">{driver.fullName}</TableCell>
             <TableCell>{driver.phone}</TableCell>
             <TableCell>{driver.licenseNumber}</TableCell>
             <TableCell>
-              <Badge variant={statusBadgeVariant[driver.status]}>
-                {driverStatusLabels[driver.status]}
+              <Badge variant={effectiveDriverStatusBadgeVariant[effective]}>
+                {effectiveDriverStatusLabels[effective]}
               </Badge>
             </TableCell>
             <TableCell>
@@ -90,6 +98,8 @@ export function DriverTable({ drivers }: { drivers: SerializableDriver[] }) {
             </TableCell>
             <TableCell>
               <div className="flex items-center justify-end gap-1">
+                <DriverStatusDialog driver={driver} />
+                <DriverDeactivateDialog driver={driver} />
                 <DriverFormDialog driver={driver} />
                 <DriverShareDialog driver={driver} />
                 {driver.hasActiveLoginLink && (
@@ -116,7 +126,8 @@ export function DriverTable({ drivers }: { drivers: SerializableDriver[] }) {
               </div>
             </TableCell>
           </TableRow>
-        ))}
+          );
+        })}
       </TableBody>
     </Table>
   );

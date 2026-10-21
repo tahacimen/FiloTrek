@@ -31,7 +31,11 @@ import {
   vehicleStatusLabels,
   vehicleTypeLabels,
 } from "@/lib/labels";
-import { docExpiryStatus, docStatusLabel } from "@/lib/vehicle-docs";
+import {
+  docExpiryStatus,
+  docStatusLabel,
+  vehicleMissingDocFields,
+} from "@/lib/vehicle-docs";
 import type { SerializableVehicle } from "@/app/(dashboard)/vehicles/types";
 
 /** Compact badge for a single tracked document's expiry; null when unset. */
@@ -119,14 +123,26 @@ export function VehicleTable({ vehicles }: { vehicles: SerializableVehicle[] }) 
               </Badge>
             </TableCell>
             <TableCell>
-              {vehicle.inspectionExpiry || vehicle.insuranceExpiry ? (
-                <div className="flex flex-col items-start gap-1">
-                  <DocBadge label="Muayene" date={vehicle.inspectionExpiry} />
-                  <DocBadge label="Sigorta" date={vehicle.insuranceExpiry} />
-                </div>
-              ) : (
-                <span className="text-muted-foreground text-xs">—</span>
-              )}
+              {(() => {
+                const missing = vehicleMissingDocFields(vehicle);
+                if (missing.length > 0) {
+                  return (
+                    <Badge
+                      variant="destructive"
+                      className="whitespace-nowrap"
+                      title={`Eksik: ${missing.join(", ")}`}
+                    >
+                      Belge eksik ({missing.length})
+                    </Badge>
+                  );
+                }
+                return (
+                  <div className="flex flex-col items-start gap-1">
+                    <DocBadge label="Muayene" date={vehicle.inspectionExpiry} />
+                    <DocBadge label="Sigorta" date={vehicle.insuranceExpiry} />
+                  </div>
+                );
+              })()}
             </TableCell>
             <TableCell>
               <div className="flex items-center justify-end gap-1">

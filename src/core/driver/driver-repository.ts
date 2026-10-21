@@ -1,15 +1,38 @@
 import { prisma } from "@/lib/db";
 import type { TenantContext } from "@/core/shared/tenant-context";
-import { DriverStatus } from "@/generated/prisma/client";
+import {
+  DriverDeactivationReason,
+  DriverStatus,
+} from "@/generated/prisma/client";
 
 export function listDriversForTenant(
   ctx: TenantContext,
-  filter?: { status?: DriverStatus }
+  filter?: { status?: DriverStatus; assignableOnly?: boolean }
 ) {
+  // assignableOnly (used by the assignment screen) narrows at the DB level to
+  // drivers that can actually take a new shipment right now: active, and not
+  // on leave today. The stored-status filter still excludes ON_TRIP/OFF_DUTY;
+  // the leave window is a date range so it's expressed here rather than via
+  // the status column. Mirrors isDriverAssignable in src/lib/driver-status.ts.
+  // Stored leave dates are midnight-anchored, so compare against the start of
+  // today (a leave whose end day is today still counts as on leave today).
+  const startOfToday = new Date();
+  startOfToday.setHours(0, 0, 0, 0);
   return prisma.driver.findMany({
     where: {
       companyId: ctx.companyId,
       ...(filter?.status ? { status: filter.status } : {}),
+      ...(filter?.assignableOnly
+        ? {
+            isActive: true,
+            OR: [
+              { leaveStartDate: null },
+              { leaveEndDate: null },
+              { leaveEndDate: { lt: startOfToday } },
+              { leaveStartDate: { gt: startOfToday } },
+            ],
+          }
+        : {}),
     },
     orderBy: { fullName: "asc" },
   });
@@ -101,6 +124,47 @@ export function setDriverLoginToken(
 export function deleteDriverRecord(ctx: TenantContext, driverId: string) {
   return prisma.driver.deleteMany({
     where: { id: driverId, companyId: ctx.companyId },
+  });
+}
+
+/** N2: the dispatcher's manual Müsait ↔ Görevde Değil toggle. */
+export function setDriverStatusRecord(
+  ctx: TenantContext,
+  driverId: string,
+  status: DriverStatus
+) {
+  return prisma.driver.updateMany({
+    where: { id: driverId, companyId: ctx.companyId },
+    data: { status },
+  });
+}
+
+/** N2: set or clear a driver's leave window. */
+export function setDriverLeaveRecord(
+  ctx: TenantContext,
+  driverId: string,
+  data: { leaveStartDate: Date | null; leaveEndDate: Date | null }
+) {
+  return prisma.driver.updateMany({
+    where: { id: driverId, companyId: ctx.companyId },
+    data,
+  });
+}
+
+/** N7: flip a driver's activation (deactivate with reason / reactivate clears it). */
+export function setDriverActivationRecord(
+  ctx: TenantContext,
+  driverId: string,
+  data: {
+    isActive: boolean;
+    deactivationReason: DriverDeactivationReason | null;
+    deactivationNote: string | null;
+    deactivatedAt: Date | null;
+  }
+) {
+  return prisma.driver.updateMany({
+    where: { id: driverId, companyId: ctx.companyId },
+    data,
   });
 }
 

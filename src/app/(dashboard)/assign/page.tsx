@@ -4,6 +4,8 @@ import { requireTenantContext } from "@/core/shared/tenant-context";
 import { listShipments } from "@/core/shipment/shipment-service";
 import { listVehicles } from "@/core/vehicle/vehicle-service";
 import { listDrivers } from "@/core/driver/driver-service";
+import { listBlockedDriverIdsForCustomer } from "@/core/driver-block/driver-block-service";
+import { prisma } from "@/lib/db";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { AssignDialog } from "@/app/(dashboard)/assign/assign-dialog";
 import { toSerializableVehicle } from "@/app/(dashboard)/vehicles/types";
@@ -20,13 +22,36 @@ export default async function AssignPage() {
     await Promise.all([
       listShipments(ctx),
       listVehicles(ctx, { status: VehicleStatus.AVAILABLE }),
-      listDrivers(ctx, { status: DriverStatus.AVAILABLE }),
+      // assignableOnly also drops drivers who are on leave today or
+      // deactivated, even if their stored status is still AVAILABLE (N2/N7).
+      listDrivers(ctx, {
+        status: DriverStatus.AVAILABLE,
+        assignableOnly: true,
+      }),
     ]);
   const availableVehicles = availableVehiclesRaw.map(toSerializableVehicle);
   const availableDrivers = availableDriversRaw.map(toSerializableDriver);
 
   const pendingShipments = allShipments.filter(
     (s) => s.status === "PENDING" && s.supplierCompanyId === ctx.companyId
+  );
+
+  // N7: for each pending shipment, which of the available drivers has that
+  // shipment's own customer blocked — so the assign dialog can grey them out.
+  const blockedByShipment = new Map<string, string[]>(
+    await Promise.all(
+      pendingShipments.map(
+        async (s) =>
+          [
+            s.id,
+            await listBlockedDriverIdsForCustomer(
+              prisma,
+              s.customerCompanyId,
+              availableDriversRaw
+            ),
+          ] as [string, string[]]
+      )
+    )
   );
 
   return (
@@ -70,6 +95,7 @@ export default async function AssignPage() {
                     route={`${shipment.originAddress} → ${shipment.destinationAddress}`}
                     availableVehicles={availableVehicles}
                     availableDrivers={availableDrivers}
+                    blockedDriverIds={blockedByShipment.get(shipment.id) ?? []}
                     agreedPrice={
                       shipment.agreedPrice ? shipment.agreedPrice.toNumber() : null
                     }
