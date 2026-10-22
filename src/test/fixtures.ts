@@ -290,3 +290,19 @@ async function shipmentIdsFor(companyIds: string[]) {
   });
   return rows.map((r) => r.id);
 }
+
+/**
+ * G3 test helper: stamps a shipment's waybill (irsaliye) as uploaded and
+ * supplier-confirmed so it can pass the COMPLETED gate in tests whose focus is
+ * elsewhere (ratings, scorecard, emissions, auto-release). The real flow goes
+ * through uploadWaybillAsDriver + confirmWaybill, covered in their own tests.
+ */
+export async function markWaybillReady(shipmentId: string) {
+  await prisma.shipment.update({
+    where: { id: shipmentId },
+    data: {
+      waybillPhotoUrl: `${shipmentId}/placeholder.jpg`,
+      waybillConfirmedAt: new Date(),
+    },
+  });
+}

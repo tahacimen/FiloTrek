@@ -20,6 +20,7 @@ import {
   createTestDriver,
   createTestPhotoFile,
   createTestVehicle,
+  markWaybillReady,
 } from "@/test/fixtures";
 import type { DriverContext } from "@/core/shared/driver-context";
 
@@ -706,6 +707,7 @@ describe("shipment-service: departure/delivery photos", () => {
       shipmentId: shipment.id,
       targetStatus: "AT_DELIVERY_POINT",
     });
+    await markWaybillReady(shipment.id);
     await advanceShipmentStatusAsDriver(driverCtx, {
       shipmentId: shipment.id,
       targetStatus: "COMPLETED",

@@ -294,6 +294,31 @@ export async function ensureTrackingToken(
 }
 
 /**
+ * G3: the supplier confirms the driver-uploaded stamped waybill (irsaliye).
+ * Required before the shipment can be completed. Supplier-only and scoped to
+ * their own shipment; the waybill photo must already exist.
+ */
+export async function confirmWaybill(ctx: TenantContext, shipmentId: string) {
+  requireCompanyType(ctx, CompanyType.SUPPLIER);
+  const shipment = await shipmentRepository.getShipmentForTenant(ctx, shipmentId);
+  if (!shipment || shipment.supplierCompanyId !== ctx.companyId) {
+    throw new NotFoundError("Sefer bulunamadı.");
+  }
+  if (!shipment.waybillPhotoUrl) {
+    throw new ValidationError(
+      "Önce şoförün kaşeli-imzalı irsaliyeyi yüklemesi gerekir."
+    );
+  }
+  await prisma.shipment.updateMany({
+    where: { id: shipmentId, supplierCompanyId: ctx.companyId },
+    data: {
+      waybillConfirmedAt: new Date(),
+      waybillConfirmedByUserId: ctx.userId,
+    },
+  });
+}
+
+/**
  * Customer confirms cargo is ready to load ("Yük Hazır, Aracı Gönder"),
  * providing the exact gate/ramp info and (optionally) a Google Maps link.
  * Re-submittable while still ASSIGNED — a mistyped link would otherwise need

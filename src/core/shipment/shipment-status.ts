@@ -222,6 +222,22 @@ async function advanceShipmentStatusCore(params: {
       throw new ValidationError("Müşteri nakliye fiyatını henüz onaylamadı.");
     }
 
+    // G3: a shipment can only be completed once the stamped waybill (irsaliye)
+    // has been uploaded by the driver AND confirmed by the supplier. Applies to
+    // every completion path (driver and dispatcher alike).
+    if (params.targetStatus === ShipmentStatus.COMPLETED) {
+      if (!shipment.waybillPhotoUrl) {
+        throw new ValidationError(
+          "Teslimatı tamamlamak için önce kaşeli-imzalı irsaliye yüklenmelidir."
+        );
+      }
+      if (!shipment.waybillConfirmedAt) {
+        throw new ValidationError(
+          "İrsaliye henüz nakliyeci tarafından onaylanmadı."
+        );
+      }
+    }
+
     const isCompleting = params.targetStatus === ShipmentStatus.COMPLETED;
 
     const updatedShipment = await tx.shipment.update({
@@ -466,9 +482,12 @@ const DRIVER_NOTIFY_BY_STATUS: Partial<
  * through either transition unphotographed via their own override screen,
  * exactly as it already bypasses the note field today.
  */
+// Only the departure leg forces an inline photo now. COMPLETED's proof is the
+// stamped waybill (irsaliye) uploaded earlier at the delivery point and
+// confirmed by the supplier (G3) — gated in advanceShipmentStatusCore, not
+// here, so it applies to the dispatcher's completion too.
 const PHOTO_REQUIRED_TARGET_STATUSES: ReadonlySet<ShipmentStatus> = new Set([
   ShipmentStatus.EN_ROUTE,
-  ShipmentStatus.COMPLETED,
 ]);
 
 export async function advanceShipmentStatusAsDriver(
@@ -504,9 +523,7 @@ export async function advanceShipmentStatusAsDriver(
   const hasRealPhoto = params.photo instanceof File && params.photo.size > 0;
   if (PHOTO_REQUIRED_TARGET_STATUSES.has(params.targetStatus) && !hasRealPhoto) {
     throw new ValidationError(
-      params.targetStatus === ShipmentStatus.EN_ROUTE
-        ? "Yükleme noktasından çıkarken bir fotoğraf eklemeniz zorunludur."
-        : "Teslimatı tamamlarken bir fotoğraf eklemeniz zorunludur."
+      "Yükleme noktasından çıkarken bir fotoğraf eklemeniz zorunludur."
     );
   }
 
@@ -577,6 +594,46 @@ export async function advanceShipmentStatusAsDriver(
   }
 
   return updatedShipment;
+}
+
+/**
+ * G3: the driver uploads the stamped & signed waybill (irsaliye) once at the
+ * delivery point. Stored on the shipment (not as a status-history photo) since
+ * the supplier must then confirm it before the shipment can complete.
+ * Re-uploading replaces the photo and clears any prior confirmation, so an
+ * amended document is always re-approved. Ownership scoping mirrors
+ * advanceShipmentStatusAsDriver.
+ */
+export async function uploadWaybillAsDriver(
+  driverCtx: DriverContext,
+  params: { shipmentId: string; photo?: File }
+) {
+  const hasRealPhoto = params.photo instanceof File && params.photo.size > 0;
+  if (!hasRealPhoto) {
+    throw new ValidationError(
+      "Lütfen kaşeli-imzalı irsaliyenin fotoğrafını ekleyin."
+    );
+  }
+  const owned = await prisma.shipment.findFirst({
+    where: { id: params.shipmentId, driverId: driverCtx.driverId },
+    select: { id: true, status: true },
+  });
+  if (!owned) throw new NotFoundError("Sefer bulunamadı.");
+  if (owned.status !== ShipmentStatus.AT_DELIVERY_POINT) {
+    throw new ValidationError(
+      "İrsaliye yalnızca teslimat noktasına varıldığında yüklenebilir."
+    );
+  }
+  const photoUrl = await saveUploadedPhoto(params.photo!, owned.id);
+  await prisma.shipment.update({
+    where: { id: owned.id },
+    data: {
+      waybillPhotoUrl: photoUrl,
+      waybillConfirmedAt: null,
+      waybillConfirmedByUserId: null,
+    },
+  });
+  return { waybillPhotoUrl: photoUrl };
 }
 
 /**

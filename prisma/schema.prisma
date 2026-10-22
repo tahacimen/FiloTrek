@@ -615,6 +615,14 @@ model Shipment {
   // (/canli/[token]) — distinct from the sequential, guessable trackingNumber
   // used on /track. Generated lazily the first time a shipment is shared.
   trackingToken            String?        @unique @map("tracking_token")
+  // G3: the stamped & signed waybill (irsaliye) proving delivery. The driver
+  // uploads the photo at the delivery point; the supplier then confirms it.
+  // A shipment can only be COMPLETED once BOTH exist (enforced in
+  // shipment-status.ts). Re-uploading clears the confirmation so a changed
+  // document must be re-approved.
+  waybillPhotoUrl          String?        @map("waybill_photo_url")
+  waybillConfirmedAt       DateTime?      @map("waybill_confirmed_at")
+  waybillConfirmedByUserId String?        @map("waybill_confirmed_by_user_id") @db.Uuid
   distanceKm               Decimal        @map("distance_km") @db.Decimal(10, 2)
   tonnage                  Decimal        @db.Decimal(10, 2)
   cargoDescription         String?        @map("cargo_description")

@@ -16,6 +16,7 @@ import {
   createTestDriver,
   createTestPhotoFile,
   createTestVehicle,
+  markWaybillReady,
 } from "@/test/fixtures";
 import type { DriverContext } from "@/core/shared/driver-context";
 
@@ -74,6 +75,7 @@ async function createCompletedShipment(
     shipmentId: shipment.id,
     targetStatus: "AT_DELIVERY_POINT",
   });
+  await markWaybillReady(shipment.id);
   await advanceShipmentStatusAsDriver(driverCtx, {
     shipmentId: shipment.id,
     targetStatus: "COMPLETED",

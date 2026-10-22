@@ -6,6 +6,7 @@ import { requireDriverContext } from "@/core/shared/driver-context";
 import {
   advanceShipmentStatusAsDriver,
   updateShipmentLocation,
+  uploadWaybillAsDriver,
 } from "@/core/shipment/shipment-status";
 import {
   reportShipmentIncident,
@@ -54,6 +55,25 @@ export async function advanceShipmentStatusAsDriverAction(
       shipmentId,
       targetStatus,
       note,
+      photo: readPhoto(formData),
+    });
+  } catch (error) {
+    return { error: toActionErrorMessage(error) };
+  }
+  revalidateShipmentPaths(shipmentId);
+  return undefined;
+}
+
+/** G3: driver uploads the stamped/signed waybill (irsaliye) at delivery. */
+export async function uploadWaybillAction(
+  shipmentId: string,
+  _prevState: DriverShipmentFormState,
+  formData: FormData
+): Promise<DriverShipmentFormState> {
+  try {
+    const driverCtx = await requireDriverContext();
+    await uploadWaybillAsDriver(driverCtx, {
+      shipmentId,
       photo: readPhoto(formData),
     });
   } catch (error) {

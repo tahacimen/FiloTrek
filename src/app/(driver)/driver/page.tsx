@@ -13,6 +13,7 @@ import {
 import { DRIVER_NEXT_TARGET_STATUS } from "@/core/shipment/shipment-transitions";
 import { resolveNavUrl } from "@/lib/maps";
 import { DriverShipmentActions } from "@/app/(driver)/driver/driver-shipment-actions";
+import { DriverWaybillActions } from "@/app/(driver)/driver/driver-waybill-actions";
 import { DriverIncidentActions } from "@/app/(driver)/driver/incident-actions";
 import { LocationReporter } from "@/app/(driver)/driver/location-reporter";
 
@@ -173,7 +174,28 @@ export default async function DriverPage() {
                   <LocationReporter shipmentId={shipment.id} />
                 )}
 
-                {nextTargetStatus ? (
+                {shipment.status === "AT_DELIVERY_POINT" ? (
+                  // G3: irsaliye upload + confirmation gate before completion.
+                  <div className="flex flex-col gap-3">
+                    <DriverWaybillActions
+                      shipmentId={shipment.id}
+                      hasWaybill={shipment.waybillPhotoUrl != null}
+                      confirmed={shipment.waybillConfirmedAt != null}
+                    />
+                    {shipment.waybillConfirmedAt != null ? (
+                      <DriverShipmentActions
+                        shipmentId={shipment.id}
+                        targetStatus="COMPLETED"
+                        label={driverNextStepLabels[shipment.status]!}
+                      />
+                    ) : (
+                      <p className="text-muted-foreground text-sm">
+                        Teslimatı tamamlamak için irsaliyenin nakliyeci
+                        tarafından onaylanması gerekir.
+                      </p>
+                    )}
+                  </div>
+                ) : nextTargetStatus ? (
                   <DriverShipmentActions
                     shipmentId={shipment.id}
                     targetStatus={nextTargetStatus}

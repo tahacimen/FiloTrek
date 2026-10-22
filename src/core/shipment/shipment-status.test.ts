@@ -7,7 +7,9 @@ import {
   assignVehicleAndDriver,
   cancelShipment,
   updateShipmentLocation,
+  uploadWaybillAsDriver,
 } from "@/core/shipment/shipment-status";
+import { confirmWaybill } from "@/core/shipment/shipment-service";
 import { setVehicleMaintenance } from "@/core/vehicle/vehicle-status";
 import * as companyRepository from "@/core/company/company-repository";
 import {
@@ -23,6 +25,7 @@ import {
   createTestDriver,
   createTestPhotoFile,
   createTestVehicle,
+  markWaybillReady,
 } from "@/test/fixtures";
 import {
   CompanyType,
@@ -267,6 +270,7 @@ describe("shipment status state machine", () => {
       shipmentId: shipment.id,
       targetStatus: ShipmentStatus.AT_DELIVERY_POINT,
     });
+    await markWaybillReady(shipment.id);
     const completed = await advanceShipmentStatus(ctx, {
       shipmentId: shipment.id,
       targetStatus: ShipmentStatus.COMPLETED,
@@ -561,8 +565,8 @@ describe("advanceShipmentStatusAsDriver", () => {
     expect(vehicleHistory?.photoUrl).toBeNull();
   });
 
-  it("rejects AT_DELIVERY_POINT -> COMPLETED with no photo attached (proof of delivery)", async () => {
-    const { driverCtx, shipment } = await setupHeadingToPickupShipment();
+  it("gates COMPLETED on a driver-uploaded AND supplier-confirmed waybill (G3)", async () => {
+    const { ctx, driverCtx, shipment } = await setupHeadingToPickupShipment();
     for (const targetStatus of [
       ShipmentStatus.LOADING,
       ShipmentStatus.AT_PICKUP_GATE,
@@ -579,6 +583,7 @@ describe("advanceShipmentStatusAsDriver", () => {
       targetStatus: ShipmentStatus.AT_DELIVERY_POINT,
     });
 
+    // No waybill yet → refused.
     await expect(
       advanceShipmentStatusAsDriver(driverCtx, {
         shipmentId: shipment.id,
@@ -586,10 +591,30 @@ describe("advanceShipmentStatusAsDriver", () => {
       })
     ).rejects.toThrow(ValidationError);
 
+    // Driver uploads the irsaliye, but it's not confirmed → still refused.
+    await uploadWaybillAsDriver(driverCtx, {
+      shipmentId: shipment.id,
+      photo: createTestPhotoFile("irsaliye.jpg"),
+    });
+    await expect(
+      advanceShipmentStatusAsDriver(driverCtx, {
+        shipmentId: shipment.id,
+        targetStatus: ShipmentStatus.COMPLETED,
+      })
+    ).rejects.toThrow(ValidationError);
+
+    // Supplier confirms → completion now succeeds.
+    await confirmWaybill(ctx, shipment.id);
+    const completed = await advanceShipmentStatusAsDriver(driverCtx, {
+      shipmentId: shipment.id,
+      targetStatus: ShipmentStatus.COMPLETED,
+    });
+    expect(completed.status).toBe(ShipmentStatus.COMPLETED);
+
     const untouched = await prisma.shipment.findUniqueOrThrow({
       where: { id: shipment.id },
     });
-    expect(untouched.status).toBe(ShipmentStatus.AT_DELIVERY_POINT);
+    expect(untouched.status).toBe(ShipmentStatus.COMPLETED);
   });
 
   it("accepts AT_DELIVERY_POINT -> COMPLETED with a real photo, recording it as the delivery (POD) photo distinct from the departure one", async () => {
@@ -609,6 +634,7 @@ describe("advanceShipmentStatusAsDriver", () => {
       shipmentId: shipment.id,
       targetStatus: ShipmentStatus.AT_DELIVERY_POINT,
     });
+    await markWaybillReady(shipment.id);
 
     const advanced = await advanceShipmentStatusAsDriver(driverCtx, {
       shipmentId: shipment.id,
@@ -650,6 +676,7 @@ describe("advanceShipmentStatusAsDriver", () => {
       shipmentId: shipment.id,
       targetStatus: ShipmentStatus.AT_DELIVERY_POINT,
     });
+    await markWaybillReady(shipment.id);
     const completed = await advanceShipmentStatusAsDriver(driverCtx, {
       shipmentId: shipment.id,
       targetStatus: ShipmentStatus.COMPLETED,

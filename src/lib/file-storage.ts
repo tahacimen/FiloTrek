@@ -3,6 +3,7 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 import { ValidationError } from "@/core/shared/errors";
+import { STORAGE_BUCKET, getStorageClient } from "@/lib/supabase-storage";
 
 /**
  * Deliberately outside `public/` — everything under `public/` is served by
@@ -62,14 +63,27 @@ export async function saveUploadedPhoto(
     throw new ValidationError("Fotoğraf boyutu en fazla 8MB olabilir.");
   }
 
+  const filename = `${randomUUID()}.${ext}`;
+  const objectPath = `${shipmentId}/${filename}`;
+  const buffer = Buffer.from(await file.arrayBuffer());
+
+  // Prefer persistent Supabase Storage when configured (G3); otherwise fall
+  // back to local disk so dev/tests and pre-key deploys keep working.
+  const client = getStorageClient();
+  if (client) {
+    const { error } = await client.storage
+      .from(STORAGE_BUCKET)
+      .upload(objectPath, buffer, { contentType: file.type, upsert: false });
+    if (error) {
+      throw new ValidationError("Dosya yüklenemedi, lütfen tekrar deneyin.");
+    }
+    return objectPath;
+  }
+
   const dir = path.join(UPLOADS_ROOT, shipmentId);
   await mkdir(dir, { recursive: true });
-
-  const filename = `${randomUUID()}.${ext}`;
-  const buffer = Buffer.from(await file.arrayBuffer());
   await writeFile(path.join(dir, filename), buffer);
-
-  return `${shipmentId}/${filename}`;
+  return objectPath;
 }
 
 /**
@@ -88,11 +102,22 @@ export async function readUploadedPhoto(
   }
 
   const ext = filename.slice(filename.lastIndexOf(".") + 1).toLowerCase();
-  const filePath = path.join(UPLOADS_ROOT, shipmentId, filename);
+  const contentType = CONTENT_TYPE_BY_EXT[ext];
+  const objectPath = `${shipmentId}/${filename}`;
+
+  const client = getStorageClient();
+  if (client) {
+    const { data, error } = await client.storage
+      .from(STORAGE_BUCKET)
+      .download(objectPath);
+    if (error || !data) return null;
+    const buffer = Buffer.from(await data.arrayBuffer());
+    return { buffer, contentType };
+  }
 
   try {
-    const buffer = await readFile(filePath);
-    return { buffer, contentType: CONTENT_TYPE_BY_EXT[ext] };
+    const buffer = await readFile(path.join(UPLOADS_ROOT, shipmentId, filename));
+    return { buffer, contentType };
   } catch {
     return null;
   }

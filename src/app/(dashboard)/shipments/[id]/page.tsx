@@ -34,6 +34,7 @@ import { DockReservationCard } from "@/app/(dashboard)/shipments/[id]/dock-reser
 import { NotifyDriverCard } from "@/app/(dashboard)/shipments/[id]/notify-driver-card";
 import { LatestLoadingCard } from "@/app/(dashboard)/shipments/[id]/latest-loading-card";
 import { LiveShareCard } from "@/app/(dashboard)/shipments/[id]/live-share-card";
+import { WaybillCard } from "@/app/(dashboard)/shipments/[id]/waybill-card";
 import { BidListCard } from "@/app/(dashboard)/shipments/[id]/bid-list-card";
 import { RatingCard } from "@/app/(dashboard)/shipments/[id]/rating-card";
 import { ShipmentLiveMap } from "@/components/shipment-live-map-loader";
@@ -505,6 +506,14 @@ export default async function ShipmentDetailPage({
         status={shipment.status}
         companyType={ctx.companyType}
         estimatedPickupArrivalAt={shipment.estimatedPickupArrivalAt}
+      />
+
+      <WaybillCard
+        shipmentId={shipment.id}
+        companyType={ctx.companyType}
+        status={shipment.status}
+        waybillPhotoUrl={shipment.waybillPhotoUrl}
+        confirmed={shipment.waybillConfirmedAt != null}
       />
 
       <LoadReadyCard

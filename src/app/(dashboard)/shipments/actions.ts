@@ -118,6 +118,21 @@ export async function createShipmentRequestAction(
   redirect(`/shipments/${shipmentId}`);
 }
 
+/** G3: supplier confirms the driver-uploaded stamped waybill (irsaliye). */
+export async function confirmWaybillAction(
+  shipmentId: string
+): Promise<ShipmentFormState> {
+  try {
+    const ctx = await requireTenantContext();
+    await shipmentService.confirmWaybill(ctx, shipmentId);
+  } catch (error) {
+    return { error: toActionErrorMessage(error) };
+  }
+  revalidatePath(`/shipments/${shipmentId}`);
+  revalidatePath("/shipments");
+  return undefined;
+}
+
 export type LiveLinkResult = { url: string } | { error: string };
 
 /** N5: mint-or-reuse the shipment's live-tracking token and return its public URL. */
