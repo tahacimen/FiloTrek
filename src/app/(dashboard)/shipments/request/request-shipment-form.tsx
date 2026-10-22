@@ -1,16 +1,18 @@
 "use client";
 
-import { useActionState, useState } from "react";
-import { Loader2, Truck } from "lucide-react";
+import { useActionState, useState, useTransition } from "react";
+import { Calculator, Loader2, Truck } from "lucide-react";
 
 import {
   createShipmentRequestAction,
+  estimateDistanceKmAction,
   type ShipmentFormState,
 } from "@/app/(dashboard)/shipments/actions";
 import { DangerousGoodsFields } from "@/app/(dashboard)/shipments/dangerous-goods-fields";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { ProvinceDistrictSelect } from "@/components/province-district-select";
 import {
   Select,
   SelectContent,
@@ -32,14 +34,25 @@ type LoadingPoint = {
   isDefault: boolean;
 };
 
+type Consignee = {
+  id: string;
+  title: string;
+  province: string;
+  district: string;
+  address: string | null;
+};
+
 const MANUAL_LOADING_POINT = "manual";
+const MANUAL_CONSIGNEE = "manual";
 
 export function RequestShipmentForm({
   suppliers,
   loadingPoints,
+  consignees,
 }: {
   suppliers: Company[];
   loadingPoints: LoadingPoint[];
+  consignees: Consignee[];
 }) {
   const [state, formAction, isPending] = useActionState<
     ShipmentFormState,
@@ -56,7 +69,66 @@ export function RequestShipmentForm({
       MANUAL_LOADING_POINT
   );
   const selectedPoint = loadingPoints.find((p) => p.id === loadingSource);
-  const isManual = loadingSource === MANUAL_LOADING_POINT || !selectedPoint;
+  const isManualLoading = loadingSource === MANUAL_LOADING_POINT || !selectedPoint;
+  const [manualOrigin, setManualOrigin] = useState("");
+
+  // Delivery point: pick a saved cari (auto-fills il/ilçe) or type an address.
+  const [consigneeId, setConsigneeId] = useState<string>(
+    consignees[0]?.id ?? MANUAL_CONSIGNEE
+  );
+  const selectedConsignee = consignees.find((c) => c.id === consigneeId);
+  const isManualDest = consigneeId === MANUAL_CONSIGNEE || !selectedConsignee;
+  const [manualDest, setManualDest] = useState("");
+  const [manualDestProvince, setManualDestProvince] = useState("");
+  const [manualDestDistrict, setManualDestDistrict] = useState("");
+
+  // C2: auto-computed km (editable). Empty until computed or typed.
+  const [km, setKm] = useState("");
+  const [kmPending, startKm] = useTransition();
+  const [kmInfo, setKmInfo] = useState<string | null>(null);
+
+  function originQuery(): string {
+    if (isManualLoading) return manualOrigin.trim();
+    return (selectedPoint?.address ?? selectedPoint?.name ?? "").trim();
+  }
+  function destinationQuery(): string {
+    if (!isManualDest && selectedConsignee) {
+      return `${selectedConsignee.district} ${selectedConsignee.province}`;
+    }
+    if (manualDestProvince && manualDestDistrict) {
+      return `${manualDestDistrict} ${manualDestProvince}`;
+    }
+    return manualDest.trim();
+  }
+
+  function recalcDistance() {
+    const o = originQuery();
+    const d = destinationQuery();
+    if (!o || !d) return;
+    setKmInfo(null);
+    startKm(async () => {
+      const { km: result } = await estimateDistanceKmAction(o, d);
+      if (result != null) {
+        setKm(String(result));
+        setKmInfo("Google/OSRM üzerinden otomatik hesaplandı — gerekirse düzenleyebilirsiniz.");
+      } else {
+        setKmInfo("Mesafe otomatik hesaplanamadı. Lütfen km değerini elle girin.");
+      }
+    });
+  }
+
+  // The destinationAddress stored on the shipment: a readable composite for the
+  // chosen cari, or the typed address.
+  const destinationAddressValue =
+    !isManualDest && selectedConsignee
+      ? [
+          selectedConsignee.title,
+          `${selectedConsignee.district}/${selectedConsignee.province}`,
+          selectedConsignee.address ?? "",
+        ]
+          .filter(Boolean)
+          .join(" — ")
+      : manualDest;
 
   return (
     <form
@@ -104,7 +176,14 @@ export function RequestShipmentForm({
       <div className="flex flex-col gap-2">
         <Label htmlFor="loadingSource">Yükleme Noktası</Label>
         {loadingPoints.length > 0 && (
-          <Select value={loadingSource} onValueChange={setLoadingSource}>
+          <Select
+            value={loadingSource}
+            onValueChange={(v) => {
+              setLoadingSource(v);
+              // recalc after the source changes (next tick via state read).
+              setTimeout(recalcDistance, 0);
+            }}
+          >
             <SelectTrigger id="loadingSource" className="w-full">
               <SelectValue />
             </SelectTrigger>
@@ -123,12 +202,15 @@ export function RequestShipmentForm({
           </Select>
         )}
 
-        {isManual ? (
+        {isManualLoading ? (
           <div className="flex flex-col gap-3">
             <Input
               id="originAddress"
               name="originAddress"
               required
+              value={manualOrigin}
+              onChange={(e) => setManualOrigin(e.target.value)}
+              onBlur={recalcDistance}
               placeholder="Yükleme adresi (örn. İstanbul, Tuzla OSB)"
             />
             <Input
@@ -136,19 +218,9 @@ export function RequestShipmentForm({
               type="url"
               placeholder="Google Maps linki (opsiyonel)"
             />
-            {loadingPoints.length === 0 && (
-              <p className="text-muted-foreground text-xs">
-                İpucu: sık kullandığınız yükleme noktalarını{" "}
-                <span className="font-medium">Depo &amp; Rampa</span>{" "}
-                sayfasından kaydedip burada hazır seçebilirsiniz.
-              </p>
-            )}
           </div>
         ) : (
           <div className="bg-muted/40 rounded-lg border p-3 text-sm">
-            {/* Selected saved warehouse — its address + link travel with the
-                shipment via these hidden inputs, so the pickup point isn't
-                re-typed. */}
             <input
               type="hidden"
               name="originAddress"
@@ -163,60 +235,138 @@ export function RequestShipmentForm({
             {selectedPoint!.address && (
               <p className="text-muted-foreground">{selectedPoint!.address}</p>
             )}
-            {selectedPoint!.mapsUrl && (
-              <a
-                href={selectedPoint!.mapsUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-primary underline underline-offset-2"
-              >
-                Haritada Gör
-              </a>
-            )}
           </div>
         )}
       </div>
 
       <div className="flex flex-col gap-2">
-        <Label htmlFor="destinationAddress">Teslimat Noktası</Label>
-        <Input
-          id="destinationAddress"
-          name="destinationAddress"
-          required
-          placeholder="Teslimat adresi (örn. İzmir)"
+        <Label htmlFor="consigneeSource">Teslimat Noktası (Cari)</Label>
+        {consignees.length > 0 && (
+          <Select
+            value={consigneeId}
+            onValueChange={(v) => {
+              setConsigneeId(v);
+              setTimeout(recalcDistance, 0);
+            }}
+          >
+            <SelectTrigger id="consigneeSource" className="w-full">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {consignees.map((c) => (
+                <SelectItem key={c.id} value={c.id}>
+                  {c.title} — {c.district}/{c.province}
+                </SelectItem>
+              ))}
+              <SelectItem value={MANUAL_CONSIGNEE}>Başka bir adres gir…</SelectItem>
+            </SelectContent>
+          </Select>
+        )}
+
+        {/* The destination address + province/district that travel with the
+            shipment, whichever mode is active. */}
+        <input type="hidden" name="destinationAddress" value={destinationAddressValue} />
+        <input
+          type="hidden"
+          name="destinationProvince"
+          value={isManualDest ? manualDestProvince : selectedConsignee?.province ?? ""}
         />
-        <Input
-          name="destinationMapsUrl"
-          type="url"
-          placeholder="Teslimat Google Maps linki (opsiyonel)"
+        <input
+          type="hidden"
+          name="destinationDistrict"
+          value={isManualDest ? manualDestDistrict : selectedConsignee?.district ?? ""}
         />
+
+        {isManualDest ? (
+          <div className="flex flex-col gap-3">
+            <Input
+              name="destinationMapsUrl"
+              type="url"
+              placeholder="Teslimat Google Maps linki (opsiyonel)"
+            />
+            <Input
+              required
+              value={manualDest}
+              onChange={(e) => setManualDest(e.target.value)}
+              onBlur={recalcDistance}
+              placeholder="Teslimat adresi (örn. İzmir, Kemalpaşa OSB)"
+            />
+            <ProvinceDistrictSelect
+              provinceName="__destProvincePicker"
+              districtName="__destDistrictPicker"
+              defaultProvince={manualDestProvince}
+              defaultDistrict={manualDestDistrict}
+              onChange={(p, d) => {
+                setManualDestProvince(p);
+                setManualDestDistrict(d);
+                if (p && d) setTimeout(recalcDistance, 0);
+              }}
+            />
+            {consignees.length === 0 && (
+              <p className="text-muted-foreground text-xs">
+                İpucu: sık teslim ettiğiniz carileri{" "}
+                <span className="font-medium">Cariler</span> sayfasından kaydedip
+                burada hazır seçebilirsiniz (il/ilçe otomatik gelir).
+              </p>
+            )}
+          </div>
+        ) : (
+          <div className="bg-muted/40 rounded-lg border p-3 text-sm">
+            <p className="font-medium">{selectedConsignee!.title}</p>
+            <p className="text-muted-foreground">
+              {selectedConsignee!.district} / {selectedConsignee!.province}
+              {selectedConsignee!.address ? ` — ${selectedConsignee!.address}` : ""}
+            </p>
+          </div>
+        )}
       </div>
 
       <Separator />
 
-      <div className="grid grid-cols-2 gap-4">
-        <div className="flex flex-col gap-2">
+      <div className="flex flex-col gap-2">
+        <div className="flex items-center justify-between">
           <Label htmlFor="distanceKm">Mesafe (km)</Label>
-          <Input
-            id="distanceKm"
-            name="distanceKm"
-            type="number"
-            step="1"
-            min="0"
-            required
-          />
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={recalcDistance}
+            disabled={kmPending}
+          >
+            {kmPending ? <Loader2 className="animate-spin" /> : <Calculator />}
+            Otomatik Hesapla
+          </Button>
         </div>
-        <div className="flex flex-col gap-2">
-          <Label htmlFor="tonnage">Tonaj (ton)</Label>
-          <Input
-            id="tonnage"
-            name="tonnage"
-            type="number"
-            step="0.1"
-            min="0"
-            required
-          />
-        </div>
+        <Input
+          id="distanceKm"
+          name="distanceKm"
+          type="number"
+          step="1"
+          min="0"
+          required
+          value={km}
+          onChange={(e) => setKm(e.target.value)}
+          placeholder="Yükleme ve teslim noktası seçilince otomatik hesaplanır"
+        />
+        {kmInfo && <p className="text-muted-foreground text-xs">{kmInfo}</p>}
+      </div>
+
+      <div className="flex flex-col gap-2">
+        <Label htmlFor="tonnage">Tonaj (ton)</Label>
+        <Input id="tonnage" name="tonnage" type="number" step="0.1" min="0" required />
+      </div>
+
+      <div className="flex flex-col gap-2">
+        <Label htmlFor="latestLoadingAt">En Geç Yükleme Tarih/Saati (opsiyonel)</Label>
+        <Input
+          id="latestLoadingAt"
+          name="latestLoadingAt"
+          type="datetime-local"
+        />
+        <p className="text-muted-foreground text-xs">
+          Yükün en geç ne zaman alınması gerektiği — şoföre iletilir. Nakliyeci de
+          sonradan güncelleyebilir.
+        </p>
       </div>
 
       <div className="flex flex-col gap-2">

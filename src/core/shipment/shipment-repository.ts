@@ -165,6 +165,9 @@ type CreateShipmentRecordInput = {
   originMapsUrl?: string;
   destinationAddress: string;
   destinationMapsUrl?: string;
+  destinationProvince?: string;
+  destinationDistrict?: string;
+  latestLoadingAt?: Date;
   distanceKm: number;
   tonnage: number;
   cargoDescription?: string;
@@ -210,6 +213,39 @@ export function markShipmentLoadReady(
       pickupMapsUrl: data.pickupMapsUrl ?? null,
       loadReadyAt: new Date(),
     },
+  });
+}
+
+/** N4: set/clear the "en geç yükleme saati". Either party may set it, scoped
+ * via the visibility filter; blocked once the shipment is terminal. */
+export function setShipmentLatestLoading(
+  ctx: TenantContext,
+  shipmentId: string,
+  latestLoadingAt: Date | null
+) {
+  return prisma.shipment.updateMany({
+    where: {
+      id: shipmentId,
+      ...companyVisibilityFilter(ctx.companyId),
+      status: { notIn: [ShipmentStatus.COMPLETED, ShipmentStatus.CANCELLED] },
+    },
+    data: { latestLoadingAt },
+  });
+}
+
+/** N5: persist a freshly-minted live-tracking token (only when absent). */
+export function setShipmentTrackingToken(
+  ctx: TenantContext,
+  shipmentId: string,
+  token: string
+) {
+  return prisma.shipment.updateMany({
+    where: {
+      id: shipmentId,
+      ...companyVisibilityFilter(ctx.companyId),
+      trackingToken: null,
+    },
+    data: { trackingToken: token },
   });
 }
 
@@ -386,21 +422,31 @@ export function getShipmentStatusHistory(shipmentId: string) {
  * no internal id beyond what the caller needs to fetch status history) so
  * nothing commercially sensitive leaks through the public /track page.
  */
+const publicTrackingSelect = {
+  id: true,
+  trackingNumber: true,
+  originAddress: true,
+  destinationAddress: true,
+  status: true,
+  createdAt: true,
+  hasOpenIncident: true,
+  lastKnownLat: true,
+  lastKnownLng: true,
+  lastLocationAt: true,
+} as const;
+
 export function getShipmentByTrackingNumber(trackingNumber: number) {
   return prisma.shipment.findUnique({
     where: { trackingNumber },
-    select: {
-      id: true,
-      trackingNumber: true,
-      originAddress: true,
-      destinationAddress: true,
-      status: true,
-      createdAt: true,
-      hasOpenIncident: true,
-      lastKnownLat: true,
-      lastKnownLng: true,
-      lastLocationAt: true,
-    },
+    select: publicTrackingSelect,
+  });
+}
+
+/** N5: lookup for the unguessable live-share token (/canli/[token]). */
+export function getShipmentByTrackingToken(token: string) {
+  return prisma.shipment.findUnique({
+    where: { trackingToken: token },
+    select: publicTrackingSelect,
   });
 }
 

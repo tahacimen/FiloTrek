@@ -32,6 +32,8 @@ import { IncidentCard } from "@/app/(dashboard)/shipments/[id]/incident-card";
 import { StatusTimelineCard } from "@/app/(dashboard)/shipments/[id]/status-timeline-card";
 import { DockReservationCard } from "@/app/(dashboard)/shipments/[id]/dock-reservation-card";
 import { NotifyDriverCard } from "@/app/(dashboard)/shipments/[id]/notify-driver-card";
+import { LatestLoadingCard } from "@/app/(dashboard)/shipments/[id]/latest-loading-card";
+import { LiveShareCard } from "@/app/(dashboard)/shipments/[id]/live-share-card";
 import { BidListCard } from "@/app/(dashboard)/shipments/[id]/bid-list-card";
 import { RatingCard } from "@/app/(dashboard)/shipments/[id]/rating-card";
 import { ShipmentLiveMap } from "@/components/shipment-live-map-loader";
@@ -484,6 +486,18 @@ export default async function ShipmentDetailPage({
         paymentStatus={shipment.paymentStatus}
         paymentDueDate={shipment.paymentDueDate}
         paidAt={shipment.paidAt}
+      />
+
+      <LatestLoadingCard
+        shipmentId={shipment.id}
+        status={shipment.status}
+        latestLoadingAt={shipment.latestLoadingAt}
+      />
+
+      <LiveShareCard
+        shipmentId={shipment.id}
+        hasSupplier={shipment.supplierCompanyId != null}
+        status={shipment.status}
       />
 
       <PickupEtaCard

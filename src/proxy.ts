@@ -116,6 +116,8 @@ export default auth((req) => {
   // either, see signup-service.ts). Everything else stays auth-gated below.
   const isLandingPage = pathname === "/";
   const isTrackPage = pathname === "/track" || pathname.startsWith("/track/");
+  // N5: public live-tracking by unguessable token — no login required.
+  const isLiveTrackPage = pathname === "/canli" || pathname.startsWith("/canli/");
   const isInvitePage = pathname === "/davet" || pathname.startsWith("/davet/");
   const isSignupPage = pathname === "/kaydol" || pathname.startsWith("/kaydol/");
   // Public "Demo Talep Et" lead form — the visitor has no account (and no
@@ -145,7 +147,14 @@ export default auth((req) => {
     return withSecurityHeaders(res, csp, nonce, isNew);
   }
 
-  if (isLandingPage || isTrackPage || isInvitePage || isSignupPage || isDemoPage) {
+  if (
+    isLandingPage ||
+    isTrackPage ||
+    isLiveTrackPage ||
+    isInvitePage ||
+    isSignupPage ||
+    isDemoPage
+  ) {
     const requestHeaders = new Headers(req.headers);
     requestHeaders.set("x-nonce", nonce);
     requestHeaders.set("Content-Security-Policy", csp);

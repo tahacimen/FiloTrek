@@ -187,6 +187,7 @@ model Company {
   shipmentsAsCustomer Shipment[]     @relation("CustomerShipments")
   shipmentsAsSupplier Shipment[]     @relation("SupplierShipments")
   driverBlocks        CustomerDriverBlock[]
+  consignees          CustomerConsignee[]
   notifications       Notification[]
   bids                ShipmentBid[]
   ratingsGiven        Rating[]       @relation("CustomerRatings")
@@ -523,6 +524,30 @@ model CustomerDriverBlock {
   @@map("customer_driver_blocks")
 }
 
+// C1: a customer's own "cari" / consignee — the party that takes delivery of
+// goods. Reused as the delivery-point picker on the "Araç Çağır" form, where
+// selecting one auto-fills its province/district (and powers the auto-km in
+// C2). Province/district are stored as canonical names from the 81-il dataset
+// (src/lib/tr-cities.ts). Owned by the CUSTOMER company, same tenant-scoping
+// shape as Warehouse/CustomerDriverBlock.
+model CustomerConsignee {
+  id                String   @id @default(uuid(7)) @db.Uuid
+  customerCompanyId String   @map("customer_company_id") @db.Uuid
+  customerCompany   Company  @relation(fields: [customerCompanyId], references: [id], onDelete: Cascade)
+  title             String
+  province          String
+  district          String
+  address           String?
+  phone             String?
+  taxNumber         String?  @map("tax_number")
+  isActive          Boolean  @default(true) @map("is_active")
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
+  @@index([customerCompanyId])
+  @@map("customer_consignees")
+}
+
 model Shipment {
   id                       String         @id @default(uuid(7)) @db.Uuid
   // Human-friendly 8-digit tracking number (10000000+) surfaced to end
@@ -538,6 +563,20 @@ model Shipment {
   originMapsUrl            String?        @map("origin_maps_url")
   destinationAddress       String         @map("destination_address")
   destinationMapsUrl       String?        @map("destination_maps_url")
+  // C1: when the delivery point is picked from the customer's cari list, the
+  // consignee's province/district (from the 81-il dataset) travel with the
+  // shipment — used for the auto-km calc (C2) and clearer delivery display.
+  // Null for a free-typed destination address.
+  destinationProvince      String?        @map("destination_province")
+  destinationDistrict      String?        @map("destination_district")
+  // N4: the latest time the cargo must be picked up ("en geç yükleme saati").
+  // Set by the customer at request time and editable by the supplier before
+  // dispatch; surfaced in the shipment detail and the driver's WhatsApp handoff.
+  latestLoadingAt          DateTime?      @map("latest_loading_at")
+  // N5: unguessable token for the shareable public live-tracking link
+  // (/canli/[token]) — distinct from the sequential, guessable trackingNumber
+  // used on /track. Generated lazily the first time a shipment is shared.
+  trackingToken            String?        @unique @map("tracking_token")
   distanceKm               Decimal        @map("distance_km") @db.Decimal(10, 2)
   tonnage                  Decimal        @db.Decimal(10, 2)
   cargoDescription         String?        @map("cargo_description")

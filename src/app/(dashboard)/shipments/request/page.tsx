@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { requireTenantContext } from "@/core/shared/tenant-context";
 import { listSupplierCompanies } from "@/core/company/company-repository";
 import { listWarehouses } from "@/core/warehouse/warehouse-service";
+import { listConsignees } from "@/core/consignee/consignee-service";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { RequestShipmentForm } from "@/app/(dashboard)/shipments/request/request-shipment-form";
 
@@ -12,9 +13,10 @@ export default async function RequestShipmentPage() {
     redirect("/shipments");
   }
 
-  const [suppliers, warehouses] = await Promise.all([
+  const [suppliers, warehouses, consigneeRows] = await Promise.all([
     listSupplierCompanies(ctx.isDemo),
     listWarehouses(ctx),
+    listConsignees(ctx),
   ]);
   const loadingPoints = warehouses.map((w) => ({
     id: w.id,
@@ -22,6 +24,13 @@ export default async function RequestShipmentPage() {
     address: w.address,
     mapsUrl: w.mapsUrl,
     isDefault: w.isDefault,
+  }));
+  const consignees = consigneeRows.map((c) => ({
+    id: c.id,
+    title: c.title,
+    province: c.province,
+    district: c.district,
+    address: c.address,
   }));
 
   return (
@@ -38,7 +47,11 @@ export default async function RequestShipmentPage() {
           <CardTitle>Yük Bilgileri</CardTitle>
         </CardHeader>
         <CardContent>
-          <RequestShipmentForm suppliers={suppliers} loadingPoints={loadingPoints} />
+          <RequestShipmentForm
+            suppliers={suppliers}
+            loadingPoints={loadingPoints}
+            consignees={consignees}
+          />
         </CardContent>
       </Card>
     </div>

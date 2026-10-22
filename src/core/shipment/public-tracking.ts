@@ -34,13 +34,22 @@ export function parseTrackingNumber(raw: string | undefined | null): number | nu
   return Number.isSafeInteger(n) && n >= 10000000 ? n : null;
 }
 
-export async function trackShipmentByNumber(
-  trackingNumber: number
-): Promise<PublicTrackingResult | null> {
-  const shipment =
-    await shipmentRepository.getShipmentByTrackingNumber(trackingNumber);
-  if (!shipment) return null;
+type RawTrackedShipment = {
+  id: string;
+  trackingNumber: number;
+  originAddress: string;
+  destinationAddress: string;
+  status: ShipmentStatus;
+  createdAt: Date;
+  hasOpenIncident: boolean;
+  lastKnownLat: { toNumber(): number } | null;
+  lastKnownLng: { toNumber(): number } | null;
+  lastLocationAt: Date | null;
+};
 
+async function toPublicResult(
+  shipment: RawTrackedShipment
+): Promise<PublicTrackingResult> {
   const history = await shipmentRepository.getShipmentStatusHistory(shipment.id);
 
   const isActive = shipment.status !== "COMPLETED" && shipment.status !== "CANCELLED";
@@ -63,4 +72,24 @@ export async function trackShipmentByNumber(
     history: history.map((h) => ({ toStatus: h.toStatus, createdAt: h.createdAt })),
     liveLocation,
   };
+}
+
+export async function trackShipmentByNumber(
+  trackingNumber: number
+): Promise<PublicTrackingResult | null> {
+  const shipment =
+    await shipmentRepository.getShipmentByTrackingNumber(trackingNumber);
+  if (!shipment) return null;
+  return toPublicResult(shipment);
+}
+
+/** N5: resolve the unguessable live-share token to the same public projection. */
+export async function trackShipmentByToken(
+  token: string
+): Promise<PublicTrackingResult | null> {
+  const trimmed = token?.trim();
+  if (!trimmed) return null;
+  const shipment = await shipmentRepository.getShipmentByTrackingToken(trimmed);
+  if (!shipment) return null;
+  return toPublicResult(shipment);
 }

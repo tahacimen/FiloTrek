@@ -102,6 +102,24 @@ export const shipmentRequestInputSchema = withDangerousGoodsValidation(
       .optional(),
     originMapsUrl: optionalMapsUrlSchema,
     destinationMapsUrl: optionalMapsUrlSchema,
+    // N4: optional "en geç yükleme saati" from the request form. Empty string
+    // (an untouched datetime-local input) normalizes to undefined.
+    latestLoadingAt: z.preprocess(
+      (v) => (typeof v === "string" && v.trim() === "" ? undefined : v),
+      z.coerce.date("Geçerli bir tarih/saat girin.").optional()
+    ),
+    // C1: set when the delivery point was picked from the customer's cari
+    // list; null/omitted for a free-typed destination address.
+    destinationProvince: z
+      .string()
+      .trim()
+      .max(50, "İl adı çok uzun.")
+      .optional(),
+    destinationDistrict: z
+      .string()
+      .trim()
+      .max(50, "İlçe adı çok uzun.")
+      .optional(),
     ...dangerousGoodsFieldsSchema,
   })
 );

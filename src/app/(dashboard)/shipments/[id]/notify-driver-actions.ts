@@ -1,10 +1,15 @@
 "use server";
 
 import { requireTenantContext } from "@/core/shared/tenant-context";
-import { getShipment } from "@/core/shipment/shipment-service";
+import {
+  ensureTrackingToken,
+  getShipment,
+} from "@/core/shipment/shipment-service";
 import { getActiveReservationForShipment } from "@/core/warehouse/dock-reservation-service";
 import { issueDriverLoginToken } from "@/core/driver/driver-service";
 import { getRequestOrigin } from "@/lib/request-origin";
+import { resolveNavUrl } from "@/lib/maps";
+import { formatDateTime } from "@/lib/format";
 import { toActionErrorMessage } from "@/lib/action-error";
 
 export type NotifyDriverResult =
@@ -46,6 +51,16 @@ export async function notifyDriverWhatsAppAction(
     const origin = await getRequestOrigin();
     const url = `${origin}/api/driver-login/${token}`;
 
+    // N5: an unguessable live-tracking link the driver (and whoever they
+    // forward it to) can open without logging in.
+    let liveUrl: string | null = null;
+    try {
+      const trackingToken = await ensureTrackingToken(ctx, shipment.id);
+      liveUrl = `${origin}/canli/${trackingToken}`;
+    } catch {
+      liveUrl = null;
+    }
+
     const pickupLine = reservation
       ? `Yükleme: ${reservation.dock.warehouse.name}${
           reservation.dock.warehouse.address
@@ -56,12 +71,31 @@ export async function notifyDriverWhatsAppAction(
         ? `Yükleme bilgisi: ${shipment.pickupGateInfo}`
         : `Yükleme noktası: ${shipment.originAddress}`;
 
+    // N4: from→to navigation links (hand-entered pin, else a directions link
+    // built from the address text — resolveNavUrl, free/keyless).
+    const pickupNav = resolveNavUrl(
+      reservation?.dock.warehouse.mapsUrl ?? shipment.pickupMapsUrl ?? shipment.originMapsUrl,
+      reservation?.dock.warehouse.address ?? shipment.originAddress
+    );
+    const dropoffNav = resolveNavUrl(
+      shipment.destinationMapsUrl,
+      shipment.destinationAddress
+    );
+
     const message = [
       `Merhaba ${fullName},`,
       `${shipment.originAddress} → ${shipment.destinationAddress} seferiniz onaylandı.`,
+      shipment.latestLoadingAt
+        ? `⏰ En geç yükleme: ${formatDateTime(shipment.latestLoadingAt)}`
+        : null,
       pickupLine,
+      pickupNav ? `📍 Yükleme konumu: ${pickupNav}` : null,
+      dropoffNav ? `📍 Teslim konumu: ${dropoffNav}` : null,
+      liveUrl ? `🔗 Canlı takip: ${liveUrl}` : null,
       `Sefer detaylarınız ve yol tarifi için panelinize girin: ${url}`,
-    ].join("\n");
+    ]
+      .filter(Boolean)
+      .join("\n");
 
     return { url, phone, message };
   } catch (error) {

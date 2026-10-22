@@ -14,6 +14,7 @@ import {
   SlidersHorizontal,
   Warehouse,
   HandCoins,
+  Contact,
 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
@@ -32,6 +33,7 @@ const customerNavItems = [
   { href: "/shipments", label: "Seferlerim", icon: Package },
   { href: "/gate-guards", label: "Nizamiye", icon: ShieldCheck },
   { href: "/warehouses", label: "Depo & Rampa", icon: Warehouse },
+  { href: "/consignees", label: "Cariler", icon: Contact },
   { href: "/blocked-drivers", label: "Engelli Sürücüler", icon: ShieldBan },
 ];
 

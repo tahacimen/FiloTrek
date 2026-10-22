@@ -7,6 +7,8 @@ import * as companyRepository from "@/core/company/company-repository";
 import * as driverRepository from "@/core/driver/driver-repository";
 import * as notificationService from "@/core/notification/notification-service";
 import { getShipmentProgressPercent } from "@/core/shipment/shipment-transitions";
+import { generateSecureToken } from "@/lib/tokens";
+import { z } from "zod";
 import {
   loadReadyInputSchema,
   pickupEtaInputSchema,
@@ -207,6 +209,58 @@ export async function createShipmentRequest(
   }
 
   return shipment;
+}
+
+const latestLoadingSchema = z.object({
+  latestLoadingAt: z.preprocess(
+    (v) => (typeof v === "string" && v.trim() === "" ? null : v),
+    z.coerce.date("Geçerli bir tarih/saat girin.").nullable()
+  ),
+});
+
+/**
+ * N4: set or clear the "en geç yükleme saati". Either side of the shipment
+ * (the owning customer or the assigned supplier) may edit it up until the
+ * shipment is completed/cancelled — the repository WHERE clause enforces both
+ * the ownership (visibility filter) and the terminal-status guard atomically.
+ */
+export async function setLatestLoading(
+  ctx: TenantContext,
+  shipmentId: string,
+  rawInput: unknown
+) {
+  const { latestLoadingAt } = latestLoadingSchema.parse(rawInput);
+  const result = await shipmentRepository.setShipmentLatestLoading(
+    ctx,
+    shipmentId,
+    latestLoadingAt
+  );
+  if (result.count === 0) {
+    throw new NotFoundError(
+      "Sefer bulunamadı veya en geç yükleme saati güncellenemez."
+    );
+  }
+}
+
+/**
+ * N5: return a shareable live-tracking token for the shipment, minting one on
+ * first use. Scoped to a party on the shipment. The token backs the public
+ * /canli/[token] page (unguessable, unlike the sequential tracking number).
+ */
+export async function ensureTrackingToken(
+  ctx: TenantContext,
+  shipmentId: string
+): Promise<string> {
+  const shipment = await shipmentRepository.getShipmentForTenant(ctx, shipmentId);
+  if (!shipment) throw new NotFoundError("Sefer bulunamadı.");
+  if (shipment.trackingToken) return shipment.trackingToken;
+
+  const token = generateSecureToken();
+  await shipmentRepository.setShipmentTrackingToken(ctx, shipmentId, token);
+  // Re-read in case of a concurrent mint (the WHERE trackingToken:null makes
+  // the write a no-op for the loser), so both callers get the winning token.
+  const refreshed = await shipmentRepository.getShipmentForTenant(ctx, shipmentId);
+  return refreshed?.trackingToken ?? token;
 }
 
 /**

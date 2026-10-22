@@ -12,10 +12,33 @@ import {
   cancelShipment,
 } from "@/core/shipment/shipment-status";
 import { resolveShipmentIncidentAsDispatcher } from "@/core/shipment/shipment-incident";
+import { computeRoadDistanceKm } from "@/lib/geo-distance";
 import { toActionErrorMessage } from "@/lib/action-error";
 import type { ShipmentStatus } from "@/generated/prisma/client";
 
 export type ShipmentFormState = { error?: string } | undefined;
+
+/**
+ * C2: estimate the road distance (km) between the chosen loading and delivery
+ * points for the "Araç Çağır" form. Customer-only (it's their request flow).
+ * Returns null km when it couldn't be computed, so the client falls back to a
+ * manual entry rather than blocking the request.
+ */
+export async function estimateDistanceKmAction(
+  originQuery: string,
+  destinationQuery: string
+): Promise<{ km: number | null }> {
+  try {
+    await requireTenantContext();
+    if (!originQuery?.trim() || !destinationQuery?.trim()) {
+      return { km: null };
+    }
+    const km = await computeRoadDistanceKm(originQuery, destinationQuery);
+    return { km };
+  } catch {
+    return { km: null };
+  }
+}
 
 /** Empty optional inputs arrive as "" in FormData, not absent — normalize to undefined. */
 function optionalFormString(formData: FormData, key: string) {
@@ -80,6 +103,9 @@ export async function createShipmentRequestAction(
       ),
       originMapsUrl: optionalFormString(formData, "originMapsUrl"),
       destinationMapsUrl: optionalFormString(formData, "destinationMapsUrl"),
+      destinationProvince: optionalFormString(formData, "destinationProvince"),
+      destinationDistrict: optionalFormString(formData, "destinationDistrict"),
+      latestLoadingAt: optionalFormString(formData, "latestLoadingAt"),
       ...dangerousGoodsFieldsFromForm(formData),
     });
     shipmentId = shipment.id;
@@ -90,6 +116,42 @@ export async function createShipmentRequestAction(
   revalidatePath("/assign");
   revalidatePath("/dashboard");
   redirect(`/shipments/${shipmentId}`);
+}
+
+export type LiveLinkResult = { url: string } | { error: string };
+
+/** N5: mint-or-reuse the shipment's live-tracking token and return its public URL. */
+export async function getLiveTrackingLinkAction(
+  shipmentId: string
+): Promise<LiveLinkResult> {
+  try {
+    const ctx = await requireTenantContext();
+    const token = await shipmentService.ensureTrackingToken(ctx, shipmentId);
+    const { getRequestOrigin } = await import("@/lib/request-origin");
+    const origin = await getRequestOrigin();
+    return { url: `${origin}/canli/${token}` };
+  } catch (error) {
+    return { error: toActionErrorMessage(error) };
+  }
+}
+
+/** N4: set or clear the "en geç yükleme saati" (either party). */
+export async function setLatestLoadingAction(
+  shipmentId: string,
+  _prevState: ShipmentFormState,
+  formData: FormData
+): Promise<ShipmentFormState> {
+  try {
+    const ctx = await requireTenantContext();
+    await shipmentService.setLatestLoading(ctx, shipmentId, {
+      latestLoadingAt: formData.get("latestLoadingAt"),
+    });
+  } catch (error) {
+    return { error: toActionErrorMessage(error) };
+  }
+  revalidatePath(`/shipments/${shipmentId}`);
+  revalidatePath("/shipments");
+  return undefined;
 }
 
 export async function markLoadReadyAction(
