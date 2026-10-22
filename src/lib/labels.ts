@@ -1,5 +1,6 @@
 import {
   CompanyType,
+  ContractPricingMethod,
   DemoRequestStatus,
   DockReservationStatus,
   DockReservationType,
@@ -108,6 +109,12 @@ export const driverNextStepLabels: Partial<Record<ShipmentStatus, string>> = {
   [ShipmentStatus.AT_PICKUP_GATE]: "Malı Teslim Aldım, Yola Çıkıyorum",
   [ShipmentStatus.EN_ROUTE]: "Teslimat Noktasına Vardım",
   [ShipmentStatus.AT_DELIVERY_POINT]: "Malı Teslim Ettim",
+};
+
+export const contractPricingMethodLabels: Record<ContractPricingMethod, string> = {
+  [ContractPricingMethod.LANE_FIXED]: "Hat Bazlı Sabit (il/ilçe)",
+  [ContractPricingMethod.PER_KM]: "Km Başına (TL/km)",
+  [ContractPricingMethod.PER_TON]: "Ton Başına (TL/ton)",
 };
 
 export const companyTypeLabels: Record<CompanyType, string> = {

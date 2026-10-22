@@ -15,6 +15,7 @@ import {
   Warehouse,
   HandCoins,
   Contact,
+  FileText,
 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
@@ -25,6 +26,7 @@ const supplierNavItems = [
   { href: "/drivers", label: "Şoförler", icon: Users },
   { href: "/shipments", label: "Seferler", icon: Package },
   { href: "/assign", label: "Atama", icon: ClipboardList },
+  { href: "/contracts", label: "Sözleşmeler", icon: FileText },
   { href: "/pazaryeri", label: "Pazaryeri", icon: HandCoins },
 ];
 

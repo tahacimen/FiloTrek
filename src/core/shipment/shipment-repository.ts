@@ -177,6 +177,11 @@ type CreateShipmentRecordInput = {
   requiresColdChain?: boolean;
   temperatureMinC?: number;
   temperatureMaxC?: number;
+  // G2: set together only when a contract rate matched at request time — the
+  // price arrives pre-agreed and auto-approved, so no negotiation runs.
+  agreedPrice?: number;
+  priceProposedBy?: CompanyType;
+  priceApprovedAt?: Date;
 };
 
 /**

@@ -1,3 +1,4 @@
+import { prisma } from "@/lib/db";
 import { requireCompanyType } from "@/core/shared/authorization";
 import type { TenantContext } from "@/core/shared/tenant-context";
 import type { DriverContext } from "@/core/shared/driver-context";
@@ -7,6 +8,7 @@ import * as companyRepository from "@/core/company/company-repository";
 import * as driverRepository from "@/core/driver/driver-repository";
 import * as notificationService from "@/core/notification/notification-service";
 import { getShipmentProgressPercent } from "@/core/shipment/shipment-transitions";
+import { findContractPrice } from "@/core/contract/contract-service";
 import { generateSecureToken } from "@/lib/tokens";
 import { z } from "zod";
 import {
@@ -187,10 +189,38 @@ export async function createShipmentRequest(
       )
     : null;
 
+  // G2: for a direct request to a chosen supplier, a matching contract rate
+  // fills the price and auto-approves it — no negotiation. Marketplace
+  // requests (no supplier) are unaffected. Best-effort: a lookup failure must
+  // not block creating the request, it just falls back to the normal flow.
+  let contractPricing:
+    | { agreedPrice: number; priceProposedBy: CompanyType; priceApprovedAt: Date }
+    | undefined;
+  if (supplier) {
+    try {
+      const price = await findContractPrice(prisma, supplier.id, ctx.companyId, {
+        destinationProvince: input.destinationProvince ?? null,
+        destinationDistrict: input.destinationDistrict ?? null,
+        distanceKm: input.distanceKm,
+        tonnage: input.tonnage,
+      });
+      if (price != null && price > 0) {
+        contractPricing = {
+          agreedPrice: price,
+          priceProposedBy: CompanyType.SUPPLIER,
+          priceApprovedAt: new Date(),
+        };
+      }
+    } catch (error) {
+      console.error("Sözleşme fiyatı hesaplanamadı:", error);
+    }
+  }
+
   const shipment = await shipmentRepository.createShipmentRecord({
     ...input,
     customerCompanyId: ctx.companyId,
     supplierCompanyId: supplier?.id ?? null,
+    ...(contractPricing ?? {}),
   });
 
   if (!supplier) return shipment;
