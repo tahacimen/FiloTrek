@@ -10,6 +10,7 @@ import * as dockReservationService from "@/core/warehouse/dock-reservation-servi
 import {
   advanceShipmentStatus,
   cancelShipment,
+  revertShipmentStatus,
 } from "@/core/shipment/shipment-status";
 import { resolveShipmentIncidentAsDispatcher } from "@/core/shipment/shipment-incident";
 import { computeRoadDistanceKm } from "@/lib/geo-distance";
@@ -116,6 +117,38 @@ export async function createShipmentRequestAction(
   revalidatePath("/assign");
   revalidatePath("/dashboard");
   redirect(`/shipments/${shipmentId}`);
+}
+
+/** D3: supplier rolls the shipment one step back (driver advanced by mistake). */
+export async function revertShipmentStatusAction(
+  shipmentId: string
+): Promise<ShipmentFormState> {
+  try {
+    const ctx = await requireTenantContext();
+    await revertShipmentStatus(ctx, shipmentId);
+  } catch (error) {
+    return { error: toActionErrorMessage(error) };
+  }
+  revalidatePath(`/shipments/${shipmentId}`);
+  revalidatePath("/shipments");
+  revalidatePath("/vehicles");
+  revalidatePath("/dashboard");
+  return undefined;
+}
+
+/** D1: supplier deletes the uploaded stamped waybill (before completion). */
+export async function deleteWaybillAction(
+  shipmentId: string
+): Promise<ShipmentFormState> {
+  try {
+    const ctx = await requireTenantContext();
+    await shipmentService.deleteWaybill(ctx, shipmentId);
+  } catch (error) {
+    return { error: toActionErrorMessage(error) };
+  }
+  revalidatePath(`/shipments/${shipmentId}`);
+  revalidatePath("/shipments");
+  return undefined;
 }
 
 /** G3: supplier uploads the stamped waybill themselves (driver has no login). */

@@ -1,11 +1,12 @@
 "use client";
 
 import { useActionState, useTransition } from "react";
-import { CheckCircle2, FileCheck2, Loader2, Upload } from "lucide-react";
+import { CheckCircle2, FileCheck2, Loader2, Trash2, Upload } from "lucide-react";
 import { toast } from "sonner";
 
 import {
   confirmWaybillAction,
+  deleteWaybillAction,
   uploadWaybillSupplierAction,
   type ShipmentFormState,
 } from "@/app/(dashboard)/shipments/actions";
@@ -35,6 +36,7 @@ export function WaybillCard({
   confirmed: boolean;
 }) {
   const [isConfirming, startConfirm] = useTransition();
+  const [isDeleting, startDelete] = useTransition();
   const [uploadState, uploadAction, isUploading] = useActionState<
     ShipmentFormState,
     FormData
@@ -55,6 +57,15 @@ export function WaybillCard({
     });
   }
 
+  function handleDelete() {
+    if (!confirm("İrsaliye görselini silmek istediğinize emin misiniz?")) return;
+    startDelete(async () => {
+      const result = await deleteWaybillAction(shipmentId);
+      if (result?.error) toast.error(result.error);
+      else toast.success("İrsaliye silindi.");
+    });
+  }
+
   return (
     <Card>
       <CardHeader>
@@ -65,14 +76,28 @@ export function WaybillCard({
       </CardHeader>
       <CardContent className="flex flex-col gap-3">
         {waybillPhotoUrl ? (
-          <a
-            href={`/api/uploads/${waybillPhotoUrl}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-primary w-fit underline underline-offset-2"
-          >
-            İrsaliyeyi Görüntüle
-          </a>
+          <div className="flex flex-wrap items-center gap-3">
+            <a
+              href={`/api/uploads/${waybillPhotoUrl}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-primary w-fit underline underline-offset-2"
+            >
+              İrsaliyeyi Görüntüle
+            </a>
+            {isSupplier && status !== "COMPLETED" && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-destructive hover:text-destructive h-auto px-2 py-1"
+                onClick={handleDelete}
+                disabled={isDeleting}
+              >
+                {isDeleting ? <Loader2 className="animate-spin" /> : <Trash2 />}
+                Sil
+              </Button>
+            )}
+          </div>
         ) : (
           <p className="text-muted-foreground text-sm">
             İrsaliye henüz yüklenmedi.

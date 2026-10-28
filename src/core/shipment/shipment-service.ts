@@ -336,6 +336,33 @@ export async function uploadWaybillAsSupplier(
 }
 
 /**
+ * D1: the supplier removes the uploaded stamped waybill so a wrong/blurred one
+ * can be re-uploaded. Only before the shipment is completed. Clears the photo
+ * reference and any confirmation; the stored file itself is left (harmless and
+ * cheap) and simply overwritten on the next upload.
+ */
+export async function deleteWaybill(ctx: TenantContext, shipmentId: string) {
+  requireCompanyType(ctx, CompanyType.SUPPLIER);
+  const shipment = await shipmentRepository.getShipmentForTenant(ctx, shipmentId);
+  if (!shipment || shipment.supplierCompanyId !== ctx.companyId) {
+    throw new NotFoundError("Sefer bulunamadı.");
+  }
+  if (shipment.status === ShipmentStatus.COMPLETED) {
+    throw new ValidationError(
+      "Tamamlanmış bir seferin irsaliyesi silinemez."
+    );
+  }
+  await prisma.shipment.updateMany({
+    where: { id: shipmentId, supplierCompanyId: ctx.companyId },
+    data: {
+      waybillPhotoUrl: null,
+      waybillConfirmedAt: null,
+      waybillConfirmedByUserId: null,
+    },
+  });
+}
+
+/**
  * G3: the supplier confirms the driver-uploaded stamped waybill (irsaliye).
  * Required before the shipment can be completed. Supplier-only and scoped to
  * their own shipment; the waybill photo must already exist.

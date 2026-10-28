@@ -5,15 +5,20 @@ import { useTransition } from "react";
 import { ClipboardList, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
+import { Undo2 } from "lucide-react";
+
 import {
   advanceShipmentStatusAction,
   cancelShipmentAction,
+  revertShipmentStatusAction,
 } from "@/app/(dashboard)/shipments/actions";
 import { Button } from "@/components/ui/button";
 import { shipmentStatusLabels } from "@/lib/labels";
 import {
   canCancelShipment,
+  canRevertShipment,
   getNextShipmentSteps,
+  previousShipmentStatus,
 } from "@/core/shipment/shipment-transitions";
 import { ShipmentStatus } from "@/generated/prisma/enums";
 
@@ -26,6 +31,8 @@ export function ShipmentStatusActions({
 }) {
   const [isPending, startTransition] = useTransition();
   const canCancel = canCancelShipment(status);
+  const canRevert = canRevertShipment(status);
+  const previous = previousShipmentStatus(status);
 
   // PENDING -> ASSIGNED needs a vehicle + driver pick, which only the
   // Atama screen collects — the generic advance action rejects it
@@ -35,7 +42,12 @@ export function ShipmentStatusActions({
     (step) => step !== ShipmentStatus.ASSIGNED
   );
 
-  if (!isAwaitingAssignment && nextSteps.length === 0 && !canCancel) {
+  if (
+    !isAwaitingAssignment &&
+    nextSteps.length === 0 &&
+    !canCancel &&
+    !canRevert
+  ) {
     return null;
   }
 
@@ -61,6 +73,22 @@ export function ShipmentStatusActions({
     });
   }
 
+  function handleRevert() {
+    if (!previous) return;
+    if (
+      !confirm(
+        `Durumu bir önceki adıma ("${shipmentStatusLabels[previous]}") geri almak istediğinize emin misiniz?`
+      )
+    ) {
+      return;
+    }
+    startTransition(async () => {
+      const result = await revertShipmentStatusAction(shipmentId);
+      if (result?.error) toast.error(result.error);
+      else toast.success("Durum geri alındı.");
+    });
+  }
+
   return (
     <div className="flex flex-wrap items-center gap-2">
       {isAwaitingAssignment && (
@@ -77,6 +105,12 @@ export function ShipmentStatusActions({
           {shipmentStatusLabels[step]}
         </Button>
       ))}
+      {canRevert && previous && (
+        <Button variant="outline" onClick={handleRevert} disabled={isPending}>
+          <Undo2 />
+          Durumu Geri Al
+        </Button>
+      )}
       {canCancel && (
         <Button
           variant="outline"

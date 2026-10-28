@@ -6,11 +6,13 @@ import {
   advanceShipmentStatusAsDriver,
   assignVehicleAndDriver,
   cancelShipment,
+  revertShipmentStatus,
   updateShipmentLocation,
   uploadWaybillAsDriver,
 } from "@/core/shipment/shipment-status";
 import {
   confirmWaybill,
+  deleteWaybill,
   uploadWaybillAsSupplier,
 } from "@/core/shipment/shipment-service";
 import { setVehicleMaintenance } from "@/core/vehicle/vehicle-status";
@@ -652,6 +654,52 @@ describe("advanceShipmentStatusAsDriver", () => {
       targetStatus: ShipmentStatus.COMPLETED,
     });
     expect(completed.status).toBe(ShipmentStatus.COMPLETED);
+  });
+
+  it("lets the supplier roll the status one step back, moving the vehicle with it (D3)", async () => {
+    const { ctx, driverCtx, vehicle, shipment } =
+      await setupHeadingToPickupShipment();
+    // HEADING_TO_PICKUP -> LOADING (driver), then revert back to HEADING_TO_PICKUP.
+    await advanceShipmentStatusAsDriver(driverCtx, {
+      shipmentId: shipment.id,
+      targetStatus: ShipmentStatus.LOADING,
+    });
+    const reverted = await revertShipmentStatus(ctx, shipment.id);
+    expect(reverted.status).toBe(ShipmentStatus.HEADING_TO_PICKUP);
+    const v1 = await prisma.vehicle.findUniqueOrThrow({ where: { id: vehicle.id } });
+    expect(v1.status).toBe("HEADING_TO_PICKUP");
+
+    // Revert again -> ASSIGNED, then ASSIGNED is no longer revertible.
+    const reverted2 = await revertShipmentStatus(ctx, shipment.id);
+    expect(reverted2.status).toBe(ShipmentStatus.ASSIGNED);
+    await expect(revertShipmentStatus(ctx, shipment.id)).rejects.toThrow(
+      InvalidTransitionError
+    );
+  });
+
+  it("lets the supplier delete an uploaded waybill before completion (D1)", async () => {
+    const { ctx, driverCtx, shipment } = await setupHeadingToPickupShipment();
+    for (const targetStatus of [
+      ShipmentStatus.LOADING,
+      ShipmentStatus.AT_PICKUP_GATE,
+    ]) {
+      await advanceShipmentStatusAsDriver(driverCtx, { shipmentId: shipment.id, targetStatus });
+    }
+    await advanceShipmentStatusAsDriver(driverCtx, {
+      shipmentId: shipment.id,
+      targetStatus: ShipmentStatus.EN_ROUTE,
+      photo: createTestPhotoFile(),
+    });
+    await advanceShipmentStatusAsDriver(driverCtx, {
+      shipmentId: shipment.id,
+      targetStatus: ShipmentStatus.AT_DELIVERY_POINT,
+    });
+    await uploadWaybillAsSupplier(ctx, shipment.id, createTestPhotoFile("w.jpg"));
+
+    await deleteWaybill(ctx, shipment.id);
+    const s = await prisma.shipment.findUniqueOrThrow({ where: { id: shipment.id } });
+    expect(s.waybillPhotoUrl).toBeNull();
+    expect(s.waybillConfirmedAt).toBeNull();
   });
 
   it("accepts AT_DELIVERY_POINT -> COMPLETED with a real photo, recording it as the delivery (POD) photo distinct from the departure one", async () => {

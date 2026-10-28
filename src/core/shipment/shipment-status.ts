@@ -22,6 +22,7 @@ import type { DriverContext } from "@/core/shared/driver-context";
 import type { GateGuardContext } from "@/core/shared/gate-guard-context";
 import {
   SHIPMENT_ALLOWED_TRANSITIONS,
+  SHIPMENT_STATUS_SEQUENCE,
   SHIPMENT_TO_VEHICLE_STATUS,
 } from "@/core/shipment/shipment-transitions";
 import * as companyRepository from "@/core/company/company-repository";
@@ -228,7 +229,7 @@ async function advanceShipmentStatusCore(params: {
     if (params.targetStatus === ShipmentStatus.COMPLETED) {
       if (!shipment.waybillPhotoUrl) {
         throw new ValidationError(
-          "Teslimatı tamamlamak için önce kaşeli-imzalı irsaliye yüklenmelidir."
+          "İrsaliye fotoğrafı yüklenmediği için bu seferi tamamlayamazsınız."
         );
       }
       if (!shipment.waybillConfirmedAt) {
@@ -748,6 +749,78 @@ export async function advanceShipmentStatusAsGateGuard(
   }
 
   return updatedShipment;
+}
+
+// D3: the in-progress legs a dispatcher can roll ONE step back (e.g. a driver
+// advanced by mistake). Deliberately excludes PENDING/ASSIGNED (reverting to
+// PENDING would un-assign the vehicle+driver) and COMPLETED/CANCELLED (terminal;
+// reverting could undo payment/rating side effects).
+const REVERTIBLE_STATUSES: ReadonlySet<ShipmentStatus> = new Set([
+  ShipmentStatus.HEADING_TO_PICKUP,
+  ShipmentStatus.LOADING,
+  ShipmentStatus.AT_PICKUP_GATE,
+  ShipmentStatus.EN_ROUTE,
+  ShipmentStatus.AT_DELIVERY_POINT,
+]);
+
+/**
+ * D3: the supplier rolls the shipment one step back along the happy path, with
+ * the vehicle's status projection moved back to match. Supplier-only, own
+ * shipment; only the in-progress legs above are revertible.
+ */
+export async function revertShipmentStatus(
+  ctx: TenantContext,
+  shipmentId: string
+) {
+  requireCompanyType(ctx, CompanyType.SUPPLIER);
+
+  return prisma.$transaction(async (tx) => {
+    const shipment = await tx.shipment.findFirst({
+      where: { id: shipmentId, supplierCompanyId: ctx.companyId },
+    });
+    if (!shipment) throw new NotFoundError("Sefer bulunamadı.");
+    if (!REVERTIBLE_STATUSES.has(shipment.status)) {
+      throw new InvalidTransitionError(
+        "Bu sefer durumu geri alınamaz."
+      );
+    }
+    const idx = SHIPMENT_STATUS_SEQUENCE.indexOf(shipment.status);
+    const previous = SHIPMENT_STATUS_SEQUENCE[idx - 1];
+
+    const updatedShipment = await tx.shipment.update({
+      where: { id: shipment.id },
+      data: { status: previous },
+    });
+    await recordStatusChange(tx, {
+      entityType: StatusEntityType.SHIPMENT,
+      entityId: shipment.id,
+      fromStatus: shipment.status,
+      toStatus: previous,
+      changedByUserId: ctx.userId,
+      source: StatusChangeSource.MANUAL,
+    });
+
+    if (shipment.vehicleId) {
+      const vehicle = await tx.vehicle.findUniqueOrThrow({
+        where: { id: shipment.vehicleId },
+      });
+      const vehicleStatus = SHIPMENT_TO_VEHICLE_STATUS[previous]!;
+      await tx.vehicle.update({
+        where: { id: vehicle.id },
+        data: { status: vehicleStatus },
+      });
+      await recordStatusChange(tx, {
+        entityType: StatusEntityType.VEHICLE,
+        entityId: vehicle.id,
+        fromStatus: vehicle.status,
+        toStatus: vehicleStatus,
+        changedByUserId: ctx.userId,
+        source: StatusChangeSource.MANUAL,
+      });
+    }
+
+    return updatedShipment;
+  });
 }
 
 /** Cancels a shipment from any non-terminal status, releasing its vehicle/driver. */

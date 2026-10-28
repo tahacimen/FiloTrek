@@ -113,3 +113,25 @@ export function canCancelShipment(status: ShipmentStatus) {
     ShipmentStatus.CANCELLED
   );
 }
+
+// D3: the in-progress legs a dispatcher can roll one step back — kept in sync
+// with REVERTIBLE_STATUSES in shipment-status.ts (this is the client-safe copy).
+const REVERTIBLE_STATUSES: ShipmentStatus[] = [
+  ShipmentStatus.HEADING_TO_PICKUP,
+  ShipmentStatus.LOADING,
+  ShipmentStatus.AT_PICKUP_GATE,
+  ShipmentStatus.EN_ROUTE,
+  ShipmentStatus.AT_DELIVERY_POINT,
+];
+
+export function canRevertShipment(status: ShipmentStatus): boolean {
+  return REVERTIBLE_STATUSES.includes(status);
+}
+
+/** The status one step back along the happy path, or null if there isn't one. */
+export function previousShipmentStatus(
+  status: ShipmentStatus
+): ShipmentStatus | null {
+  const idx = SHIPMENT_STATUS_SEQUENCE.indexOf(status);
+  return idx > 0 ? SHIPMENT_STATUS_SEQUENCE[idx - 1] : null;
+}
