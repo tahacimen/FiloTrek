@@ -349,6 +349,17 @@ describe("shipment-service: markLoadReady", () => {
     expect(updated.pickupMapsUrl).toBeNull();
   });
 
+  it("marks load-ready with no gate info at all (gate info is optional)", async () => {
+    const { customerCtx, shipmentId } = await setupAssignedShipment(companyIds);
+
+    const updated = await shipmentService.markLoadReady(customerCtx, shipmentId, {
+      pickupGateInfo: "",
+    });
+
+    expect(updated.loadReadyAt).not.toBeNull();
+    expect(updated.pickupGateInfo).toBeNull();
+  });
+
   it("allows resubmission while still ASSIGNED, overwriting the previous values", async () => {
     const { customerCtx, shipmentId } = await setupAssignedShipment(companyIds);
 

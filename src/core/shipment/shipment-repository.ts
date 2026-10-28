@@ -211,12 +211,12 @@ export function createShipmentRecord(data: CreateShipmentRecordInput) {
  */
 export function markShipmentLoadReady(
   shipmentId: string,
-  data: { pickupGateInfo: string; pickupMapsUrl?: string }
+  data: { pickupGateInfo: string | null; pickupMapsUrl?: string }
 ) {
   return prisma.shipment.updateMany({
     where: { id: shipmentId, status: ShipmentStatus.ASSIGNED },
     data: {
-      pickupGateInfo: data.pickupGateInfo,
+      pickupGateInfo: data.pickupGateInfo ?? null,
       pickupMapsUrl: data.pickupMapsUrl ?? null,
       loadReadyAt: new Date(),
     },

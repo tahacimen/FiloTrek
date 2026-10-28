@@ -127,11 +127,12 @@ export type ShipmentRequestInput = z.infer<typeof shipmentRequestInputSchema>;
 
 /** Customer marking a shipment's cargo as ready ("Yük Hazır, Aracı Gönder"). */
 export const loadReadyInputSchema = z.object({
-  pickupGateInfo: z
-    .string()
-    .trim()
-    .min(2, "Kapı/rampa bilgisi girin.")
-    .max(300, "Kapı/rampa bilgisi çok uzun."),
+  // Optional: a customer may simply mark the cargo ready without having
+  // specific gate/ramp info to share (empty string → null).
+  pickupGateInfo: z.preprocess(
+    (v) => (typeof v === "string" && v.trim() === "" ? null : v),
+    z.string().trim().max(300, "Kapı/rampa bilgisi çok uzun.").nullable()
+  ),
   pickupMapsUrl: optionalMapsUrlSchema,
 });
 export type LoadReadyInput = z.infer<typeof loadReadyInputSchema>;

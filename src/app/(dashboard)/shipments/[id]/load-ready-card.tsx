@@ -67,7 +67,7 @@ export function LoadReadyCard({
         )}
         {loadReadyAt ? (
           <div className="grid grid-cols-2 gap-4">
-            <Field label="Kapı / Rampa Bilgisi" value={pickupGateInfo} />
+            <Field label="Kapı / Rampa Bilgisi" value={pickupGateInfo ?? "—"} />
             <Field
               label="Navigasyon"
               value={

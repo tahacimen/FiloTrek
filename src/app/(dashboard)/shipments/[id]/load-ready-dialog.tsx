@@ -73,11 +73,12 @@ export function LoadReadyDialog({
           className="flex flex-col gap-4"
         >
           <div className="flex flex-col gap-2">
-            <Label htmlFor={`gate-${shipmentId}`}>Kapı / Rampa Bilgisi</Label>
+            <Label htmlFor={`gate-${shipmentId}`}>
+              Kapı / Rampa Bilgisi (opsiyonel)
+            </Label>
             <Input
               id={`gate-${shipmentId}`}
               name="pickupGateInfo"
-              required
               placeholder="Örn: B Kapısı, 4 No'lu Rampa"
               defaultValue={pickupGateInfo ?? ""}
             />
