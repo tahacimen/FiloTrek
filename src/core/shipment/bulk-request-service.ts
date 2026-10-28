@@ -75,22 +75,24 @@ export async function buildBulkTemplate(): Promise<Buffer> {
   ws.columns.forEach((c) => {
     c.width = 22;
   });
-  // Example row (illustrative — users overwrite/remove it).
+  // Example row — self-contained so it works as-is: no supplier (goes to the
+  // market), a plain loading address, and an il/ilçe destination (no need for
+  // a pre-registered cari). Users overwrite or delete it.
   ws.addRow([
-    "",
-    "Merkez Depo",
-    "Kemalpaşa Gıda Ltd.",
-    "",
-    "",
-    "",
-    "18",
-    "",
-    "",
-    "Paletli kuru gıda",
-    "",
-    "H",
-    "",
-    "H",
+    "",                 // Tedarikçi Firma (boş = pazara açılır)
+    "İstanbul, Tuzla OSB", // Yükleme Noktası (düz adres de olur)
+    "",                 // Cari Ünvanı (boş — il/ilçe ile gidiyoruz)
+    "İzmir",            // Teslim İl
+    "Kemalpaşa",        // Teslim İlçe
+    "",                 // Teslim Adresi
+    "18",               // Tonaj
+    "",                 // Mesafe (km) — boş = otomatik
+    "",                 // En Geç Yükleme
+    "Paletli kuru gıda", // Yük Açıklaması
+    "",                 // Belge Takip No
+    "H",                // Tehlikeli Madde
+    "",                 // ADR Sınıfı
+    "H",                // Soğuk Zincir
   ]);
 
   const help = wb.addWorksheet("Açıklama");
@@ -101,8 +103,8 @@ export async function buildBulkTemplate(): Promise<Buffer> {
   const notes: [string, string][] = [
     ["Tedarikçi Firma", "Kayıtlı tedarikçinin tam adı. BOŞ bırakılırsa talep pazara açılır (teklif toplanır)."],
     ["Yükleme Noktası", "Kayıtlı depo adı (eşleşirse adres/konum otomatik gelir) ya da düz bir adres metni. Zorunlu."],
-    ["Cari Ünvanı", "Kayıtlı carinin ünvanı. Eşleşirse teslim il/ilçe otomatik gelir."],
-    ["Teslim İl / İlçe / Adresi", "Cari ünvanı boşsa doldurun. İl ve ilçe birlikte girilmelidir."],
+    ["Cari Ünvanı", "Cariler ekranında KAYITLI carinin ünvanı (birebir aynı yazılmalı). Eşleşirse teslim il/ilçe otomatik gelir. Kayıtlı değilse BOŞ bırakın ve Teslim İl + İlçe'yi doldurun."],
+    ["Teslim İl / İlçe / Adresi", "Cari ünvanı boşsa (veya eşleşmezse) doldurun. İl ve ilçe birlikte girilmelidir; il/ilçe adları Türkiye standart adlarıyla yazılmalı (ör. İzmir / Kemalpaşa)."],
     ["Tonaj", "Sayısal, ton. Zorunlu."],
     ["Mesafe (km)", "Boş bırakılırsa yükleme–teslim arası otomatik hesaplanır. Sayısal."],
     ["En Geç Yükleme", "Opsiyonel. Tarih/saat (ör. 2026-10-25 14:00)."],
@@ -199,16 +201,17 @@ export async function parseAndCreateBulk(
       const originAddress = warehouse?.address ?? warehouse?.name ?? loadingPoint;
       const originMapsUrl = warehouse?.mapsUrl ?? undefined;
 
-      // Destination: a saved cari (title) or an il/ilçe + address.
+      // Destination: a registered cari (title) or an il/ilçe (+ address).
+      // Forgiving order: a matching cari wins; otherwise an explicit il/ilçe is
+      // used (keeping any typed name as the title); only when neither is usable
+      // do we error, telling the user exactly what to do.
       let destinationAddress: string;
       let province: string | undefined;
       let district: string | undefined;
       const consignee = consigneeTitle
         ? consigneeByName.get(norm(consigneeTitle))
         : undefined;
-      if (consigneeTitle && !consignee) {
-        throw new ValidationError(`Cari bulunamadı: "${consigneeTitle}".`);
-      }
+
       if (consignee) {
         province = consignee.province;
         district = consignee.district;
@@ -222,11 +225,16 @@ export async function parseAndCreateBulk(
       } else if (destProvince && destDistrict) {
         province = destProvince;
         district = destDistrict;
-        destinationAddress =
-          destAddressText || `${destDistrict}/${destProvince}`;
+        const base = destAddressText || `${destDistrict}/${destProvince}`;
+        // Keep the typed cari name (if any) as the destination's label.
+        destinationAddress = [consigneeTitle, base].filter(Boolean).join(" — ");
+      } else if (consigneeTitle) {
+        throw new ValidationError(
+          `Cari bulunamadı: "${consigneeTitle}". Cariler ekranındaki ünvanı birebir yazın ya da Cari Ünvanı'nı boş bırakıp Teslim İl + İlçe girin.`
+        );
       } else {
         throw new ValidationError(
-          "Teslim noktası için ya Cari Ünvanı ya da Teslim İl + İlçe girin."
+          "Teslim noktası için ya kayıtlı Cari Ünvanı ya da Teslim İl + İlçe girin."
         );
       }
 

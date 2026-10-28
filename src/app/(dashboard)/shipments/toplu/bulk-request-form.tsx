@@ -31,6 +31,11 @@ export function BulkRequestForm() {
           Şablondaki &quot;Açıklama&quot; sayfası her kolonu anlatır. Örnek
           satırı silip kendi taleplerinizi girin.
         </p>
+        <p className="text-muted-foreground text-xs">
+          <b>Teslim noktası:</b> ya <b>Cariler</b> ekranında kayıtlı ünvanı{" "}
+          <b>birebir</b> yazın, ya da <b>Cari Ünvanı</b>&apos;nı boş bırakıp{" "}
+          <b>Teslim İl + İlçe</b>&apos;yi doldurun.
+        </p>
       </div>
 
       <form action={formAction} className="flex flex-col gap-3">
