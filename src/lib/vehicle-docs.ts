@@ -63,6 +63,7 @@ export type VehicleDocFields = {
   insurancePolicyNumber: string | null;
   inspectionExpiry: Date | string | null;
   insuranceExpiry: Date | string | null;
+  registrationPhotoUrl?: string | null;
 };
 
 const DOC_FIELD_LABELS: { key: keyof VehicleDocFields; label: string }[] = [
@@ -70,6 +71,7 @@ const DOC_FIELD_LABELS: { key: keyof VehicleDocFields; label: string }[] = [
   { key: "insurancePolicyNumber", label: "Trafik Sigortası Poliçe No" },
   { key: "inspectionExpiry", label: "Muayene Bitiş" },
   { key: "insuranceExpiry", label: "Sigorta Bitiş" },
+  { key: "registrationPhotoUrl", label: "Ruhsat Görseli" },
 ];
 
 export function vehicleMissingDocFields(vehicle: VehicleDocFields): string[] {

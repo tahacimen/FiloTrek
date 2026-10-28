@@ -4,6 +4,7 @@ import type { TenantContext } from "@/core/shared/tenant-context";
 import { NotFoundError, ValidationError } from "@/core/shared/errors";
 import * as vehicleRepository from "@/core/vehicle/vehicle-repository";
 import { vehicleInputSchema } from "@/lib/validation/vehicle";
+import { saveUploadedPhoto } from "@/lib/file-storage";
 import { CompanyType, VehicleStatus } from "@/generated/prisma/client";
 
 export async function listVehicles(
@@ -21,9 +22,22 @@ export async function getVehicle(ctx: TenantContext, vehicleId: string) {
   return vehicle;
 }
 
-export async function createVehicle(ctx: TenantContext, rawInput: unknown) {
+export async function createVehicle(
+  ctx: TenantContext,
+  rawInput: unknown,
+  registrationPhoto?: File
+) {
   requireCompanyType(ctx, CompanyType.SUPPLIER);
   const input = vehicleInputSchema.parse(rawInput);
+
+  // A2: the ruhsat photo is mandatory when adding a new vehicle. Checked for
+  // presence here (before any DB write); its format/size are validated by
+  // saveUploadedPhoto below.
+  const hasPhoto =
+    registrationPhoto instanceof File && registrationPhoto.size > 0;
+  if (!hasPhoto) {
+    throw new ValidationError("Ruhsat fotoğrafı yüklemek zorunludur.");
+  }
 
   const existing = await vehicleRepository.findVehicleByPlate(input.plate);
   if (existing) {
@@ -32,13 +46,23 @@ export async function createVehicle(ctx: TenantContext, rawInput: unknown) {
     );
   }
 
-  return vehicleRepository.createVehicleRecord(ctx, input);
+  const vehicle = await vehicleRepository.createVehicleRecord(ctx, input);
+  try {
+    const photoUrl = await saveUploadedPhoto(registrationPhoto!, vehicle.id);
+    await vehicleRepository.setVehicleRegistrationPhoto(ctx, vehicle.id, photoUrl);
+    return { ...vehicle, registrationPhotoUrl: photoUrl };
+  } catch (error) {
+    // Don't leave a vehicle without its mandatory photo — roll back the row.
+    await vehicleRepository.deleteVehicleRecord(ctx, vehicle.id).catch(() => {});
+    throw error;
+  }
 }
 
 export async function updateVehicle(
   ctx: TenantContext,
   vehicleId: string,
-  rawInput: unknown
+  rawInput: unknown,
+  registrationPhoto?: File
 ) {
   requireCompanyType(ctx, CompanyType.SUPPLIER);
   const input = vehicleInputSchema.parse(rawInput);
@@ -56,6 +80,13 @@ export async function updateVehicle(
   }
 
   await vehicleRepository.updateVehicleRecord(ctx, vehicleId, input);
+
+  // A2: on edit the photo is optional — only replace it when a new one is
+  // actually attached, keeping the existing one otherwise.
+  if (registrationPhoto instanceof File && registrationPhoto.size > 0) {
+    const photoUrl = await saveUploadedPhoto(registrationPhoto, vehicleId);
+    await vehicleRepository.setVehicleRegistrationPhoto(ctx, vehicleId, photoUrl);
+  }
 }
 
 export async function deleteVehicle(ctx: TenantContext, vehicleId: string) {

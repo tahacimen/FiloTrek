@@ -396,6 +396,11 @@ model Vehicle {
   insurancePolicyNumber String?   @map("insurance_policy_number")
   inspectionExpiry      DateTime? @map("inspection_expiry")
   insuranceExpiry       DateTime? @map("insurance_expiry")
+  // A2: ruhsat (registration) document photo — mandatory on create, stored in
+  // persistent storage (src/lib/file-storage.ts), served via the authenticated
+  // /api/vehicle-docs route. Nullable so pre-existing vehicles aren't blocked;
+  // they are flagged "ruhsat görseli eksik" instead (see src/lib/vehicle-docs.ts).
+  registrationPhotoUrl  String?   @map("registration_photo_url")
   createdAt       DateTime       @default(now()) @map("created_at")
   updatedAt       DateTime       @updatedAt @map("updated_at")
 

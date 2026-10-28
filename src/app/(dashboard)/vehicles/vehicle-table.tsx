@@ -126,26 +126,38 @@ export function VehicleTable({ vehicles }: { vehicles: SerializableVehicle[] }) 
               </Badge>
             </TableCell>
             <TableCell>
-              {(() => {
-                const missing = vehicleMissingDocFields(vehicle);
-                if (missing.length > 0) {
+              <div className="flex flex-col items-start gap-1">
+                {(() => {
+                  const missing = vehicleMissingDocFields(vehicle);
+                  if (missing.length > 0) {
+                    return (
+                      <Badge
+                        variant="destructive"
+                        className="whitespace-nowrap"
+                        title={`Eksik: ${missing.join(", ")}`}
+                      >
+                        Belge eksik ({missing.length})
+                      </Badge>
+                    );
+                  }
                   return (
-                    <Badge
-                      variant="destructive"
-                      className="whitespace-nowrap"
-                      title={`Eksik: ${missing.join(", ")}`}
-                    >
-                      Belge eksik ({missing.length})
-                    </Badge>
+                    <>
+                      <DocBadge label="Muayene" date={vehicle.inspectionExpiry} />
+                      <DocBadge label="Sigorta" date={vehicle.insuranceExpiry} />
+                    </>
                   );
-                }
-                return (
-                  <div className="flex flex-col items-start gap-1">
-                    <DocBadge label="Muayene" date={vehicle.inspectionExpiry} />
-                    <DocBadge label="Sigorta" date={vehicle.insuranceExpiry} />
-                  </div>
-                );
-              })()}
+                })()}
+                {vehicle.registrationPhotoUrl && (
+                  <a
+                    href={`/api/vehicle-docs/${vehicle.registrationPhotoUrl}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-primary text-xs underline underline-offset-2"
+                  >
+                    Ruhsatı Görüntüle
+                  </a>
+                )}
+              </div>
             </TableCell>
             <TableCell>
               <div className="flex items-center justify-end gap-1">

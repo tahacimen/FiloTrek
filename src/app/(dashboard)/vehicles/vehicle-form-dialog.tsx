@@ -214,6 +214,29 @@ export function VehicleFormDialog({
                 />
               </div>
             </div>
+
+            <div className="mt-4 flex flex-col gap-2">
+              <Label htmlFor="registrationPhoto">
+                Ruhsat Fotoğrafı{isEdit ? " (değiştirmek için seçin)" : ""}
+              </Label>
+              <Input
+                id="registrationPhoto"
+                name="registrationPhoto"
+                type="file"
+                accept="image/*"
+                required={!isEdit}
+              />
+              {isEdit && vehicle?.registrationPhotoUrl && (
+                <a
+                  href={`/api/vehicle-docs/${vehicle.registrationPhotoUrl}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-primary w-fit text-sm underline underline-offset-2"
+                >
+                  Mevcut ruhsatı görüntüle
+                </a>
+              )}
+            </div>
           </div>
           {state?.error && (
             <p className="text-sm text-destructive" role="alert">

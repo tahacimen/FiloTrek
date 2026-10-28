@@ -50,6 +50,18 @@ export function deleteVehicleRecord(ctx: TenantContext, vehicleId: string) {
   });
 }
 
+/** A2: set the vehicle's ruhsat photo path (after it's been stored). */
+export function setVehicleRegistrationPhoto(
+  ctx: TenantContext,
+  vehicleId: string,
+  url: string
+) {
+  return prisma.vehicle.updateMany({
+    where: { id: vehicleId, companyId: ctx.companyId },
+    data: { registrationPhotoUrl: url },
+  });
+}
+
 export function countVehiclesByStatus(ctx: TenantContext) {
   return prisma.vehicle.groupBy({
     by: ["status"],

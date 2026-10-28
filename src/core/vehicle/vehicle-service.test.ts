@@ -6,8 +6,12 @@ import { ValidationError } from "@/core/shared/errors";
 import {
   cleanupCompanies,
   createSupplierContext,
+  createTestPhotoFile,
   createTestVehicle,
 } from "@/test/fixtures";
+
+/** A2: ruhsat photo is mandatory on create — a reusable valid upload. */
+const ruhsat = () => createTestPhotoFile("ruhsat.jpg");
 
 describe("vehicle-service", () => {
   const companyIds: string[] = [];
@@ -28,7 +32,7 @@ describe("vehicle-service", () => {
       insurancePolicyNumber: "POL9988",
       inspectionExpiry: "2027-03-01",
       insuranceExpiry: "2027-01-15",
-    });
+    }, ruhsat());
     expect(created.plate).toBe("34 SVC 001");
     expect(created.tonnageCapacity.toNumber()).toBe(20);
 
@@ -41,7 +45,7 @@ describe("vehicle-service", () => {
       insurancePolicyNumber: "POL9988",
       inspectionExpiry: "2027-03-01",
       insuranceExpiry: "2027-01-15",
-    });
+    }, ruhsat());
     const edited = await vehicleService.getVehicle(ctx, created.id);
     expect(edited.bedType).toBe("FRIGORIFIK");
     expect(edited.tonnageCapacity.toNumber()).toBe(22.5);
@@ -63,7 +67,7 @@ describe("vehicle-service", () => {
       insurancePolicyNumber: "POL9988",
       inspectionExpiry: "2027-03-01",
       insuranceExpiry: "2027-01-15",
-    });
+    }, ruhsat());
     expect(created.registrationNumber).toBe("AB123456");
     expect(created.insurancePolicyNumber).toBe("POL9988");
     expect(created.inspectionExpiry?.toISOString().slice(0, 10)).toBe("2027-03-01");
@@ -110,6 +114,24 @@ describe("vehicle-service", () => {
         insurancePolicyNumber: "POL9988",
         inspectionExpiry: "2027-03-01",
         insuranceExpiry: "2027-01-15",
+      }, ruhsat())
+    ).rejects.toThrow(ValidationError);
+  });
+
+  it("rejects creating a vehicle without a ruhsat photo (A2)", async () => {
+    const ctx = await createSupplierContext();
+    companyIds.push(ctx.companyId);
+
+    await expect(
+      vehicleService.createVehicle(ctx, {
+        plate: "34 NP 01",
+        vehicleType: "KAMYON",
+        bedType: "ACIK_KASA",
+        tonnageCapacity: "10",
+        registrationNumber: "AB123456",
+        insurancePolicyNumber: "POL9988",
+        inspectionExpiry: "2027-03-01",
+        insuranceExpiry: "2027-01-15",
       })
     ).rejects.toThrow(ValidationError);
   });
@@ -133,18 +155,19 @@ describe("vehicle-service", () => {
     ).rejects.toThrow();
 
     // TR: a valid plate is accepted and the country is stored.
-    const tr = await vehicleService.createVehicle(ctx, {
-      ...docs,
-      plate: "34 ABC 123",
-    });
+    const tr = await vehicleService.createVehicle(
+      ctx,
+      { ...docs, plate: "34 ABC 123" },
+      ruhsat()
+    );
     expect(tr.country).toBe("TR");
 
     // Foreign country: lenient rule accepts a non-TR-format plate.
-    const de = await vehicleService.createVehicle(ctx, {
-      ...docs,
-      country: "DE",
-      plate: "B AB 1234",
-    });
+    const de = await vehicleService.createVehicle(
+      ctx,
+      { ...docs, country: "DE", plate: "B AB 1234" },
+      ruhsat()
+    );
     expect(de.country).toBe("DE");
   });
 

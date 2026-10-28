@@ -25,13 +25,22 @@ function readVehicleForm(formData: FormData) {
   };
 }
 
+function readVehiclePhoto(formData: FormData): File | undefined {
+  const raw = formData.get("registrationPhoto");
+  return raw instanceof File ? raw : undefined;
+}
+
 export async function createVehicleAction(
   _prevState: VehicleFormState,
   formData: FormData
 ): Promise<VehicleFormState> {
   try {
     const ctx = await requireTenantContext();
-    await vehicleService.createVehicle(ctx, readVehicleForm(formData));
+    await vehicleService.createVehicle(
+      ctx,
+      readVehicleForm(formData),
+      readVehiclePhoto(formData)
+    );
   } catch (error) {
     return { error: toActionErrorMessage(error) };
   }
@@ -47,7 +56,12 @@ export async function updateVehicleAction(
 ): Promise<VehicleFormState> {
   try {
     const ctx = await requireTenantContext();
-    await vehicleService.updateVehicle(ctx, vehicleId, readVehicleForm(formData));
+    await vehicleService.updateVehicle(
+      ctx,
+      vehicleId,
+      readVehicleForm(formData),
+      readVehiclePhoto(formData)
+    );
   } catch (error) {
     return { error: toActionErrorMessage(error) };
   }
