@@ -220,6 +220,8 @@ export async function createShipmentRequest(
     ...input,
     customerCompanyId: ctx.companyId,
     supplierCompanyId: supplier?.id ?? null,
+    // Spot/marketplace when no specific supplier was chosen ("Pazara Aç").
+    fromMarketplace: !supplier,
     ...(contractPricing ?? {}),
   });
 

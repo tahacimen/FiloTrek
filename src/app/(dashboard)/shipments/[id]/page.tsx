@@ -156,6 +156,11 @@ export default async function ShipmentDetailPage({
           </p>
         </div>
         <div className="flex items-center gap-2">
+          {shipment.fromMarketplace && (
+            <Badge variant="secondary" className="text-sm">
+              Pazaryeri
+            </Badge>
+          )}
           {shipment.isDangerousGoods && (
             <Badge variant="destructive" className="text-sm">
               Tehlikeli Madde

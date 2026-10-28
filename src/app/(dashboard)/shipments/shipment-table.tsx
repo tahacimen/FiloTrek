@@ -78,8 +78,15 @@ export function ShipmentTable({
                 <span>
                   {shipment.originAddress} → {shipment.destinationAddress}
                 </span>
-                {(shipment.isDangerousGoods || shipment.requiresColdChain) && (
-                  <div className="flex gap-1.5">
+                {(shipment.fromMarketplace ||
+                  shipment.isDangerousGoods ||
+                  shipment.requiresColdChain) && (
+                  <div className="flex flex-wrap gap-1.5">
+                    {shipment.fromMarketplace && (
+                      <Badge variant="secondary" className="text-[11px]">
+                        Pazaryeri
+                      </Badge>
+                    )}
                     {shipment.isDangerousGoods && (
                       <Badge variant="destructive" className="text-[11px]">
                         Tehlikeli Madde

@@ -597,6 +597,11 @@ model Shipment {
   customerCompany          Company        @relation("CustomerShipments", fields: [customerCompanyId], references: [id])
   supplierCompanyId        String?        @map("supplier_company_id") @db.Uuid
   supplierCompany          Company?       @relation("SupplierShipments", fields: [supplierCompanyId], references: [id])
+  // True when the shipment was opened to the marketplace ("Pazara Aç") rather
+  // than sent to a specific supplier — i.e. spot-sourced. Set at creation and
+  // kept even after a bid is accepted (which fills supplierCompanyId), so the
+  // list can still badge it as a spot/marketplace job.
+  fromMarketplace          Boolean        @default(false) @map("from_marketplace")
   originAddress            String         @map("origin_address")
   originMapsUrl            String?        @map("origin_maps_url")
   destinationAddress       String         @map("destination_address")

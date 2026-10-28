@@ -15,6 +15,12 @@ function readVehicleForm(formData: FormData) {
     vehicleType: formData.get("vehicleType"),
     bedType: formData.get("bedType"),
     tonnageCapacity: formData.get("tonnageCapacity"),
+    // N1: these are now required — they must be read from the form, not left
+    // out (otherwise every create/edit fails validation with empty docs).
+    registrationNumber: formData.get("registrationNumber"),
+    insurancePolicyNumber: formData.get("insurancePolicyNumber"),
+    inspectionExpiry: formData.get("inspectionExpiry"),
+    insuranceExpiry: formData.get("insuranceExpiry"),
   };
 }
 

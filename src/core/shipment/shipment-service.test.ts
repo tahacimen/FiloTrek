@@ -116,6 +116,21 @@ describe("shipment-service: creation (supplier + customer branches)", () => {
     expect(shipment.supplierCompanyId).toBe(supplierCtx.companyId);
     expect(shipment.customerCompanyId).not.toBe(shipment.supplierCompanyId);
     expect(shipment.status).toBe("PENDING");
+    // A direct request to a chosen supplier is NOT a marketplace/spot job.
+    expect(shipment.fromMarketplace).toBe(false);
+  });
+
+  it("createShipmentRequest: flags a marketplace (spot) request opened with no supplier", async () => {
+    const customerCtx = await createCustomerContext();
+    companyIds.push(customerCtx.companyId);
+
+    const shipment = await shipmentService.createShipmentRequest(customerCtx, {
+      ...baseFields,
+      supplierCompanyId: undefined,
+    });
+
+    expect(shipment.supplierCompanyId).toBeNull();
+    expect(shipment.fromMarketplace).toBe(true);
   });
 
   it("createShipmentRequest: stores an optional documentTrackingNumber", async () => {

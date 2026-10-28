@@ -161,6 +161,8 @@ type CreateShipmentRecordInput = {
   // and marketplace-service.ts::acceptBid, which is the only thing that
   // ever sets this after the fact.
   supplierCompanyId: string | null;
+  // True when opened to the marketplace (spot). Set by createShipmentRequest.
+  fromMarketplace?: boolean;
   originAddress: string;
   originMapsUrl?: string;
   destinationAddress: string;
