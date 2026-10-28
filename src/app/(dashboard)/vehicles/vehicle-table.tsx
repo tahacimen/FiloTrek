@@ -36,6 +36,7 @@ import {
   docStatusLabel,
   vehicleMissingDocFields,
 } from "@/lib/vehicle-docs";
+import { plateWithFlag } from "@/lib/countries";
 import type { SerializableVehicle } from "@/app/(dashboard)/vehicles/types";
 
 /** Compact badge for a single tracked document's expiry; null when unset. */
@@ -113,7 +114,9 @@ export function VehicleTable({ vehicles }: { vehicles: SerializableVehicle[] }) 
       <TableBody>
         {vehicles.map((vehicle) => (
           <TableRow key={vehicle.id}>
-            <TableCell className="font-medium">{vehicle.plate}</TableCell>
+            <TableCell className="font-medium">
+              {plateWithFlag(vehicle.country, vehicle.plate)}
+            </TableCell>
             <TableCell>{vehicleTypeLabels[vehicle.vehicleType]}</TableCell>
             <TableCell>{vehicleBedTypeLabels[vehicle.bedType]}</TableCell>
             <TableCell>{vehicle.tonnageCapacity.toString()} ton</TableCell>

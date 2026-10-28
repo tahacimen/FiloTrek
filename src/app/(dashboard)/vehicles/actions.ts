@@ -11,6 +11,7 @@ export type VehicleFormState = { error?: string } | undefined;
 
 function readVehicleForm(formData: FormData) {
   return {
+    country: formData.get("country"),
     plate: formData.get("plate"),
     vehicleType: formData.get("vehicleType"),
     bedType: formData.get("bedType"),

@@ -114,6 +114,40 @@ describe("vehicle-service", () => {
     ).rejects.toThrow(ValidationError);
   });
 
+  it("validates the plate against the chosen country (A1)", async () => {
+    const ctx = await createSupplierContext();
+    companyIds.push(ctx.companyId);
+    const docs = {
+      registrationNumber: "AB123456",
+      insurancePolicyNumber: "POL9988",
+      inspectionExpiry: "2027-03-01",
+      insuranceExpiry: "2027-01-15",
+      vehicleType: "KAMYON" as const,
+      bedType: "ACIK_KASA" as const,
+      tonnageCapacity: "10",
+    };
+
+    // TR default: a malformed Turkish plate is rejected (schema ZodError).
+    await expect(
+      vehicleService.createVehicle(ctx, { ...docs, plate: "ABCD" })
+    ).rejects.toThrow();
+
+    // TR: a valid plate is accepted and the country is stored.
+    const tr = await vehicleService.createVehicle(ctx, {
+      ...docs,
+      plate: "34 ABC 123",
+    });
+    expect(tr.country).toBe("TR");
+
+    // Foreign country: lenient rule accepts a non-TR-format plate.
+    const de = await vehicleService.createVehicle(ctx, {
+      ...docs,
+      country: "DE",
+      plate: "B AB 1234",
+    });
+    expect(de.country).toBe("DE");
+  });
+
   it("allows maintenance for an available vehicle and returns it to available", async () => {
     const ctx = await createSupplierContext();
     companyIds.push(ctx.companyId);

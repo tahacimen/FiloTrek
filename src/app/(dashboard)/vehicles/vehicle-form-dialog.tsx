@@ -28,6 +28,7 @@ import {
 } from "@/components/ui/select";
 import { vehicleBedTypeLabels, vehicleTypeLabels } from "@/lib/labels";
 import { confirmSubmit } from "@/lib/confirm-submit";
+import { COUNTRIES, DEFAULT_COUNTRY } from "@/lib/countries";
 import type { SerializableVehicle } from "@/app/(dashboard)/vehicles/types";
 
 /** Format a date (or ISO string) as YYYY-MM-DD for an <input type="date">. */
@@ -52,6 +53,7 @@ export function VehicleFormDialog({
     VehicleFormState,
     FormData
   >(action, undefined);
+  const [country, setCountry] = useState(vehicle?.country ?? DEFAULT_COUNTRY);
 
   // Close the dialog on a successful submission. Adjusted during render
   // (React's documented pattern for this) rather than in a useEffect, since
@@ -92,15 +94,33 @@ export function VehicleFormDialog({
           )}
           className="flex flex-col gap-4"
         >
-          <div className="flex flex-col gap-2">
-            <Label htmlFor="plate">Plaka</Label>
-            <Input
-              id="plate"
-              name="plate"
-              required
-              defaultValue={vehicle?.plate}
-              placeholder="34 ABC 123"
-            />
+          <div className="grid grid-cols-[minmax(0,9rem)_1fr] gap-4">
+            <div className="flex flex-col gap-2">
+              <Label>Ülke</Label>
+              <input type="hidden" name="country" value={country} />
+              <Select value={country} onValueChange={setCountry}>
+                <SelectTrigger className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {COUNTRIES.map((c) => (
+                    <SelectItem key={c.code} value={c.code}>
+                      {c.flag} {c.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="plate">Plaka</Label>
+              <Input
+                id="plate"
+                name="plate"
+                required
+                defaultValue={vehicle?.plate}
+                placeholder={country === "TR" ? "34 ABC 123" : "Plaka"}
+              />
+            </div>
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div className="flex flex-col gap-2">

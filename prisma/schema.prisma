@@ -380,6 +380,9 @@ model Vehicle {
   companyId       String         @map("company_id") @db.Uuid
   company         Company        @relation(fields: [companyId], references: [id], onDelete: Cascade)
   plate           String         @unique
+  // A1: registration country (ISO code, e.g. "TR"). Drives the plate-format
+  // rule — strict for TR, lenient for others (see src/lib/countries.ts).
+  country         String         @default("TR")
   vehicleType     VehicleType    @map("vehicle_type")
   bedType         VehicleBedType @map("bed_type")
   tonnageCapacity Decimal        @map("tonnage_capacity") @db.Decimal(10, 2)
