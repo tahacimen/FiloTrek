@@ -9,7 +9,10 @@ import {
   updateShipmentLocation,
   uploadWaybillAsDriver,
 } from "@/core/shipment/shipment-status";
-import { confirmWaybill } from "@/core/shipment/shipment-service";
+import {
+  confirmWaybill,
+  uploadWaybillAsSupplier,
+} from "@/core/shipment/shipment-service";
 import { setVehicleMaintenance } from "@/core/vehicle/vehicle-status";
 import * as companyRepository from "@/core/company/company-repository";
 import {
@@ -615,6 +618,40 @@ describe("advanceShipmentStatusAsDriver", () => {
       where: { id: shipment.id },
     });
     expect(untouched.status).toBe(ShipmentStatus.COMPLETED);
+  });
+
+  it("lets the supplier upload the waybill themselves (auto-confirmed) when the driver can't (G3)", async () => {
+    const { ctx, driverCtx, shipment } = await setupHeadingToPickupShipment();
+    for (const targetStatus of [
+      ShipmentStatus.LOADING,
+      ShipmentStatus.AT_PICKUP_GATE,
+    ]) {
+      await advanceShipmentStatusAsDriver(driverCtx, { shipmentId: shipment.id, targetStatus });
+    }
+    await advanceShipmentStatusAsDriver(driverCtx, {
+      shipmentId: shipment.id,
+      targetStatus: ShipmentStatus.EN_ROUTE,
+      photo: createTestPhotoFile(),
+    });
+    await advanceShipmentStatusAsDriver(driverCtx, {
+      shipmentId: shipment.id,
+      targetStatus: ShipmentStatus.AT_DELIVERY_POINT,
+    });
+
+    // Supplier uploads the irsaliye themselves — auto-confirmed in one step.
+    await uploadWaybillAsSupplier(ctx, shipment.id, createTestPhotoFile("sup.jpg"));
+    const stamped = await prisma.shipment.findUniqueOrThrow({
+      where: { id: shipment.id },
+    });
+    expect(stamped.waybillPhotoUrl).not.toBeNull();
+    expect(stamped.waybillConfirmedAt).not.toBeNull();
+
+    // The dispatcher can now complete it (no driver completion needed).
+    const completed = await advanceShipmentStatus(ctx, {
+      shipmentId: shipment.id,
+      targetStatus: ShipmentStatus.COMPLETED,
+    });
+    expect(completed.status).toBe(ShipmentStatus.COMPLETED);
   });
 
   it("accepts AT_DELIVERY_POINT -> COMPLETED with a real photo, recording it as the delivery (POD) photo distinct from the departure one", async () => {

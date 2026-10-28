@@ -118,6 +118,28 @@ export async function createShipmentRequestAction(
   redirect(`/shipments/${shipmentId}`);
 }
 
+/** G3: supplier uploads the stamped waybill themselves (driver has no login). */
+export async function uploadWaybillSupplierAction(
+  shipmentId: string,
+  _prevState: ShipmentFormState,
+  formData: FormData
+): Promise<ShipmentFormState> {
+  try {
+    const ctx = await requireTenantContext();
+    const raw = formData.get("photo");
+    await shipmentService.uploadWaybillAsSupplier(
+      ctx,
+      shipmentId,
+      raw instanceof File ? raw : undefined
+    );
+  } catch (error) {
+    return { error: toActionErrorMessage(error) };
+  }
+  revalidatePath(`/shipments/${shipmentId}`);
+  revalidatePath("/shipments");
+  return undefined;
+}
+
 /** G3: supplier confirms the driver-uploaded stamped waybill (irsaliye). */
 export async function confirmWaybillAction(
   shipmentId: string

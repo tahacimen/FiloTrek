@@ -9,6 +9,7 @@ import * as driverRepository from "@/core/driver/driver-repository";
 import * as notificationService from "@/core/notification/notification-service";
 import { getShipmentProgressPercent } from "@/core/shipment/shipment-transitions";
 import { findContractPrice } from "@/core/contract/contract-service";
+import { saveUploadedPhoto } from "@/lib/file-storage";
 import { generateSecureToken } from "@/lib/tokens";
 import { z } from "zod";
 import {
@@ -293,6 +294,45 @@ export async function ensureTrackingToken(
   // the write a no-op for the loser), so both callers get the winning token.
   const refreshed = await shipmentRepository.getShipmentForTenant(ctx, shipmentId);
   return refreshed?.trackingToken ?? token;
+}
+
+/**
+ * G3: the supplier uploads the stamped waybill (irsaliye) themselves — for the
+ * common case where the driver has no app login to upload it. Since the
+ * supplier uploading IS them vouching for the document, it is auto-confirmed in
+ * the same step, so the shipment can be completed without a separate confirm.
+ * Supplier-only, own shipment, only at the delivery point.
+ */
+export async function uploadWaybillAsSupplier(
+  ctx: TenantContext,
+  shipmentId: string,
+  photo?: File
+) {
+  requireCompanyType(ctx, CompanyType.SUPPLIER);
+  const hasRealPhoto = photo instanceof File && photo.size > 0;
+  if (!hasRealPhoto) {
+    throw new ValidationError(
+      "Lütfen kaşeli-imzalı irsaliyenin fotoğrafını ekleyin."
+    );
+  }
+  const shipment = await shipmentRepository.getShipmentForTenant(ctx, shipmentId);
+  if (!shipment || shipment.supplierCompanyId !== ctx.companyId) {
+    throw new NotFoundError("Sefer bulunamadı.");
+  }
+  if (shipment.status !== ShipmentStatus.AT_DELIVERY_POINT) {
+    throw new ValidationError(
+      "İrsaliye yalnızca teslimat noktasına varıldığında yüklenebilir."
+    );
+  }
+  const photoUrl = await saveUploadedPhoto(photo!, shipment.id);
+  await prisma.shipment.updateMany({
+    where: { id: shipmentId, supplierCompanyId: ctx.companyId },
+    data: {
+      waybillPhotoUrl: photoUrl,
+      waybillConfirmedAt: new Date(),
+      waybillConfirmedByUserId: ctx.userId,
+    },
+  });
 }
 
 /**
