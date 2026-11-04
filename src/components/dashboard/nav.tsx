@@ -16,6 +16,7 @@ import {
   HandCoins,
   Contact,
   FileText,
+  ReceiptText,
 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
@@ -28,6 +29,7 @@ const supplierNavItems = [
   { href: "/assign", label: "Atama", icon: ClipboardList },
   { href: "/contracts", label: "Sözleşmeler", icon: FileText },
   { href: "/pazaryeri", label: "Pazaryeri", icon: HandCoins },
+  { href: "/tekliflerim", label: "Tekliflerim", icon: ReceiptText },
 ];
 
 const customerNavItems = [

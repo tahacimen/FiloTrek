@@ -55,6 +55,12 @@ export async function submitBid(
   return bid;
 }
 
+/** P2: a supplier's own bid history across every marketplace shipment they bid on, for the "Tekliflerim" report. */
+export async function listMyBids(ctx: TenantContext) {
+  requireCompanyType(ctx, CompanyType.SUPPLIER);
+  return marketplaceRepository.listBidsForSupplier(ctx.companyId);
+}
+
 /** Owner-scoped — only the customer who owns the shipment can see its bids. */
 export async function listBidsForShipment(ctx: TenantContext, shipmentId: string) {
   requireCompanyType(ctx, CompanyType.CUSTOMER);

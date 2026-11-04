@@ -9,6 +9,7 @@ import {
   InvitationRole,
   InvitationStatus,
   PaymentStatus,
+  ShipmentBidStatus,
   ShipmentStatus,
   SignupRequestStatus,
   VehicleBedType,
@@ -27,6 +28,24 @@ export const paymentStatusBadgeVariant: Record<
 > = {
   [PaymentStatus.PENDING]: "warning",
   [PaymentStatus.PAID]: "success",
+};
+
+/** P2: a supplier's own view of their bid outcomes on the marketplace. */
+export const shipmentBidStatusLabels: Record<ShipmentBidStatus, string> = {
+  [ShipmentBidStatus.PENDING]: "Bekliyor",
+  [ShipmentBidStatus.ACCEPTED]: "Kazandınız",
+  [ShipmentBidStatus.REJECTED]: "Kaybettiniz",
+  [ShipmentBidStatus.WITHDRAWN]: "Geri Çekildi",
+};
+
+export const shipmentBidStatusBadgeVariant: Record<
+  ShipmentBidStatus,
+  "default" | "secondary" | "outline" | "destructive" | "success" | "warning"
+> = {
+  [ShipmentBidStatus.PENDING]: "warning",
+  [ShipmentBidStatus.ACCEPTED]: "success",
+  [ShipmentBidStatus.REJECTED]: "destructive",
+  [ShipmentBidStatus.WITHDRAWN]: "secondary",
 };
 
 export const vehicleTypeLabels: Record<VehicleType, string> = {

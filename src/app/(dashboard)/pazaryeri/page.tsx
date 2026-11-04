@@ -1,7 +1,10 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
+import { ReceiptText } from "lucide-react";
 
 import { requireTenantContext } from "@/core/shared/tenant-context";
 import * as marketplaceService from "@/core/marketplace/marketplace-service";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { BidFormDialog } from "@/app/(dashboard)/pazaryeri/bid-form-dialog";
 
@@ -15,12 +18,20 @@ export default async function PazaryeriPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Pazaryeri</h1>
-        <p className="text-muted-foreground text-sm">
-          Müşterilerin belirli bir tedarikçi seçmeden pazara açtığı seferler —
-          teklif verin, müşteri en uygun teklifi kabul etsin.
-        </p>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight">Pazaryeri</h1>
+          <p className="text-muted-foreground text-sm">
+            Müşterilerin belirli bir tedarikçi seçmeden pazara açtığı seferler —
+            teklif verin, müşteri en uygun teklifi kabul etsin.
+          </p>
+        </div>
+        <Button asChild variant="outline">
+          <Link href="/tekliflerim">
+            <ReceiptText />
+            Tekliflerim
+          </Link>
+        </Button>
       </div>
       <Card>
         <CardHeader>
