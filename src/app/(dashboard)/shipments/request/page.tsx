@@ -1,14 +1,11 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
-import { Layers } from "lucide-react";
 
 import { requireTenantContext } from "@/core/shared/tenant-context";
 import { listSupplierCompanies } from "@/core/company/company-repository";
 import { listWarehouses } from "@/core/warehouse/warehouse-service";
 import { listConsignees } from "@/core/consignee/consignee-service";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { RequestShipmentForm } from "@/app/(dashboard)/shipments/request/request-shipment-form";
+import { RequestShipmentGrid } from "@/app/(dashboard)/shipments/request/request-shipment-grid";
 
 export default async function RequestShipmentPage() {
   const ctx = await requireTenantContext();
@@ -37,28 +34,22 @@ export default async function RequestShipmentPage() {
   }));
 
   return (
-    <div className="mx-auto flex max-w-2xl flex-col gap-6">
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Araç Çağır</h1>
-          <p className="text-muted-foreground text-sm">
-            Bir tedarikçi seçip yük bilgilerinizi girin — talebiniz seçtiğiniz
-            tedarikçinin bildirimlerine düşer.
-          </p>
-        </div>
-        <Button asChild variant="outline">
-          <Link href="/shipments/toplu">
-            <Layers />
-            Toplu Talep (Excel)
-          </Link>
-        </Button>
+    <div className="mx-auto flex max-w-5xl flex-col gap-6">
+      <div>
+        <h1 className="text-2xl font-semibold tracking-tight">Araç Çağır</h1>
+        <p className="text-muted-foreground text-sm">
+          Her satır bir taleptir. Tek bir talep için bir satır doldurun ya da
+          birden fazla satır ekleyip seçtiklerinizi topluca oluşturun. Tedarikçi
+          seçerseniz talep ona iletilir; &quot;Pazara Aç&quot; derseniz
+          tedarikçilerden teklif toplanır.
+        </p>
       </div>
       <Card>
         <CardHeader>
-          <CardTitle>Yük Bilgileri</CardTitle>
+          <CardTitle>Yük Talepleri</CardTitle>
         </CardHeader>
         <CardContent>
-          <RequestShipmentForm
+          <RequestShipmentGrid
             suppliers={suppliers}
             loadingPoints={loadingPoints}
             consignees={consignees}

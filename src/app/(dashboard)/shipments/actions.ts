@@ -119,6 +119,105 @@ export async function createShipmentRequestAction(
   redirect(`/shipments/${shipmentId}`);
 }
 
+/**
+ * M1: one row of the Excel-like "Araç Çağır" grid. The client resolves its
+ * dropdown picks (warehouse/cari) into final origin/destination strings, so
+ * the server just validates and creates. An empty supplierCompanyId means
+ * "Pazara Aç" (marketplace); a blank distanceKm is auto-computed per row.
+ */
+export type ShipmentRequestRow = {
+  supplierCompanyId?: string;
+  originAddress: string;
+  originMapsUrl?: string;
+  destinationAddress: string;
+  destinationMapsUrl?: string;
+  destinationProvince?: string;
+  destinationDistrict?: string;
+  tonnage: string;
+  distanceKm?: string;
+  latestLoadingAt?: string;
+  cargoDescription?: string;
+  documentTrackingNumber?: string;
+  isDangerousGoods?: boolean;
+  adrClass?: string;
+  requiresColdChain?: boolean;
+};
+
+export type BulkRequestResult = {
+  created: number;
+  errors: { row: number; message: string }[];
+};
+
+/**
+ * M1: create one shipment request per grid row, collecting per-row errors
+ * instead of failing the whole batch (same spirit as the old Excel import).
+ * Blank km is auto-computed per row (best-effort). Stays on the page (no
+ * redirect) so the grid can show the created/skipped summary.
+ */
+export async function createShipmentRequestsAction(
+  rows: ShipmentRequestRow[]
+): Promise<{ error: string } | BulkRequestResult> {
+  let ctx;
+  try {
+    ctx = await requireTenantContext();
+  } catch (error) {
+    return { error: toActionErrorMessage(error) };
+  }
+
+  const errors: { row: number; message: string }[] = [];
+  let created = 0;
+
+  for (let i = 0; i < rows.length; i++) {
+    const row = rows[i];
+    const rowNo = i + 1;
+    try {
+      let distanceKm = row.distanceKm?.trim() || "";
+      const parsed = Number(distanceKm.replace(",", "."));
+      if (!distanceKm || Number.isNaN(parsed) || parsed <= 0) {
+        const destQuery =
+          row.destinationProvince && row.destinationDistrict
+            ? `${row.destinationDistrict} ${row.destinationProvince}`
+            : row.destinationAddress;
+        const auto = await computeRoadDistanceKm(row.originAddress, destQuery);
+        if (auto == null) {
+          errors.push({
+            row: rowNo,
+            message: "Mesafe otomatik hesaplanamadı — 'Mesafe (km)' girin.",
+          });
+          continue;
+        }
+        distanceKm = String(auto);
+      }
+
+      await shipmentService.createShipmentRequest(ctx, {
+        supplierCompanyId: row.supplierCompanyId || undefined,
+        originAddress: row.originAddress,
+        originMapsUrl: row.originMapsUrl || undefined,
+        destinationAddress: row.destinationAddress,
+        destinationMapsUrl: row.destinationMapsUrl || undefined,
+        destinationProvince: row.destinationProvince || undefined,
+        destinationDistrict: row.destinationDistrict || undefined,
+        distanceKm,
+        tonnage: row.tonnage,
+        latestLoadingAt: row.latestLoadingAt || undefined,
+        cargoDescription: row.cargoDescription || undefined,
+        documentTrackingNumber: row.documentTrackingNumber || undefined,
+        isDangerousGoods: row.isDangerousGoods ?? false,
+        adrClass: row.adrClass || undefined,
+        requiresColdChain: row.requiresColdChain ?? false,
+      });
+      created += 1;
+    } catch (error) {
+      errors.push({ row: rowNo, message: toActionErrorMessage(error) });
+    }
+  }
+
+  revalidatePath("/shipments");
+  revalidatePath("/assign");
+  revalidatePath("/dashboard");
+  return { created, errors };
+}
+
 /** D3: supplier rolls the shipment one step back (driver advanced by mistake). */
 export async function revertShipmentStatusAction(
   shipmentId: string
