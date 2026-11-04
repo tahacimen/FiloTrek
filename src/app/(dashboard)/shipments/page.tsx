@@ -5,7 +5,7 @@ import { requireTenantContext } from "@/core/shared/tenant-context";
 import { listShipments } from "@/core/shipment/shipment-service";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ShipmentTable } from "@/app/(dashboard)/shipments/shipment-table";
+import { ShipmentList } from "@/app/(dashboard)/shipments/shipment-list";
 import { AutoRefresh } from "@/components/dashboard/auto-refresh";
 
 export default async function ShipmentsPage() {
@@ -48,7 +48,7 @@ export default async function ShipmentsPage() {
           <CardTitle>Tüm Seferler ({shipments.length})</CardTitle>
         </CardHeader>
         <CardContent>
-          <ShipmentTable
+          <ShipmentList
             shipments={shipments}
             viewerCompanyType={ctx.companyType}
           />

@@ -19,7 +19,7 @@ import {
 import { formatDateTime } from "@/lib/format";
 import type { Prisma } from "@/generated/prisma/client";
 
-type ShipmentRow = Prisma.ShipmentGetPayload<{
+export type ShipmentRow = Prisma.ShipmentGetPayload<{
   include: {
     customerCompany: { select: { id: true; name: true } };
     supplierCompany: { select: { id: true; name: true } };
@@ -31,14 +31,16 @@ type ShipmentRow = Prisma.ShipmentGetPayload<{
 export function ShipmentTable({
   shipments,
   viewerCompanyType,
+  emptyMessage = "Henüz sefer bulunmuyor.",
 }: {
   shipments: ShipmentRow[];
   viewerCompanyType: "SUPPLIER" | "CUSTOMER";
+  emptyMessage?: string;
 }) {
   if (shipments.length === 0) {
     return (
       <p className="text-muted-foreground py-10 text-center text-sm">
-        Henüz sefer bulunmuyor.
+        {emptyMessage}
       </p>
     );
   }
