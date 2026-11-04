@@ -128,6 +128,7 @@ export const dockReservationTypeLabels: Record<DockReservationType, string> = {
 };
 
 export const dockReservationStatusLabels: Record<DockReservationStatus, string> = {
+  [DockReservationStatus.REQUESTED]: "Şoför Talebi",
   [DockReservationStatus.CREATED]: "Oluşturuldu",
   [DockReservationStatus.VEHICLE_ARRIVED]: "Araç Geldi",
   [DockReservationStatus.COMPLETED]: "Tamamlandı",
@@ -138,6 +139,7 @@ export const dockReservationStatusBadgeVariant: Record<
   DockReservationStatus,
   "default" | "secondary" | "outline" | "destructive" | "success" | "warning"
 > = {
+  [DockReservationStatus.REQUESTED]: "warning",
   [DockReservationStatus.CREATED]: "default",
   [DockReservationStatus.VEHICLE_ARRIVED]: "warning",
   [DockReservationStatus.COMPLETED]: "success",

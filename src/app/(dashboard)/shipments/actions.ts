@@ -272,6 +272,64 @@ export async function createDockReservationForShipmentAction(
   return undefined;
 }
 
+/** D5: customer opens the dock calendar to the shipment's driver. */
+export async function enableDriverDockSelectionAction(
+  shipmentId: string
+): Promise<ShipmentFormState> {
+  try {
+    const ctx = await requireTenantContext();
+    await dockReservationService.enableDriverDockSelection(ctx, shipmentId);
+  } catch (error) {
+    return { error: toActionErrorMessage(error) };
+  }
+  revalidatePath(`/shipments/${shipmentId}`);
+  return undefined;
+}
+
+/** D5: customer withdraws the calendar before the driver has picked. */
+export async function withdrawDriverDockSelectionAction(
+  shipmentId: string
+): Promise<ShipmentFormState> {
+  try {
+    const ctx = await requireTenantContext();
+    await dockReservationService.withdrawDriverDockSelection(ctx, shipmentId);
+  } catch (error) {
+    return { error: toActionErrorMessage(error) };
+  }
+  revalidatePath(`/shipments/${shipmentId}`);
+  return undefined;
+}
+
+/** D5: customer approves the driver's requested slot (REQUESTED -> CREATED). */
+export async function approveDriverReservationAction(
+  shipmentId: string,
+  reservationId: string
+): Promise<ShipmentFormState> {
+  try {
+    const ctx = await requireTenantContext();
+    await dockReservationService.approveDriverReservation(ctx, reservationId);
+  } catch (error) {
+    return { error: toActionErrorMessage(error) };
+  }
+  revalidatePath(`/shipments/${shipmentId}`);
+  return undefined;
+}
+
+/** D5: customer rejects the driver's requested slot (REQUESTED -> CANCELLED). */
+export async function rejectDriverReservationAction(
+  shipmentId: string,
+  reservationId: string
+): Promise<ShipmentFormState> {
+  try {
+    const ctx = await requireTenantContext();
+    await dockReservationService.rejectDriverReservation(ctx, reservationId);
+  } catch (error) {
+    return { error: toActionErrorMessage(error) };
+  }
+  revalidatePath(`/shipments/${shipmentId}`);
+  return undefined;
+}
+
 export async function setPickupEtaAction(
   shipmentId: string,
   _prevState: ShipmentFormState,

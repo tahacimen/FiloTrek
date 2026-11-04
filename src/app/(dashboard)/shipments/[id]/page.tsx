@@ -369,6 +369,7 @@ export default async function ShipmentDetailPage({
         companyType={ctx.companyType}
         shipmentId={shipment.id}
         assignableDocks={assignableDocks}
+        driverSelectionEnabled={shipment.driverDockSelectionEnabled}
         vehicle={
           shipment.vehicle
             ? { plate: shipment.vehicle.plate, vehicleType: shipment.vehicle.vehicleType }
@@ -382,6 +383,7 @@ export default async function ShipmentDetailPage({
         reservation={
           dockReservation
             ? {
+                id: dockReservation.id,
                 warehouseId: dockReservation.dock.warehouse.id,
                 warehouseName: dockReservation.dock.warehouse.name,
                 warehouseAddress: dockReservation.dock.warehouse.address,

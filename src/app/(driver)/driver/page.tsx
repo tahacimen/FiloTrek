@@ -2,6 +2,11 @@ import { Navigation, Warehouse } from "lucide-react";
 
 import { requireDriverContext } from "@/core/shared/driver-context";
 import { listActiveShipmentsForDriver } from "@/core/shipment/shipment-service";
+import {
+  listDockOptionsForDriver,
+  type DriverDockOption,
+} from "@/core/warehouse/dock-reservation-service";
+import { DriverDockPicker } from "@/app/(driver)/driver/driver-dock-picker";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatDateTime } from "@/lib/format";
@@ -52,6 +57,26 @@ function NavigationLink({
 export default async function DriverPage() {
   const driverCtx = await requireDriverContext();
   const shipments = await listActiveShipmentsForDriver(driverCtx);
+
+  // D5: for shipments whose customer opened the dock calendar and that have no
+  // active reservation yet, load the customer's loading docks so the driver
+  // can self-pick a slot. listDockOptionsForDriver returns [] when ineligible.
+  const dockOptionsByShipment = new Map<string, DriverDockOption[]>();
+  await Promise.all(
+    shipments
+      .filter(
+        (s) =>
+          s.driverDockSelectionEnabled &&
+          s.status === "ASSIGNED" &&
+          s.dockReservations.length === 0
+      )
+      .map(async (s) => {
+        dockOptionsByShipment.set(
+          s.id,
+          await listDockOptionsForDriver(driverCtx, s.id)
+        );
+      })
+  );
 
   return (
     <>
@@ -136,7 +161,16 @@ export default async function DriverPage() {
                     <div className="flex items-center gap-2 text-sm font-medium">
                       <Warehouse className="text-muted-foreground size-4" />
                       Rampa Rezervasyonu
+                      {reservation.status === "REQUESTED" && (
+                        <Badge variant="warning">Onay Bekliyor</Badge>
+                      )}
                     </div>
+                    {reservation.status === "REQUESTED" && (
+                      <p className="text-muted-foreground text-xs">
+                        Seçiminiz müşteriye iletildi. Müşteri onayladığında
+                        rezervasyon kesinleşecek.
+                      </p>
+                    )}
                     <div className="grid grid-cols-2 gap-3">
                       <Field
                         label="Depo"
@@ -144,7 +178,11 @@ export default async function DriverPage() {
                       />
                       <Field label="Rampa" value={reservation.dock.name} />
                       <Field
-                        label="Planlanan Saat"
+                        label={
+                          reservation.status === "REQUESTED"
+                            ? "Önerilen Saat"
+                            : "Planlanan Saat"
+                        }
                         value={formatDateTime(reservation.startAt)}
                       />
                       {reservation.dock.warehouse.address && (
@@ -156,15 +194,26 @@ export default async function DriverPage() {
                         </div>
                       )}
                     </div>
-                    <NavigationLink
-                      url={resolveNavUrl(
-                        reservation.dock.warehouse.mapsUrl,
-                        reservation.dock.warehouse.address
-                      )}
-                      label="Depoya Yol Tarifi"
-                    />
+                    {reservation.status !== "REQUESTED" && (
+                      <NavigationLink
+                        url={resolveNavUrl(
+                          reservation.dock.warehouse.mapsUrl,
+                          reservation.dock.warehouse.address
+                        )}
+                        label="Depoya Yol Tarifi"
+                      />
+                    )}
                   </div>
                 )}
+
+                {!reservation &&
+                  isBeforePickup &&
+                  (dockOptionsByShipment.get(shipment.id)?.length ?? 0) > 0 && (
+                    <DriverDockPicker
+                      shipmentId={shipment.id}
+                      docks={dockOptionsByShipment.get(shipment.id)!}
+                    />
+                  )}
 
                 <NavigationLink
                   url={navUrl}

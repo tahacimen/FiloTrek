@@ -14,6 +14,29 @@ export function listWarehousesForTenant(ctx: TenantContext) {
   });
 }
 
+/**
+ * D5: the customer's warehouses+docks addressed by a bare companyId rather
+ * than a TenantContext — the driver (a supplier-side actor) needs these to
+ * self-pick a loading dock for a shipment whose CUSTOMER opened the calendar
+ * to them. The caller (service) must first confirm the driver is entitled to
+ * this customer's docks via the shipment link; this is just the read.
+ */
+export function listWarehousesForCompanyId(companyId: string) {
+  return prisma.warehouse.findMany({
+    where: { companyId },
+    include: { docks: { include: dockWithHours, orderBy: { name: "asc" } } },
+    orderBy: { name: "asc" },
+  });
+}
+
+/** Dock scoped to a bare companyId (the customer's), for the driver self-pick flow — same shape as getDockForTenant. */
+export function getDockForCompanyId(companyId: string, dockId: string) {
+  return prisma.loadingDock.findFirst({
+    where: { id: dockId, warehouse: { companyId } },
+    include: { ...dockWithHours, warehouse: { select: { id: true, name: true } } },
+  });
+}
+
 export function getWarehouseForTenant(ctx: TenantContext, warehouseId: string) {
   return prisma.warehouse.findFirst({
     where: { id: warehouseId, companyId: ctx.companyId },

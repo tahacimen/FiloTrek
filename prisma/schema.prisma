@@ -57,6 +57,11 @@ enum DockReservationType {
 }
 
 enum DockReservationStatus {
+  // D5: a driver-picked slot awaiting the customer's approval. Holds the slot
+  // (the no-overlap + one-per-shipment constraints both treat it as active,
+  // WHERE status <> 'CANCELLED'); approving flips it to CREATED, rejecting to
+  // CANCELLED (which frees the slot for another pick).
+  REQUESTED
   CREATED
   VEHICLE_ARRIVED
   COMPLETED
@@ -610,6 +615,11 @@ model Shipment {
   // kept even after a bid is accepted (which fills supplierCompanyId), so the
   // list can still badge it as a spot/marketplace job.
   fromMarketplace          Boolean        @default(false) @map("from_marketplace")
+  // D5: customer opened the dock calendar to the driver ("Takvimi Şoföre
+  // Gönder") so the driver self-picks a warehouse/dock/slot; the resulting
+  // REQUESTED reservation then needs the customer's approval. Cleared once a
+  // reservation is approved (becomes CREATED) or the customer withdraws it.
+  driverDockSelectionEnabled Boolean      @default(false) @map("driver_dock_selection_enabled")
   originAddress            String         @map("origin_address")
   originMapsUrl            String?        @map("origin_maps_url")
   destinationAddress       String         @map("destination_address")

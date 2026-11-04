@@ -71,7 +71,7 @@ export function getReservationForTenant(
  * read-only from their side — see dock-reservation-service.ts).
  */
 export function findActiveReservationForShipment(
-  ctx: TenantContext,
+  ctx: { companyId: string },
   shipmentId: string
 ) {
   return prisma.dockReservation.findFirst({
@@ -110,6 +110,58 @@ export function createReservationRecord(
       endAt,
       shipmentId: shipmentId ?? null,
     },
+  });
+}
+
+/**
+ * D5: a driver-picked slot, created in REQUESTED (awaiting the customer's
+ * approval). Same shape as createReservationRecord but with the pending
+ * status — it still holds the slot via the no-overlap/one-per-shipment
+ * constraints (both WHERE status <> 'CANCELLED').
+ */
+export function createDriverRequestedReservationRecord(
+  dockId: string,
+  endAt: Date,
+  data: ReservationInput
+) {
+  const { shipmentId, ...rest } = data;
+  return prisma.dockReservation.create({
+    data: {
+      ...rest,
+      dockId,
+      endAt,
+      shipmentId: shipmentId ?? null,
+      status: DockReservationStatus.REQUESTED,
+    },
+  });
+}
+
+/**
+ * Approve a driver-requested reservation (REQUESTED -> CREATED). Atomic
+ * guard scoped to the warehouse-owning customer, mirroring
+ * transitionReservationStatus but without a timestamp field (approval isn't
+ * a physical/cancellation event with its own column).
+ */
+export async function approveRequestedReservation(
+  ctx: TenantContext,
+  reservationId: string
+) {
+  return prisma.$transaction(async (tx) => {
+    const reservation = await tx.dockReservation.findFirst({
+      where: {
+        id: reservationId,
+        dock: { warehouse: { companyId: ctx.companyId } },
+      },
+    });
+    if (!reservation) return { kind: "not_found" as const };
+    if (reservation.status !== DockReservationStatus.REQUESTED) {
+      return { kind: "invalid_transition" as const, current: reservation.status };
+    }
+    const updated = await tx.dockReservation.update({
+      where: { id: reservationId },
+      data: { status: DockReservationStatus.CREATED },
+    });
+    return { kind: "ok" as const, reservation: updated };
   });
 }
 

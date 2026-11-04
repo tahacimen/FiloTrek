@@ -123,6 +123,29 @@ export function getShipmentForCustomer(ctx: TenantContext, shipmentId: string) {
   });
 }
 
+/** D5: flip the "driver may self-pick a dock" flag, scoped to the customer who owns the shipment. Returns the update count so the service can detect a no-op (wrong tenant / missing shipment). */
+export function setDriverDockSelectionEnabled(
+  ctx: TenantContext,
+  shipmentId: string,
+  enabled: boolean
+) {
+  return prisma.shipment.updateMany({
+    where: { id: shipmentId, customerCompanyId: ctx.companyId },
+    data: { driverDockSelectionEnabled: enabled },
+  });
+}
+
+/** D5: the driver's own shipment with the vehicle/driver needed to build a dock reservation on their behalf. Scoped strictly to this driver. */
+export function getShipmentForDriver(driverId: string, shipmentId: string) {
+  return prisma.shipment.findFirst({
+    where: { id: shipmentId, driverId },
+    include: {
+      vehicle: { select: { plate: true, vehicleType: true } },
+      driver: { select: { fullName: true, phone: true } },
+    },
+  });
+}
+
 export function getShipmentForTenant(ctx: TenantContext, shipmentId: string) {
   return prisma.shipment.findFirst({
     where: { id: shipmentId, ...companyVisibilityFilter(ctx.companyId) },

@@ -12,6 +12,7 @@ import {
   reportShipmentIncident,
   resolveShipmentIncidentAsDriver,
 } from "@/core/shipment/shipment-incident";
+import { requestDockReservationAsDriver } from "@/core/warehouse/dock-reservation-service";
 import { toActionErrorMessage } from "@/lib/action-error";
 import type { ShipmentStatus } from "@/generated/prisma/client";
 
@@ -102,6 +103,36 @@ export async function updateShipmentLocationAction(
   } catch (error) {
     return { error: toActionErrorMessage(error) };
   }
+  return undefined;
+}
+
+/**
+ * D5: the driver self-picks a loading dock + slot for a shipment whose
+ * customer opened the calendar to them. The chosen start arrives as an ISO
+ * string from the client; the service validates it against the dock's real
+ * working hours and creates a REQUESTED reservation awaiting approval.
+ */
+export async function requestDockReservationAction(
+  shipmentId: string,
+  dockId: string,
+  startAtIso: string
+): Promise<DriverShipmentFormState> {
+  try {
+    const driverCtx = await requireDriverContext();
+    const startAt = new Date(startAtIso);
+    if (Number.isNaN(startAt.getTime())) {
+      return { error: "Geçerli bir saat seçin." };
+    }
+    await requestDockReservationAsDriver(
+      driverCtx,
+      shipmentId,
+      dockId,
+      startAt
+    );
+  } catch (error) {
+    return { error: toActionErrorMessage(error) };
+  }
+  revalidateShipmentPaths(shipmentId);
   return undefined;
 }
 
