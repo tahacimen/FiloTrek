@@ -23,6 +23,7 @@ import {
   markWaybillReady,
 } from "@/test/fixtures";
 import type { DriverContext } from "@/core/shared/driver-context";
+import { LoadType, TransportMode } from "@/generated/prisma/enums";
 
 const baseFields = {
   originAddress: "İstanbul",
@@ -842,5 +843,66 @@ describe("shipment-service: dangerous goods / cold chain classification", () => 
       adrClass: "Sınıf 9 - Diğer",
     });
     expect(shipment.adrClass).toBe("Sınıf 9 - Diğer");
+  });
+});
+
+describe("createShipmentRequest: multimodal", () => {
+  const companyIds: string[] = [];
+  afterAll(async () => {
+    await cleanupCompanies(companyIds);
+  });
+
+  it("defaults to ROAD when no mode is given", async () => {
+    const customerCtx = await createCustomerContext();
+    const supplierCtx = await createSupplierContext();
+    companyIds.push(customerCtx.companyId, supplierCtx.companyId);
+
+    const shipment = await shipmentService.createShipmentRequest(customerCtx, {
+      ...baseFields,
+      supplierCompanyId: supplierCtx.companyId,
+    });
+    expect(shipment.transportMode).toBe(TransportMode.ROAD);
+    expect(shipment.carrierName).toBeNull();
+  });
+
+  it("persists SEA mode with carrier + booking/container + load type", async () => {
+    const customerCtx = await createCustomerContext();
+    const supplierCtx = await createSupplierContext();
+    companyIds.push(customerCtx.companyId, supplierCtx.companyId);
+
+    const shipment = await shipmentService.createShipmentRequest(customerCtx, {
+      ...baseFields,
+      supplierCompanyId: supplierCtx.companyId,
+      transportMode: TransportMode.SEA,
+      loadType: LoadType.FCL,
+      carrierName: "Maersk",
+      bookingNumber: "BK-998877",
+      containerNumber: "MSKU1234567",
+      vesselName: "Mathilde Maersk",
+    });
+    expect(shipment.transportMode).toBe(TransportMode.SEA);
+    expect(shipment.loadType).toBe(LoadType.FCL);
+    expect(shipment.carrierName).toBe("Maersk");
+    expect(shipment.bookingNumber).toBe("BK-998877");
+    expect(shipment.containerNumber).toBe("MSKU1234567");
+    expect(shipment.vesselName).toBe("Mathilde Maersk");
+  });
+
+  it("persists AIR mode with AWB + flight", async () => {
+    const customerCtx = await createCustomerContext();
+    const supplierCtx = await createSupplierContext();
+    companyIds.push(customerCtx.companyId, supplierCtx.companyId);
+
+    const shipment = await shipmentService.createShipmentRequest(customerCtx, {
+      ...baseFields,
+      supplierCompanyId: supplierCtx.companyId,
+      transportMode: TransportMode.AIR,
+      carrierName: "Turkish Cargo",
+      airwaybillNumber: "235-12345678",
+      flightNumber: "TK1234",
+    });
+    expect(shipment.transportMode).toBe(TransportMode.AIR);
+    expect(shipment.airwaybillNumber).toBe("235-12345678");
+    expect(shipment.flightNumber).toBe("TK1234");
   });
 });

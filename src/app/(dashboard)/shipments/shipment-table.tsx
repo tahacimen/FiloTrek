@@ -10,13 +10,17 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import {
-  customerShipmentStatusLabels,
   paymentStatusBadgeVariant,
   paymentStatusLabels,
-  shipmentStatusLabels,
   statusBadgeVariant,
 } from "@/lib/labels";
+import {
+  shipmentStatusLabel,
+  transportModeLabels,
+} from "@/lib/transport-mode";
 import { formatDateTime } from "@/lib/format";
+import { Plane, Ship } from "lucide-react";
+import { TransportMode } from "@/generated/prisma/enums";
 import type { Prisma } from "@/generated/prisma/client";
 
 export type ShipmentRow = Prisma.ShipmentGetPayload<{
@@ -45,11 +49,6 @@ export function ShipmentTable({
     );
   }
 
-  const statusLabels =
-    viewerCompanyType === "CUSTOMER"
-      ? customerShipmentStatusLabels
-      : shipmentStatusLabels;
-
   return (
     <Table>
       <TableHeader>
@@ -59,8 +58,8 @@ export function ShipmentTable({
           </TableHead>
           <TableHead>Güzergah</TableHead>
           <TableHead>Tonaj</TableHead>
-          <TableHead>Araç</TableHead>
-          <TableHead>Şoför</TableHead>
+          <TableHead>Araç / Taşıyıcı</TableHead>
+          <TableHead>Şoför / Referans</TableHead>
           <TableHead>Fiyat</TableHead>
           <TableHead>Ödeme</TableHead>
           <TableHead>Durum</TableHead>
@@ -80,10 +79,23 @@ export function ShipmentTable({
                 <span>
                   {shipment.originAddress} → {shipment.destinationAddress}
                 </span>
-                {(shipment.fromMarketplace ||
+                {(shipment.transportMode !== TransportMode.ROAD ||
+                  shipment.fromMarketplace ||
                   shipment.isDangerousGoods ||
                   shipment.requiresColdChain) && (
                   <div className="flex flex-wrap gap-1.5">
+                    {shipment.transportMode === TransportMode.SEA && (
+                      <Badge variant="outline" className="gap-1 text-[11px]">
+                        <Ship className="size-3" />
+                        {transportModeLabels[TransportMode.SEA]}
+                      </Badge>
+                    )}
+                    {shipment.transportMode === TransportMode.AIR && (
+                      <Badge variant="outline" className="gap-1 text-[11px]">
+                        <Plane className="size-3" />
+                        {transportModeLabels[TransportMode.AIR]}
+                      </Badge>
+                    )}
                     {shipment.fromMarketplace && (
                       <Badge variant="secondary" className="text-[11px]">
                         Pazaryeri
@@ -104,19 +116,30 @@ export function ShipmentTable({
               </div>
             </TableCell>
             <TableCell>{shipment.tonnage.toString()} ton</TableCell>
-            <TableCell>{shipment.vehicle?.plate ?? "—"}</TableCell>
             <TableCell>
-              {shipment.driver ? (
-                <div className="flex flex-col">
-                  <span>{shipment.driver.fullName}</span>
-                  {shipment.driver.phone && (
-                    <span className="text-muted-foreground text-xs">
-                      {shipment.driver.phone}
-                    </span>
-                  )}
-                </div>
+              {shipment.transportMode === TransportMode.ROAD
+                ? (shipment.vehicle?.plate ?? "—")
+                : (shipment.carrierName ?? "—")}
+            </TableCell>
+            <TableCell>
+              {shipment.transportMode === TransportMode.ROAD ? (
+                shipment.driver ? (
+                  <div className="flex flex-col">
+                    <span>{shipment.driver.fullName}</span>
+                    {shipment.driver.phone && (
+                      <span className="text-muted-foreground text-xs">
+                        {shipment.driver.phone}
+                      </span>
+                    )}
+                  </div>
+                ) : (
+                  "—"
+                )
               ) : (
-                "—"
+                // Sea → container no, Air → AWB no (the key reference).
+                (shipment.transportMode === TransportMode.SEA
+                  ? shipment.containerNumber
+                  : shipment.airwaybillNumber) ?? "—"
               )}
             </TableCell>
             <TableCell>
@@ -151,7 +174,11 @@ export function ShipmentTable({
               <div className="flex flex-col gap-1">
                 <div className="flex items-center gap-1.5">
                   <Badge variant={statusBadgeVariant[shipment.status]}>
-                    {statusLabels[shipment.status]}
+                    {shipmentStatusLabel(
+                      shipment.transportMode,
+                      shipment.status,
+                      viewerCompanyType
+                    )}
                   </Badge>
                   {shipment.hasOpenIncident && (
                     <Badge variant="destructive">Arıza</Badge>

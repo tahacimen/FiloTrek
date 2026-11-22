@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { LoadType, TransportMode } from "@/generated/prisma/enums";
+
 /**
  * z.httpUrl restricts to http/https, rejecting javascript:/mailto:/etc.
  * schemes that would otherwise be stored and later rendered as a clickable
@@ -9,6 +11,12 @@ export const optionalMapsUrlSchema = z
   .httpUrl("Geçerli bir Google Maps linki girin.")
   .max(2000, "Link çok uzun.")
   .optional();
+
+/** An optional free-text reference (carrier, booking, container, AWB…); empty → undefined. */
+const optionalRefSchema = z.preprocess(
+  (v) => (typeof v === "string" && v.trim() === "" ? undefined : v),
+  z.string().trim().max(120, "Değer çok uzun.").optional()
+);
 
 const shipmentCoreFieldsSchema = z.object({
   originAddress: z
@@ -34,6 +42,21 @@ const shipmentCoreFieldsSchema = z.object({
     .trim()
     .max(500, "Açıklama çok uzun.")
     .optional(),
+  // Multimodal. Empty/missing mode defaults to ROAD (backward compatible).
+  transportMode: z.preprocess(
+    (v) => (v == null || v === "" ? TransportMode.ROAD : v),
+    z.nativeEnum(TransportMode)
+  ),
+  loadType: z.preprocess(
+    (v) => (typeof v === "string" && v.trim() === "" ? undefined : v),
+    z.nativeEnum(LoadType).optional()
+  ),
+  carrierName: optionalRefSchema,
+  bookingNumber: optionalRefSchema,
+  containerNumber: optionalRefSchema,
+  vesselName: optionalRefSchema,
+  airwaybillNumber: optionalRefSchema,
+  flightNumber: optionalRefSchema,
 });
 
 /**

@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import { Loader2 } from "lucide-react";
 
 import {
@@ -19,7 +19,15 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { TransportModeSelect } from "@/components/transport-mode-select";
 import { confirmSubmit } from "@/lib/confirm-submit";
+import {
+  loadTypeLabels,
+  loadTypesForMode,
+  MODE_FIELD_LABELS,
+  modeFields,
+} from "@/lib/transport-mode";
+import { TransportMode } from "@/generated/prisma/enums";
 import type { Company } from "@/generated/prisma/client";
 
 export function NewShipmentForm({ customers }: { customers: Company[] }) {
@@ -27,6 +35,9 @@ export function NewShipmentForm({ customers }: { customers: Company[] }) {
     ShipmentFormState,
     FormData
   >(createShipmentAction, undefined);
+  const [mode, setMode] = useState<TransportMode>(TransportMode.ROAD);
+  const refFields = modeFields(mode);
+  const loadTypes = loadTypesForMode(mode);
 
   return (
     <form
@@ -34,6 +45,50 @@ export function NewShipmentForm({ customers }: { customers: Company[] }) {
       onSubmit={confirmSubmit("Sefer oluşturmak istediğinize emin misiniz?")}
       className="flex flex-col gap-4"
     >
+      {/* Transport mode drives which reference fields apply; ROAD assigns a
+          vehicle+driver later, SEA/AIR carry carrier + booking/AWB. */}
+      <input type="hidden" name="transportMode" value={mode} />
+      <div className="flex flex-col gap-2">
+        <Label>Taşıma Modu</Label>
+        <TransportModeSelect value={mode} onChange={setMode} />
+      </div>
+
+      {mode !== TransportMode.ROAD && (
+        <div className="grid grid-cols-2 gap-4 rounded-lg border bg-muted/30 p-3">
+          {loadTypes.length > 0 && (
+            <div className="col-span-2 flex flex-col gap-2">
+              <Label htmlFor="loadType">Yük Tipi</Label>
+              <select
+                id="loadType"
+                name="loadType"
+                defaultValue=""
+                className="border-input bg-background h-9 rounded-md border px-3 text-sm"
+              >
+                <option value="">Seçin</option>
+                {loadTypes.map((lt) => (
+                  <option key={lt} value={lt}>
+                    {loadTypeLabels[lt]}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+          {refFields.map((f) => (
+            <div
+              key={f}
+              className={
+                f === "carrierName"
+                  ? "col-span-2 flex flex-col gap-2"
+                  : "flex flex-col gap-2"
+              }
+            >
+              <Label htmlFor={f}>{MODE_FIELD_LABELS[f]}</Label>
+              <Input id={f} name={f} />
+            </div>
+          ))}
+        </div>
+      )}
+
       <div className="flex flex-col gap-2">
         <Label htmlFor="customerCompanyId">Müşteri Firma</Label>
         <Select name="customerCompanyId" required>

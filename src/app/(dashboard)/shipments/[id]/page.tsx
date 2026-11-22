@@ -16,12 +16,19 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import {
-  customerShipmentStatusLabels,
-  shipmentStatusLabels,
   statusBadgeVariant,
   vehicleBedTypeLabels,
   vehicleTypeLabels,
 } from "@/lib/labels";
+import {
+  loadTypeLabels,
+  MODE_FIELD_LABELS,
+  modeFields,
+  shipmentStatusLabel,
+  transportModeLabels,
+} from "@/lib/transport-mode";
+import { Plane, Ship } from "lucide-react";
+import { TransportMode } from "@/generated/prisma/enums";
 import { formatDateTime } from "@/lib/format";
 import { ShipmentStatusActions } from "@/app/(dashboard)/shipments/[id]/shipment-status-actions";
 import { LoadReadyCard } from "@/app/(dashboard)/shipments/[id]/load-ready-card";
@@ -138,9 +145,6 @@ export default async function ShipmentDetailPage({
       }))
   );
 
-  const statusLabels =
-    ctx.companyType === "CUSTOMER" ? customerShipmentStatusLabels : shipmentStatusLabels;
-
   return (
     <div className="mx-auto flex max-w-3xl flex-col gap-6">
       <div className="flex items-center justify-between">
@@ -176,12 +180,28 @@ export default async function ShipmentDetailPage({
               Arıza
             </Badge>
           )}
+          {shipment.transportMode === TransportMode.SEA && (
+            <Badge variant="outline" className="gap-1 text-sm">
+              <Ship className="size-3.5" />
+              {transportModeLabels[TransportMode.SEA]}
+            </Badge>
+          )}
+          {shipment.transportMode === TransportMode.AIR && (
+            <Badge variant="outline" className="gap-1 text-sm">
+              <Plane className="size-3.5" />
+              {transportModeLabels[TransportMode.AIR]}
+            </Badge>
+          )}
           <Badge
             variant={statusBadgeVariant[shipment.status]}
             className="text-sm"
             data-testid="shipment-status-badge"
           >
-            {statusLabels[shipment.status]}
+            {shipmentStatusLabel(
+              shipment.transportMode,
+              shipment.status,
+              ctx.companyType
+            )}
           </Badge>
         </div>
       </div>
@@ -400,48 +420,95 @@ export default async function ShipmentDetailPage({
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-base">
-            <Truck className="text-muted-foreground size-4" />
-            Araç ve Şoför
+            {shipment.transportMode === TransportMode.ROAD ? (
+              <>
+                <Truck className="text-muted-foreground size-4" />
+                Araç ve Şoför
+              </>
+            ) : shipment.transportMode === TransportMode.SEA ? (
+              <>
+                <Ship className="text-muted-foreground size-4" />
+                Taşıyıcı &amp; Konteyner
+              </>
+            ) : (
+              <>
+                <Plane className="text-muted-foreground size-4" />
+                Taşıyıcı &amp; AWB
+              </>
+            )}
           </CardTitle>
         </CardHeader>
         <CardContent className="grid gap-4 sm:grid-cols-2">
-          <div className="flex items-center gap-3 rounded-lg border p-3">
-            <span className="bg-primary/10 text-primary flex size-10 shrink-0 items-center justify-center rounded-lg">
-              <Truck className="size-5" />
-            </span>
-            <div className="min-w-0">
-              <p className="truncate font-semibold">
-                {shipment.vehicle?.plate ?? "Henüz atanmadı"}
-              </p>
-              {shipment.vehicle && (
-                <div className="mt-1 flex flex-wrap gap-1.5">
-                  <Badge variant="outline" className="text-[11px]">
-                    {vehicleTypeLabels[shipment.vehicle.vehicleType]}
-                  </Badge>
-                  <Badge variant="outline" className="text-[11px]">
-                    {vehicleBedTypeLabels[shipment.vehicle.bedType]}
-                  </Badge>
+          {shipment.transportMode === TransportMode.ROAD ? (
+            <>
+              <div className="flex items-center gap-3 rounded-lg border p-3">
+                <span className="bg-primary/10 text-primary flex size-10 shrink-0 items-center justify-center rounded-lg">
+                  <Truck className="size-5" />
+                </span>
+                <div className="min-w-0">
+                  <p className="truncate font-semibold">
+                    {shipment.vehicle?.plate ?? "Henüz atanmadı"}
+                  </p>
+                  {shipment.vehicle && (
+                    <div className="mt-1 flex flex-wrap gap-1.5">
+                      <Badge variant="outline" className="text-[11px]">
+                        {vehicleTypeLabels[shipment.vehicle.vehicleType]}
+                      </Badge>
+                      <Badge variant="outline" className="text-[11px]">
+                        {vehicleBedTypeLabels[shipment.vehicle.bedType]}
+                      </Badge>
+                    </div>
+                  )}
+                </div>
+              </div>
+              <div className="flex items-center gap-3 rounded-lg border p-3">
+                <span className="bg-accent-blue/10 text-accent-blue flex size-10 shrink-0 items-center justify-center rounded-full">
+                  <User className="size-5" />
+                </span>
+                <div className="min-w-0">
+                  <p className="truncate font-semibold">
+                    {shipment.driver?.fullName ?? "Henüz atanmadı"}
+                  </p>
+                  {shipment.driver && (
+                    <p className="text-muted-foreground truncate text-xs">
+                      {shipment.driver.phone}
+                      {shipment.driver.experienceYears != null &&
+                        ` • ${shipment.driver.experienceYears} yıl deneyim`}
+                    </p>
+                  )}
+                </div>
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="col-span-full flex flex-col gap-0.5">
+                <span className="text-muted-foreground text-xs">
+                  {MODE_FIELD_LABELS.carrierName}
+                </span>
+                <span className="font-semibold">
+                  {shipment.carrierName ?? "Henüz girilmedi"}
+                </span>
+              </div>
+              {modeFields(shipment.transportMode)
+                .filter((f) => f !== "carrierName")
+                .map((f) => (
+                  <div key={f} className="flex flex-col gap-0.5">
+                    <span className="text-muted-foreground text-xs">
+                      {MODE_FIELD_LABELS[f]}
+                    </span>
+                    <span className="font-medium">{shipment[f] ?? "—"}</span>
+                  </div>
+                ))}
+              {shipment.loadType && (
+                <div className="flex flex-col gap-0.5">
+                  <span className="text-muted-foreground text-xs">Yük Tipi</span>
+                  <span className="font-medium">
+                    {loadTypeLabels[shipment.loadType]}
+                  </span>
                 </div>
               )}
-            </div>
-          </div>
-          <div className="flex items-center gap-3 rounded-lg border p-3">
-            <span className="bg-accent-blue/10 text-accent-blue flex size-10 shrink-0 items-center justify-center rounded-full">
-              <User className="size-5" />
-            </span>
-            <div className="min-w-0">
-              <p className="truncate font-semibold">
-                {shipment.driver?.fullName ?? "Henüz atanmadı"}
-              </p>
-              {shipment.driver && (
-                <p className="text-muted-foreground truncate text-xs">
-                  {shipment.driver.phone}
-                  {shipment.driver.experienceYears != null &&
-                    ` • ${shipment.driver.experienceYears} yıl deneyim`}
-                </p>
-              )}
-            </div>
-          </div>
+            </>
+          )}
           {departurePhoto?.photoUrl && (
             <div className="col-span-full">
               <Field

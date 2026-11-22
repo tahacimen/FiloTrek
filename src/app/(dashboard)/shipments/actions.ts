@@ -67,6 +67,14 @@ export async function createShipmentAction(
     const ctx = await requireTenantContext();
     const shipment = await shipmentService.createShipment(ctx, {
       customerCompanyId: formData.get("customerCompanyId"),
+      transportMode: optionalFormString(formData, "transportMode"),
+      loadType: optionalFormString(formData, "loadType"),
+      carrierName: optionalFormString(formData, "carrierName"),
+      bookingNumber: optionalFormString(formData, "bookingNumber"),
+      containerNumber: optionalFormString(formData, "containerNumber"),
+      vesselName: optionalFormString(formData, "vesselName"),
+      airwaybillNumber: optionalFormString(formData, "airwaybillNumber"),
+      flightNumber: optionalFormString(formData, "flightNumber"),
       originAddress: formData.get("originAddress"),
       destinationAddress: formData.get("destinationAddress"),
       distanceKm: formData.get("distanceKm"),
@@ -127,6 +135,16 @@ export async function createShipmentRequestAction(
  */
 export type ShipmentRequestRow = {
   supplierCompanyId?: string;
+  // Multimodal: "ROAD" | "SEA" | "AIR" (string so it serializes across the
+  // server-action boundary); omitted defaults to ROAD server-side.
+  transportMode?: string;
+  loadType?: string;
+  carrierName?: string;
+  bookingNumber?: string;
+  containerNumber?: string;
+  vesselName?: string;
+  airwaybillNumber?: string;
+  flightNumber?: string;
   originAddress: string;
   originMapsUrl?: string;
   destinationAddress: string;
@@ -191,6 +209,14 @@ export async function createShipmentRequestsAction(
 
       await shipmentService.createShipmentRequest(ctx, {
         supplierCompanyId: row.supplierCompanyId || undefined,
+        transportMode: row.transportMode || undefined,
+        loadType: row.loadType || undefined,
+        carrierName: row.carrierName || undefined,
+        bookingNumber: row.bookingNumber || undefined,
+        containerNumber: row.containerNumber || undefined,
+        vesselName: row.vesselName || undefined,
+        airwaybillNumber: row.airwaybillNumber || undefined,
+        flightNumber: row.flightNumber || undefined,
         originAddress: row.originAddress,
         originMapsUrl: row.originMapsUrl || undefined,
         destinationAddress: row.destinationAddress,

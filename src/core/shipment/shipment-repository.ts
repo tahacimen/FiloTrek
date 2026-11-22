@@ -3,8 +3,10 @@ import type { TenantContext } from "@/core/shared/tenant-context";
 import {
   CompanyType,
   DockReservationStatus,
+  LoadType,
   ShipmentStatus,
   StatusEntityType,
+  TransportMode,
 } from "@/generated/prisma/client";
 
 const shipmentListInclude = {
@@ -197,6 +199,15 @@ type CreateShipmentRecordInput = {
   tonnage: number;
   cargoDescription?: string;
   documentTrackingNumber?: string;
+  // Multimodal (defaults to ROAD when omitted).
+  transportMode?: TransportMode;
+  loadType?: LoadType;
+  carrierName?: string;
+  bookingNumber?: string;
+  containerNumber?: string;
+  vesselName?: string;
+  airwaybillNumber?: string;
+  flightNumber?: string;
   isDangerousGoods?: boolean;
   adrClass?: string;
   requiresColdChain?: boolean;

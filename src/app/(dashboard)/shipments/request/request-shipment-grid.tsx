@@ -30,6 +30,14 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { TransportModeSelect } from "@/components/transport-mode-select";
+import {
+  loadTypeLabels,
+  loadTypesForMode,
+  MODE_FIELD_LABELS,
+  modeFields,
+} from "@/lib/transport-mode";
+import { TransportMode } from "@/generated/prisma/enums";
 import type { Company } from "@/generated/prisma/client";
 
 type LoadingPoint = {
@@ -65,6 +73,14 @@ type Row = {
   manualDestDistrict: string;
   tonnage: string;
   km: string;
+  // Mode-specific (used per the grid-level transport mode).
+  loadType: string;
+  carrierName: string;
+  bookingNumber: string;
+  containerNumber: string;
+  vesselName: string;
+  airwaybillNumber: string;
+  flightNumber: string;
   expanded: boolean;
   latestLoadingAt: string;
   cargoDescription: string;
@@ -97,6 +113,13 @@ function makeRow(loadingPoints: LoadingPoint[], consignees: Consignee[]): Row {
     manualDestDistrict: "",
     tonnage: "",
     km: "",
+    loadType: "",
+    carrierName: "",
+    bookingNumber: "",
+    containerNumber: "",
+    vesselName: "",
+    airwaybillNumber: "",
+    flightNumber: "",
     expanded: false,
     latestLoadingAt: "",
     cargoDescription: "",
@@ -122,6 +145,9 @@ export function RequestShipmentGrid({
   loadingPoints: LoadingPoint[];
   consignees: Consignee[];
 }) {
+  // One transport mode for the whole batch — keeps the grid uncluttered
+  // ("kafa karışıklığı olmasın"). Mode-specific fields appear per row in Detay.
+  const [mode, setMode] = useState<TransportMode>(TransportMode.ROAD);
   const [rows, setRows] = useState<Row[]>(() => [
     makeRow(loadingPoints, consignees),
   ]);
@@ -184,6 +210,14 @@ export function RequestShipmentGrid({
 
     return {
       supplierCompanyId: row.supplier === MARKET ? undefined : row.supplier,
+      transportMode: mode,
+      loadType: row.loadType || undefined,
+      carrierName: row.carrierName.trim() || undefined,
+      bookingNumber: row.bookingNumber.trim() || undefined,
+      containerNumber: row.containerNumber.trim() || undefined,
+      vesselName: row.vesselName.trim() || undefined,
+      airwaybillNumber: row.airwaybillNumber.trim() || undefined,
+      flightNumber: row.flightNumber.trim() || undefined,
       originAddress,
       originMapsUrl,
       destinationAddress,
@@ -202,6 +236,18 @@ export function RequestShipmentGrid({
       requiresColdChain: row.requiresColdChain,
     };
   }
+
+  const modeRefFields = modeFields(mode);
+  const modeLoadTypes = loadTypesForMode(mode);
+  const FIELD_PLACEHOLDER: Record<string, string> = {
+    carrierName:
+      mode === TransportMode.AIR ? "örn. Turkish Cargo" : "örn. Maersk",
+    bookingNumber: "Booking no",
+    containerNumber: "Konteyner no",
+    vesselName: "Gemi adı",
+    airwaybillNumber: "AWB no",
+    flightNumber: "Uçuş no",
+  };
 
   function submit() {
     const chosen = rows.filter((r) => r.selected);
@@ -253,6 +299,19 @@ export function RequestShipmentGrid({
 
   return (
     <div className="flex flex-col gap-4">
+      <div className="flex flex-col gap-1.5">
+        <Label className="text-xs">Taşıma Modu</Label>
+        <div className="flex flex-wrap items-center gap-3">
+          <TransportModeSelect value={mode} onChange={setMode} />
+          <span className="text-muted-foreground text-xs">
+            Bu moddaki tüm satırlar için geçerli
+            {mode !== TransportMode.ROAD &&
+              " — araç/şoför yerine taşıyıcı ve referans no (Detay'da)"}
+            .
+          </span>
+        </div>
+      </div>
+
       <div className="flex flex-wrap items-center justify-between gap-2">
         <label className="flex items-center gap-2 text-sm">
           <Checkbox
@@ -445,11 +504,47 @@ export function RequestShipmentGrid({
                 <ChevronDown
                   className={`size-3.5 transition-transform ${row.expanded ? "rotate-180" : ""}`}
                 />
-                Detay (en geç yükleme, açıklama, tehlikeli madde…)
+                Detay (
+                {mode === TransportMode.ROAD
+                  ? "en geç yükleme, açıklama, tehlikeli madde…"
+                  : `taşıyıcı/referans no, ${modeLoadTypes.length ? "yük tipi, " : ""}açıklama…`}
+                )
               </button>
 
               {row.expanded && (
                 <div className="grid gap-3 border-t pt-3 sm:grid-cols-2">
+                  {modeLoadTypes.length > 0 && (
+                    <div className="flex flex-col gap-1.5">
+                      <Label className="text-xs">Yük Tipi</Label>
+                      <Select
+                        value={row.loadType || undefined}
+                        onValueChange={(v) => patch(row.key, { loadType: v })}
+                      >
+                        <SelectTrigger className="w-full">
+                          <SelectValue placeholder="Seçin" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {modeLoadTypes.map((lt) => (
+                            <SelectItem key={lt} value={lt}>
+                              {loadTypeLabels[lt]}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+                  {modeRefFields.map((field) => (
+                    <div key={field} className="flex flex-col gap-1.5">
+                      <Label className="text-xs">{MODE_FIELD_LABELS[field]}</Label>
+                      <Input
+                        value={row[field]}
+                        onChange={(e) =>
+                          patch(row.key, { [field]: e.target.value })
+                        }
+                        placeholder={FIELD_PLACEHOLDER[field]}
+                      />
+                    </div>
+                  ))}
                   <div className="flex flex-col gap-1.5">
                     <Label className="text-xs">En Geç Yükleme</Label>
                     <Input
