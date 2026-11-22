@@ -529,6 +529,25 @@ enum PaymentStatus {
   PAID
 }
 
+/// Multimodal: which transport mode a shipment runs on. ROAD is the default
+/// and the only one with company-owned vehicle+driver assignment; SEA and AIR
+/// instead carry a free-text carrier (shipping line / airline) plus their own
+/// reference numbers (booking/container for SEA, airwaybill/flight for AIR).
+enum TransportMode {
+  ROAD
+  SEA
+  AIR
+}
+
+/// The load/shipment form, mode-dependent: FTL/LTL for road, FCL/LCL for sea.
+/// Optional on a shipment — only meaningful once the mode is known.
+enum LoadType {
+  FTL
+  LTL
+  FCL
+  LCL
+}
+
 /// A customer's block ("kara liste") on a specific person by TC and/or driver
 /// license number (see src/core/driver-block). When a supplier tries to assign
 /// a driver whose TC or license matches one of the shipment customer's blocks,
@@ -615,6 +634,24 @@ model Shipment {
   // kept even after a bid is accepted (which fills supplierCompanyId), so the
   // list can still badge it as a spot/marketplace job.
   fromMarketplace          Boolean        @default(false) @map("from_marketplace")
+  // Multimodal: ROAD (default) uses vehicle+driver assignment and the dock /
+  // gate-guard flow; SEA/AIR skip those and instead carry carrierName +
+  // booking/container (SEA) or airwaybill/flight (AIR). The happy-path status
+  // sequence is shared across modes — only the labels change per mode (see
+  // transport-mode.ts). Existing rows default to ROAD so nothing changes.
+  transportMode            TransportMode  @default(ROAD) @map("transport_mode")
+  // The carrier actually moving the cargo on SEA/AIR (shipping line / airline),
+  // free text since it isn't a Company tenant in the system. Null for ROAD.
+  carrierName              String?        @map("carrier_name")
+  // SEA references.
+  bookingNumber            String?        @map("booking_number")
+  containerNumber          String?        @map("container_number")
+  vesselName               String?        @map("vessel_name")
+  // AIR references.
+  airwaybillNumber         String?        @map("airwaybill_number")
+  flightNumber             String?        @map("flight_number")
+  // FTL/LTL (road) or FCL/LCL (sea); optional.
+  loadType                 LoadType?      @map("load_type")
   // D5: customer opened the dock calendar to the driver ("Takvimi Şoföre
   // Gönder") so the driver self-picks a warehouse/dock/slot; the resulting
   // REQUESTED reservation then needs the customer's approval. Cleared once a
