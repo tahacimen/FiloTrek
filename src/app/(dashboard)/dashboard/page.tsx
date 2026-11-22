@@ -94,11 +94,12 @@ export default async function DashboardPage() {
           </Card>
         </Reveal>
 
-        <Reveal delay={180}>
+        <Reveal
+          as="div"
+          delay={180}
+          className="grid items-stretch gap-4 lg:grid-cols-2"
+        >
           <OperationalKpiCard kpis={operationalKpis} />
-        </Reveal>
-
-        <Reveal delay={270}>
           <CarbonFootprintCard summary={emissionsSummary} />
         </Reveal>
       </div>
@@ -157,11 +158,8 @@ export default async function DashboardPage() {
         />
       </Reveal>
 
-      <Reveal>
+      <Reveal as="div" className="grid items-stretch gap-4 lg:grid-cols-2">
         <OperationalKpiCard kpis={data.operationalKpis} />
-      </Reveal>
-
-      <Reveal delay={90}>
         <CarbonFootprintCard summary={emissionsSummary} />
       </Reveal>
 

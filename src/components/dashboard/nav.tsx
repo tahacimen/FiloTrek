@@ -76,14 +76,22 @@ export function DashboardNav({
           <Link
             key={item.href}
             href={item.href}
+            aria-current={isActive ? "page" : undefined}
             className={cn(
-              "flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors",
+              "group relative flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-200",
               isActive
                 ? "bg-brand text-brand-foreground font-semibold shadow-sm"
-                : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                : "text-muted-foreground hover:bg-accent hover:text-accent-foreground hover:translate-x-0.5"
             )}
           >
-            <Icon className="size-4" />
+            {/* Subtle active accent bar on the left edge. */}
+            <span
+              className={cn(
+                "bg-brand-foreground absolute left-1 top-1/2 h-4 w-1 -translate-y-1/2 rounded-full transition-opacity duration-200",
+                isActive ? "opacity-70" : "opacity-0"
+              )}
+            />
+            <Icon className="size-4 transition-transform duration-200 group-hover:scale-110" />
             {item.label}
           </Link>
         );
