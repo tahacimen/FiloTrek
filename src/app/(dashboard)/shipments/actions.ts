@@ -9,13 +9,14 @@ import * as ratingService from "@/core/rating/rating-service";
 import * as dockReservationService from "@/core/warehouse/dock-reservation-service";
 import {
   advanceShipmentStatus,
+  assignCarrierForMode,
   cancelShipment,
   revertShipmentStatus,
 } from "@/core/shipment/shipment-status";
 import { resolveShipmentIncidentAsDispatcher } from "@/core/shipment/shipment-incident";
 import { computeRoadDistanceKm } from "@/lib/geo-distance";
 import { toActionErrorMessage } from "@/lib/action-error";
-import type { ShipmentStatus } from "@/generated/prisma/client";
+import type { LoadType, ShipmentStatus } from "@/generated/prisma/client";
 
 export type ShipmentFormState = { error?: string } | undefined;
 
@@ -242,6 +243,46 @@ export async function createShipmentRequestsAction(
   revalidatePath("/assign");
   revalidatePath("/dashboard");
   return { created, errors };
+}
+
+/**
+ * Multimodal: assign a SEA/AIR shipment by recording its carrier + references
+ * (no vehicle/driver), moving it PENDING -> ASSIGNED. For a direct request the
+ * supplier also proposes a price here; a bid-accepted shipment already has one.
+ */
+export async function assignCarrierAction(
+  shipmentId: string,
+  _prevState: ShipmentFormState,
+  formData: FormData
+): Promise<ShipmentFormState> {
+  try {
+    const ctx = await requireTenantContext();
+    const priceRaw = optionalFormString(formData, "agreedPrice");
+    const agreedPrice =
+      priceRaw != null ? Number(priceRaw.replace(",", ".")) : undefined;
+    const loadTypeRaw = optionalFormString(formData, "loadType");
+    await assignCarrierForMode(ctx, {
+      shipmentId,
+      carrierName: optionalFormString(formData, "carrierName") ?? "",
+      bookingNumber: optionalFormString(formData, "bookingNumber"),
+      containerNumber: optionalFormString(formData, "containerNumber"),
+      vesselName: optionalFormString(formData, "vesselName"),
+      airwaybillNumber: optionalFormString(formData, "airwaybillNumber"),
+      flightNumber: optionalFormString(formData, "flightNumber"),
+      loadType: (loadTypeRaw as LoadType | undefined) || undefined,
+      agreedPrice:
+        agreedPrice != null && !Number.isNaN(agreedPrice)
+          ? agreedPrice
+          : undefined,
+    });
+  } catch (error) {
+    return { error: toActionErrorMessage(error) };
+  }
+  revalidatePath(`/shipments/${shipmentId}`);
+  revalidatePath("/shipments");
+  revalidatePath("/assign");
+  revalidatePath("/dashboard");
+  return undefined;
 }
 
 /** D3: supplier rolls the shipment one step back (driver advanced by mistake). */

@@ -6,8 +6,10 @@ import {
   ShipmentStatus,
   StatusChangeSource,
   StatusEntityType,
+  TransportMode,
   VehicleStatus,
 } from "@/generated/prisma/client";
+import type { LoadType } from "@/generated/prisma/client";
 import { recordStatusChange } from "@/core/shared/status-history";
 import {
   InvalidTransitionError,
@@ -167,6 +169,112 @@ export async function assignVehicleAndDriver(
 
   // Only the direct-request flow proposes a new price here; a bid-accepted
   // shipment's price was already agreed, so there's nothing to notify about.
+  if (proposedAmount != null) {
+    try {
+      const supplierCompany = await companyRepository.getCompanyById(
+        ctx.companyId
+      );
+      await notificationService.notifyPriceProposed({
+        recipientCompanyId: updatedShipment.customerCompanyId,
+        proposerCompanyName: supplierCompany?.name ?? "Tedarikçi",
+        amount: proposedAmount,
+        shipment: updatedShipment,
+      });
+    } catch (error) {
+      console.error("Fiyat teklifi bildirimi oluşturulamadı:", error);
+    }
+  }
+
+  return updatedShipment;
+}
+
+/**
+ * The SEA/AIR counterpart of assignVehicleAndDriver: there is no company
+ * vehicle or driver, so the supplier instead records the carrier (shipping
+ * line / airline) and the booking/container (SEA) or airwaybill/flight (AIR)
+ * reference, which moves the shipment PENDING -> ASSIGNED. Price handling is
+ * identical (a bid-accepted price is kept; a direct request has the supplier
+ * propose one here). No vehicle/driver status sync runs.
+ */
+export async function assignCarrierForMode(
+  ctx: TenantContext,
+  params: {
+    shipmentId: string;
+    carrierName: string;
+    bookingNumber?: string;
+    containerNumber?: string;
+    vesselName?: string;
+    airwaybillNumber?: string;
+    flightNumber?: string;
+    loadType?: LoadType;
+    agreedPrice?: number;
+  }
+) {
+  requireCompanyType(ctx, CompanyType.SUPPLIER);
+
+  const carrierName = params.carrierName?.trim();
+  if (!carrierName) {
+    throw new ValidationError("Taşıyıcı (hat/havayolu) bilgisi zorunludur.");
+  }
+
+  const { updatedShipment, proposedAmount } = await prisma.$transaction(
+    async (tx) => {
+      const shipment = await tx.shipment.findFirst({
+        where: { id: params.shipmentId, supplierCompanyId: ctx.companyId },
+      });
+      if (!shipment) throw new NotFoundError("Sefer bulunamadı.");
+      if (shipment.transportMode === TransportMode.ROAD) {
+        throw new ValidationError(
+          "Karayolu seferleri araç ve şoför atamasıyla yürütülür."
+        );
+      }
+      assertTransitionAllowed(shipment.status, ShipmentStatus.ASSIGNED);
+
+      const priceAlreadyAgreed = shipment.agreedPrice !== null;
+      if (
+        !priceAlreadyAgreed &&
+        !(typeof params.agreedPrice === "number" && params.agreedPrice > 0)
+      ) {
+        throw new ValidationError("Nakliye fiyatı pozitif bir değer olmalı.");
+      }
+
+      const updatedShipment = await tx.shipment.update({
+        where: { id: shipment.id },
+        data: {
+          status: ShipmentStatus.ASSIGNED,
+          carrierName,
+          bookingNumber: params.bookingNumber?.trim() || null,
+          containerNumber: params.containerNumber?.trim() || null,
+          vesselName: params.vesselName?.trim() || null,
+          airwaybillNumber: params.airwaybillNumber?.trim() || null,
+          flightNumber: params.flightNumber?.trim() || null,
+          ...(params.loadType ? { loadType: params.loadType } : {}),
+          ...(priceAlreadyAgreed
+            ? {}
+            : {
+                agreedPrice: params.agreedPrice,
+                priceProposedBy: CompanyType.SUPPLIER,
+                priceApprovedAt: null,
+              }),
+        },
+      });
+
+      await recordStatusChange(tx, {
+        entityType: StatusEntityType.SHIPMENT,
+        entityId: shipment.id,
+        fromStatus: shipment.status,
+        toStatus: ShipmentStatus.ASSIGNED,
+        changedByUserId: ctx.userId,
+        source: StatusChangeSource.MANUAL,
+      });
+
+      return {
+        updatedShipment,
+        proposedAmount: priceAlreadyAgreed ? null : params.agreedPrice!,
+      };
+    }
+  );
+
   if (proposedAmount != null) {
     try {
       const supplierCompany = await companyRepository.getCompanyById(

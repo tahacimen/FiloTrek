@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db";
 import {
   advanceShipmentStatus,
   advanceShipmentStatusAsDriver,
+  assignCarrierForMode,
   assignVehicleAndDriver,
   cancelShipment,
   revertShipmentStatus,
@@ -34,8 +35,10 @@ import {
 } from "@/test/fixtures";
 import {
   CompanyType,
+  LoadType,
   type NotificationType,
   ShipmentStatus,
+  TransportMode,
 } from "@/generated/prisma/client";
 
 const AGREED_PRICE = 15000;
@@ -1019,5 +1022,74 @@ describe("advanceShipmentStatusCore: webhook dispatch", () => {
     });
 
     expect(fetchMock).not.toHaveBeenCalled();
+  });
+});
+
+describe("assignCarrierForMode (SEA/AIR assignment)", () => {
+  const companyIds: string[] = [];
+  afterAll(async () => {
+    await cleanupCompanies(companyIds);
+  });
+
+  async function pendingShipment(mode: TransportMode) {
+    const ctx = await createSupplierContext();
+    const customer = await createTestCompany(CompanyType.CUSTOMER);
+    companyIds.push(ctx.companyId, customer.id);
+    const shipment = await prisma.shipment.create({
+      data: {
+        customerCompanyId: customer.id,
+        supplierCompanyId: ctx.companyId,
+        originAddress: "Mersin Limanı",
+        destinationAddress: "Hamburg",
+        distanceKm: 100,
+        tonnage: 20,
+        status: ShipmentStatus.PENDING,
+        transportMode: mode,
+      },
+    });
+    return { ctx, shipment };
+  }
+
+  it("assigns a SEA shipment via carrier + booking, no vehicle/driver", async () => {
+    const { ctx, shipment } = await pendingShipment(TransportMode.SEA);
+    const assigned = await assignCarrierForMode(ctx, {
+      shipmentId: shipment.id,
+      carrierName: "Maersk",
+      bookingNumber: "BK-1",
+      containerNumber: "MSKU1",
+      loadType: LoadType.FCL,
+      agreedPrice: 25000,
+    });
+    expect(assigned.status).toBe(ShipmentStatus.ASSIGNED);
+    expect(assigned.carrierName).toBe("Maersk");
+    expect(assigned.bookingNumber).toBe("BK-1");
+    expect(assigned.loadType).toBe(LoadType.FCL);
+    expect(assigned.vehicleId).toBeNull();
+    expect(assigned.driverId).toBeNull();
+    // Direct request → supplier's price proposed, awaiting approval.
+    expect(assigned.priceApprovedAt).toBeNull();
+    expect(assigned.agreedPrice?.toString()).toBe("25000");
+  });
+
+  it("requires a carrier name", async () => {
+    const { ctx, shipment } = await pendingShipment(TransportMode.AIR);
+    await expect(
+      assignCarrierForMode(ctx, {
+        shipmentId: shipment.id,
+        carrierName: "   ",
+        agreedPrice: 5000,
+      })
+    ).rejects.toThrow();
+  });
+
+  it("rejects a ROAD shipment (those use vehicle+driver assignment)", async () => {
+    const { ctx, shipment } = await pendingShipment(TransportMode.ROAD);
+    await expect(
+      assignCarrierForMode(ctx, {
+        shipmentId: shipment.id,
+        carrierName: "X",
+        agreedPrice: 5000,
+      })
+    ).rejects.toThrow();
   });
 });

@@ -31,6 +31,7 @@ import { Plane, Ship } from "lucide-react";
 import { TransportMode } from "@/generated/prisma/enums";
 import { formatDateTime } from "@/lib/format";
 import { ShipmentStatusActions } from "@/app/(dashboard)/shipments/[id]/shipment-status-actions";
+import { CarrierAssignCard } from "@/app/(dashboard)/shipments/[id]/carrier-assign-card";
 import { LoadReadyCard } from "@/app/(dashboard)/shipments/[id]/load-ready-card";
 import { PickupEtaCard } from "@/app/(dashboard)/shipments/[id]/pickup-eta-card";
 import { PriceApprovalCard } from "@/app/(dashboard)/shipments/[id]/price-approval-card";
@@ -207,8 +208,22 @@ export default async function ShipmentDetailPage({
       </div>
 
       {ctx.companyType === "SUPPLIER" && (
-        <ShipmentStatusActions shipmentId={shipment.id} status={shipment.status} />
+        <ShipmentStatusActions
+          shipmentId={shipment.id}
+          status={shipment.status}
+          transportMode={shipment.transportMode}
+        />
       )}
+
+      {ctx.companyType === "SUPPLIER" &&
+        shipment.status === "PENDING" &&
+        shipment.transportMode !== TransportMode.ROAD && (
+          <CarrierAssignCard
+            shipmentId={shipment.id}
+            mode={shipment.transportMode}
+            priceAlreadyAgreed={shipment.agreedPrice != null}
+          />
+        )}
 
       <NotifyDriverCard
         shipmentId={shipment.id}

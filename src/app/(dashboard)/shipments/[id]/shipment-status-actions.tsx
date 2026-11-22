@@ -13,22 +13,25 @@ import {
   revertShipmentStatusAction,
 } from "@/app/(dashboard)/shipments/actions";
 import { Button } from "@/components/ui/button";
-import { shipmentStatusLabels } from "@/lib/labels";
+import { shipmentStatusLabel } from "@/lib/transport-mode";
 import {
   canCancelShipment,
   canRevertShipment,
   getNextShipmentSteps,
   previousShipmentStatus,
 } from "@/core/shipment/shipment-transitions";
-import { ShipmentStatus } from "@/generated/prisma/enums";
+import { ShipmentStatus, TransportMode } from "@/generated/prisma/enums";
 
 export function ShipmentStatusActions({
   shipmentId,
   status,
+  transportMode = TransportMode.ROAD,
 }: {
   shipmentId: string;
   status: ShipmentStatus;
+  transportMode?: TransportMode;
 }) {
+  const label = (s: ShipmentStatus) => shipmentStatusLabel(transportMode, s);
   const [isPending, startTransition] = useTransition();
   const canCancel = canCancelShipment(status);
   const canRevert = canRevertShipment(status);
@@ -37,7 +40,10 @@ export function ShipmentStatusActions({
   // PENDING -> ASSIGNED needs a vehicle + driver pick, which only the
   // Atama screen collects — the generic advance action rejects it
   // server-side (see shipment-status.ts), so it's never offered here either.
-  const isAwaitingAssignment = status === ShipmentStatus.PENDING;
+  // SEA/AIR assign via the CarrierAssignCard on this page instead, so the
+  // "Atama Ekranına Git" link is shown only for ROAD.
+  const isAwaitingAssignment =
+    status === ShipmentStatus.PENDING && transportMode === TransportMode.ROAD;
   const nextSteps = getNextShipmentSteps(status).filter(
     (step) => step !== ShipmentStatus.ASSIGNED
   );
@@ -54,7 +60,7 @@ export function ShipmentStatusActions({
   function handleAdvance(targetStatus: ShipmentStatus) {
     if (
       !confirm(
-        `"${shipmentStatusLabels[targetStatus]}" durumuna geçirmek istediğinize emin misiniz?`
+        `"${label(targetStatus)}" durumuna geçirmek istediğinize emin misiniz?`
       )
     ) {
       return;
@@ -77,7 +83,7 @@ export function ShipmentStatusActions({
     if (!previous) return;
     if (
       !confirm(
-        `Durumu bir önceki adıma ("${shipmentStatusLabels[previous]}") geri almak istediğinize emin misiniz?`
+        `Durumu bir önceki adıma ("${label(previous)}") geri almak istediğinize emin misiniz?`
       )
     ) {
       return;
@@ -102,7 +108,7 @@ export function ShipmentStatusActions({
       {nextSteps.map((step) => (
         <Button key={step} onClick={() => handleAdvance(step)} disabled={isPending}>
           {isPending && <Loader2 className="animate-spin" />}
-          {shipmentStatusLabels[step]}
+          {label(step)}
         </Button>
       ))}
       {canRevert && previous && (

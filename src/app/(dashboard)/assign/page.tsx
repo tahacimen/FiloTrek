@@ -32,8 +32,14 @@ export default async function AssignPage() {
   const availableVehicles = availableVehiclesRaw.map(toSerializableVehicle);
   const availableDrivers = availableDriversRaw.map(toSerializableDriver);
 
+  // Only ROAD shipments are assigned here (vehicle + driver). SEA/AIR are
+  // assigned from the shipment detail's "Taşıyıcı Ata" card instead (carrier +
+  // booking/AWB, no company vehicle/driver).
   const pendingShipments = allShipments.filter(
-    (s) => s.status === "PENDING" && s.supplierCompanyId === ctx.companyId
+    (s) =>
+      s.status === "PENDING" &&
+      s.supplierCompanyId === ctx.companyId &&
+      s.transportMode === "ROAD"
   );
 
   // N7: for each pending shipment, which of the available drivers has that
