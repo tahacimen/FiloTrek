@@ -206,6 +206,7 @@ model Company {
   contractRatesAsCustomer SupplierContractRate[] @relation("CustomerContractRates")
   notifications       Notification[]
   bids                ShipmentBid[]
+  bidInvitations      ShipmentBidInvitation[]
   ratingsGiven        Rating[]       @relation("CustomerRatings")
   ratingsReceived     Rating[]       @relation("SupplierRatings")
 
@@ -634,6 +635,14 @@ model Shipment {
   // kept even after a bid is accepted (which fills supplierCompanyId), so the
   // list can still badge it as a spot/marketplace job.
   fromMarketplace          Boolean        @default(false) @map("from_marketplace")
+  // Spot bidding enrichment. When a shipment is opened to the market the
+  // customer may set a deadline after which no new bids are accepted
+  // (null = open until a bid is accepted or the request is cancelled). When
+  // biddingInviteOnly is true, only suppliers in ShipmentBidInvitation may see
+  // and bid on it (targeted "davet"); false = open to every supplier.
+  biddingDeadline          DateTime?      @map("bidding_deadline")
+  biddingInviteOnly        Boolean        @default(false) @map("bidding_invite_only")
+  bidInvitations           ShipmentBidInvitation[]
   // Multimodal: ROAD (default) uses vehicle+driver assignment and the dock /
   // gate-guard flow; SEA/AIR skip those and instead carry carrierName +
   // booking/container (SEA) or airwaybill/flight (AIR). The happy-path status
@@ -797,6 +806,11 @@ model ShipmentBid {
   supplierCompany   Company           @relation(fields: [supplierCompanyId], references: [id], onDelete: Cascade)
   price             Decimal           @db.Decimal(12, 2)
   message           String?
+  // Spot bidding enrichment: the supplier's estimated transit time (days) and
+  // how long THIS price offer stays valid. Both optional and shown in the
+  // customer's comparison view.
+  transitDays       Int?              @map("transit_days")
+  validUntil        DateTime?         @map("valid_until")
   status            ShipmentBidStatus @default(PENDING)
   createdAt         DateTime          @default(now()) @map("created_at")
   updatedAt         DateTime          @updatedAt @map("updated_at")
@@ -807,6 +821,23 @@ model ShipmentBid {
   @@unique([shipmentId, supplierCompanyId])
   @@index([shipmentId])
   @@map("shipment_bids")
+}
+
+/// Targeted bid invitation ("davet"): when a customer opens a shipment to a
+/// chosen set of suppliers rather than the whole market (Shipment.
+/// biddingInviteOnly), one row per invited supplier. Only invited suppliers
+/// then see and can bid on the shipment.
+model ShipmentBidInvitation {
+  id                String   @id @default(uuid(7)) @db.Uuid
+  shipmentId        String   @map("shipment_id") @db.Uuid
+  shipment          Shipment @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
+  supplierCompanyId String   @map("supplier_company_id") @db.Uuid
+  supplierCompany   Company  @relation(fields: [supplierCompanyId], references: [id], onDelete: Cascade)
+  createdAt         DateTime @default(now()) @map("created_at")
+
+  @@unique([shipmentId, supplierCompanyId])
+  @@index([supplierCompanyId])
+  @@map("shipment_bid_invitations")
 }
 
 /**
