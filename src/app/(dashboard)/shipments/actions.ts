@@ -155,6 +155,8 @@ export type ShipmentRequestRow = {
   tonnage: string;
   distanceKm?: string;
   latestLoadingAt?: string;
+  // Spot bidding deadline (only used when opened to the market).
+  biddingDeadline?: string;
   cargoDescription?: string;
   documentTrackingNumber?: string;
   isDangerousGoods?: boolean;
@@ -227,6 +229,10 @@ export async function createShipmentRequestsAction(
         distanceKm,
         tonnage: row.tonnage,
         latestLoadingAt: row.latestLoadingAt || undefined,
+        // Only send a deadline for marketplace rows (no supplier chosen).
+        biddingDeadline: row.supplierCompanyId
+          ? undefined
+          : row.biddingDeadline || undefined,
         cargoDescription: row.cargoDescription || undefined,
         documentTrackingNumber: row.documentTrackingNumber || undefined,
         isDangerousGoods: row.isDangerousGoods ?? false,

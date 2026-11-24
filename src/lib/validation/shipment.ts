@@ -131,6 +131,12 @@ export const shipmentRequestInputSchema = withDangerousGoodsValidation(
       (v) => (typeof v === "string" && v.trim() === "" ? undefined : v),
       z.coerce.date("Geçerli bir tarih/saat girin.").optional()
     ),
+    // Spot bidding: optional "teklif toplama son tarihi" — only meaningful when
+    // the request is opened to the market (no supplierCompanyId).
+    biddingDeadline: z.preprocess(
+      (v) => (typeof v === "string" && v.trim() === "" ? undefined : v),
+      z.coerce.date("Geçerli bir tarih/saat girin.").optional()
+    ),
     // C1: set when the delivery point was picked from the customer's cari
     // list; null/omitted for a free-typed destination address.
     destinationProvince: z

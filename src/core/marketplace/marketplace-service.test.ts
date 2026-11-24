@@ -381,3 +381,42 @@ describe("marketplace-service: bid enrichment + gating", () => {
     expect(bid.supplierCompanyId).toBe(invited.companyId);
   });
 });
+
+describe("marketplace-service: open pool excludes closed/targeted", () => {
+  const companyIds: string[] = [];
+  afterAll(async () => {
+    await cleanupCompanies(companyIds);
+  });
+
+  it("hides deadline-passed and invite-only shipments from the open pool", async () => {
+    const customerCtx = await createCustomerContext();
+    const supplierCtx = await createSupplierContext();
+    companyIds.push(customerCtx.companyId, supplierCtx.companyId);
+
+    const open = await shipmentService.createShipmentRequest(customerCtx, {
+      ...baseFields,
+    });
+    const expired = await shipmentService.createShipmentRequest(customerCtx, {
+      ...baseFields,
+    });
+    const invited = await shipmentService.createShipmentRequest(customerCtx, {
+      ...baseFields,
+    });
+    await prisma.shipment.update({
+      where: { id: expired.id },
+      data: { biddingDeadline: new Date(Date.now() - 3600_000) },
+    });
+    await prisma.shipment.update({
+      where: { id: invited.id },
+      data: { biddingInviteOnly: true },
+    });
+
+    const pool = await marketplaceService.listOpenShipmentsForBidding(
+      supplierCtx
+    );
+    const ids = pool.map((s) => s.id);
+    expect(ids).toContain(open.id);
+    expect(ids).not.toContain(expired.id);
+    expect(ids).not.toContain(invited.id);
+  });
+});

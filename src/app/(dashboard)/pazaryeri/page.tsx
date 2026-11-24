@@ -7,6 +7,7 @@ import * as marketplaceService from "@/core/marketplace/marketplace-service";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { BidFormDialog } from "@/app/(dashboard)/pazaryeri/bid-form-dialog";
+import { BidCountdown } from "@/components/bid-countdown";
 
 export default async function PazaryeriPage() {
   const ctx = await requireTenantContext();
@@ -64,6 +65,14 @@ export default async function PazaryeriPage() {
                         <p className="text-muted-foreground text-xs">
                           {shipment.cargoDescription}
                         </p>
+                      )}
+                      {shipment.biddingDeadline && (
+                        <BidCountdown
+                          deadline={new Date(
+                            shipment.biddingDeadline
+                          ).toISOString()}
+                          className="mt-0.5"
+                        />
                       )}
                       {myBid && (
                         <p className="text-brand text-xs font-medium">

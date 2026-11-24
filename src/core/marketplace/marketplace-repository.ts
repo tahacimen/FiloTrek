@@ -22,6 +22,15 @@ export function listOpenShipmentsForBidding(
       supplierCompanyId: null,
       status: ShipmentStatus.PENDING,
       customerCompany: { isDemo },
+      // Exclude shipments whose bidding deadline has passed — they're no
+      // longer biddable, so they drop out of the open pool.
+      OR: [
+        { biddingDeadline: null },
+        { biddingDeadline: { gt: new Date() } },
+      ],
+      // Targeted ("davet") shipments only appear to invited suppliers (see
+      // listInvitedShipmentsForBidding); the open pool is invite-free.
+      biddingInviteOnly: false,
     },
     include: {
       ...openShipmentListInclude,

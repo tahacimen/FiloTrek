@@ -83,6 +83,7 @@ type Row = {
   flightNumber: string;
   expanded: boolean;
   latestLoadingAt: string;
+  biddingDeadline: string;
   cargoDescription: string;
   isDangerousGoods: boolean;
   adrClass: string;
@@ -122,6 +123,7 @@ function makeRow(loadingPoints: LoadingPoint[], consignees: Consignee[]): Row {
     flightNumber: "",
     expanded: false,
     latestLoadingAt: "",
+    biddingDeadline: "",
     cargoDescription: "",
     isDangerousGoods: false,
     adrClass: "",
@@ -229,6 +231,8 @@ export function RequestShipmentGrid({
       tonnage: row.tonnage.trim(),
       distanceKm: row.km.trim() || undefined,
       latestLoadingAt: row.latestLoadingAt || undefined,
+      biddingDeadline:
+        row.supplier === MARKET ? row.biddingDeadline || undefined : undefined,
       cargoDescription: row.cargoDescription.trim() || undefined,
       documentTrackingNumber: undefined,
       isDangerousGoods: row.isDangerousGoods,
@@ -555,6 +559,24 @@ export function RequestShipmentGrid({
                       }
                     />
                   </div>
+                  {isMarket && (
+                    <div className="flex flex-col gap-1.5">
+                      <Label className="text-xs">
+                        Teklif Toplama Son Tarihi
+                      </Label>
+                      <Input
+                        type="datetime-local"
+                        value={row.biddingDeadline}
+                        onChange={(e) =>
+                          patch(row.key, { biddingDeadline: e.target.value })
+                        }
+                      />
+                      <span className="text-muted-foreground text-[11px]">
+                        Pazara açtığınız bu talepte bu tarihten sonra teklif
+                        alınmaz.
+                      </span>
+                    </div>
+                  )}
                   <div className="flex flex-col gap-1.5">
                     <Label className="text-xs">Yük Açıklaması</Label>
                     <Textarea

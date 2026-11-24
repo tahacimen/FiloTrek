@@ -188,6 +188,8 @@ type CreateShipmentRecordInput = {
   supplierCompanyId: string | null;
   // True when opened to the marketplace (spot). Set by createShipmentRequest.
   fromMarketplace?: boolean;
+  // Spot bidding: optional deadline for collecting bids.
+  biddingDeadline?: Date;
   originAddress: string;
   originMapsUrl?: string;
   destinationAddress: string;
