@@ -309,3 +309,75 @@ describe("marketplace-service: acceptBid", () => {
     ).rejects.toThrow(NotFoundError);
   });
 });
+
+describe("marketplace-service: bid enrichment + gating", () => {
+  const companyIds: string[] = [];
+  afterAll(async () => {
+    await cleanupCompanies(companyIds);
+  });
+
+  async function openShipment(customerCtx: { companyId: string }) {
+    return shipmentService.createShipmentRequest(
+      customerCtx as never,
+      { ...baseFields }
+    );
+  }
+
+  it("persists transit days and validity on a bid", async () => {
+    const customerCtx = await createCustomerContext();
+    const supplierCtx = await createSupplierContext();
+    companyIds.push(customerCtx.companyId, supplierCtx.companyId);
+    const shipment = await openShipment(customerCtx);
+
+    const bid = await marketplaceService.submitBid(supplierCtx, shipment.id, {
+      price: 10000,
+      transitDays: 4,
+      validUntil: "2099-01-01",
+    });
+    expect(bid.transitDays).toBe(4);
+    expect(bid.validUntil).not.toBeNull();
+  });
+
+  it("rejects a bid after the bidding deadline", async () => {
+    const customerCtx = await createCustomerContext();
+    const supplierCtx = await createSupplierContext();
+    companyIds.push(customerCtx.companyId, supplierCtx.companyId);
+    const shipment = await openShipment(customerCtx);
+    await prisma.shipment.update({
+      where: { id: shipment.id },
+      data: { biddingDeadline: new Date(Date.now() - 3600_000) },
+    });
+
+    await expect(
+      marketplaceService.submitBid(supplierCtx, shipment.id, { price: 9000 })
+    ).rejects.toThrow();
+  });
+
+  it("invite-only: blocks uninvited suppliers, allows invited ones", async () => {
+    const customerCtx = await createCustomerContext();
+    const invited = await createSupplierContext();
+    const outsider = await createSupplierContext();
+    companyIds.push(
+      customerCtx.companyId,
+      invited.companyId,
+      outsider.companyId
+    );
+    const shipment = await openShipment(customerCtx);
+    await prisma.shipment.update({
+      where: { id: shipment.id },
+      data: { biddingInviteOnly: true },
+    });
+    await prisma.shipmentBidInvitation.create({
+      data: { shipmentId: shipment.id, supplierCompanyId: invited.companyId },
+    });
+
+    await expect(
+      marketplaceService.submitBid(outsider, shipment.id, { price: 9000 })
+    ).rejects.toThrow();
+
+    const bid = await marketplaceService.submitBid(invited, shipment.id, {
+      price: 9500,
+    });
+    expect(bid.supplierCompanyId).toBe(invited.companyId);
+  });
+});

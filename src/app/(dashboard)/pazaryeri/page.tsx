@@ -68,6 +68,8 @@ export default async function PazaryeriPage() {
                       {myBid && (
                         <p className="text-brand text-xs font-medium">
                           Teklifiniz: {myBid.price.toString()} ₺
+                          {myBid.transitDays != null &&
+                            ` · ${myBid.transitDays} gün transit`}
                         </p>
                       )}
                     </div>
@@ -75,7 +77,16 @@ export default async function PazaryeriPage() {
                       shipmentId={shipment.id}
                       existingBid={
                         myBid
-                          ? { price: myBid.price.toNumber(), message: myBid.message }
+                          ? {
+                              price: myBid.price.toNumber(),
+                              message: myBid.message,
+                              transitDays: myBid.transitDays,
+                              validUntil: myBid.validUntil
+                                ? new Date(myBid.validUntil)
+                                    .toISOString()
+                                    .slice(0, 10)
+                                : null,
+                            }
                           : undefined
                       }
                     />

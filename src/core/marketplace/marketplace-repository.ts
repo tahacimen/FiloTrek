@@ -31,6 +31,20 @@ export function listOpenShipmentsForBidding(
   });
 }
 
+/** Whether a supplier was invited to bid on a targeted ("davet") shipment. */
+export async function isSupplierInvitedToBid(
+  shipmentId: string,
+  supplierCompanyId: string
+): Promise<boolean> {
+  const invite = await prisma.shipmentBidInvitation.findUnique({
+    where: {
+      shipmentId_supplierCompanyId: { shipmentId, supplierCompanyId },
+    },
+    select: { id: true },
+  });
+  return invite != null;
+}
+
 export function getOpenShipmentById(shipmentId: string, isDemo: boolean) {
   return prisma.shipment.findFirst({
     where: {
@@ -42,11 +56,16 @@ export function getOpenShipmentById(shipmentId: string, isDemo: boolean) {
   });
 }
 
-/** One active bid per supplier per shipment — resubmitting overwrites price/message on the same row. */
+/** One active bid per supplier per shipment — resubmitting overwrites price/message/transit/validity on the same row. */
 export function upsertBid(
   shipmentId: string,
   supplierCompanyId: string,
-  data: { price: number; message?: string }
+  data: {
+    price: number;
+    message?: string;
+    transitDays?: number;
+    validUntil?: Date;
+  }
 ) {
   return prisma.shipmentBid.upsert({
     where: { shipmentId_supplierCompanyId: { shipmentId, supplierCompanyId } },

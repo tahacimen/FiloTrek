@@ -23,6 +23,8 @@ export async function submitBidAction(
     await marketplaceService.submitBid(ctx, shipmentId, {
       price: formData.get("price"),
       message: optionalFormString(formData, "message"),
+      transitDays: optionalFormString(formData, "transitDays"),
+      validUntil: optionalFormString(formData, "validUntil"),
     });
   } catch (error) {
     return { error: toActionErrorMessage(error) };

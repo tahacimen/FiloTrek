@@ -6,6 +6,7 @@ import * as marketplaceRepository from "@/core/marketplace/marketplace-repositor
 import * as companyRepository from "@/core/company/company-repository";
 import * as notificationService from "@/core/notification/notification-service";
 import { bidInputSchema } from "@/lib/validation/marketplace";
+import { biddingDeadlinePassed } from "@/lib/bid";
 import { CompanyType, ShipmentBidStatus } from "@/generated/prisma/client";
 
 export async function listOpenShipmentsForBidding(ctx: TenantContext) {
@@ -36,6 +37,19 @@ export async function submitBid(
   );
   if (!shipment) {
     throw new NotFoundError("Sefer bulunamadı veya artık pazarda değil.");
+  }
+  if (biddingDeadlinePassed(shipment.biddingDeadline)) {
+    throw new ValidationError("Bu sefer için teklif toplama süresi doldu.");
+  }
+  // Targeted ("davet") shipments only accept bids from invited suppliers.
+  if (shipment.biddingInviteOnly) {
+    const invited = await marketplaceRepository.isSupplierInvitedToBid(
+      shipmentId,
+      ctx.companyId
+    );
+    if (!invited) {
+      throw new ValidationError("Bu sefer yalnızca davet edilen tedarikçilere açık.");
+    }
   }
 
   const bid = await marketplaceRepository.upsertBid(shipmentId, ctx.companyId, input);

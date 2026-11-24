@@ -26,7 +26,12 @@ export function BidFormDialog({
   existingBid,
 }: {
   shipmentId: string;
-  existingBid?: { price: number; message: string | null };
+  existingBid?: {
+    price: number;
+    message: string | null;
+    transitDays: number | null;
+    validUntil: string | null;
+  };
 }) {
   const [open, setOpen] = useState(false);
   const action = submitBidAction.bind(null, shipmentId);
@@ -72,6 +77,29 @@ export function BidFormDialog({
               defaultValue={existingBid?.price}
             />
           </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="transitDays">Transit Süresi (gün)</Label>
+              <Input
+                id="transitDays"
+                name="transitDays"
+                type="number"
+                step="1"
+                min="1"
+                defaultValue={existingBid?.transitDays ?? ""}
+                placeholder="örn. 3"
+              />
+            </div>
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="validUntil">Teklif Geçerlilik Tarihi</Label>
+              <Input
+                id="validUntil"
+                name="validUntil"
+                type="date"
+                defaultValue={existingBid?.validUntil ?? ""}
+              />
+            </div>
+          </div>
           <div className="flex flex-col gap-2">
             <Label htmlFor="message">Mesaj (opsiyonel)</Label>
             <Textarea
@@ -79,7 +107,7 @@ export function BidFormDialog({
               name="message"
               rows={3}
               defaultValue={existingBid?.message ?? ""}
-              placeholder="Örn. müsait araç bilgisi, tahmini varış süresi"
+              placeholder="Örn. müsait araç bilgisi, ek koşullar"
             />
           </div>
           {state?.error && (
