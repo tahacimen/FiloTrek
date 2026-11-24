@@ -5,6 +5,7 @@ import {
   biddingDeadlinePassed,
   formatCountdown,
   isBiddingOpen,
+  marketplaceRequestStatus,
   msUntilDeadline,
 } from "@/lib/bid";
 
@@ -44,6 +45,33 @@ describe("bid helpers", () => {
     expect(msUntilDeadline(null, NOW)).toBeNull();
     expect(msUntilDeadline(future, NOW)).toBe(2 * 3600_000);
     expect(msUntilDeadline(past, NOW)).toBe(0);
+  });
+
+  it("marketplaceRequestStatus derives the lifecycle bucket", () => {
+    expect(
+      marketplaceRequestStatus(
+        { supplierCompanyId: "x", biddingDeadline: null, bidCount: 3 },
+        NOW
+      )
+    ).toBe("AWARDED");
+    expect(
+      marketplaceRequestStatus(
+        { supplierCompanyId: null, biddingDeadline: past, bidCount: 0 },
+        NOW
+      )
+    ).toBe("CLOSED");
+    expect(
+      marketplaceRequestStatus(
+        { supplierCompanyId: null, biddingDeadline: future, bidCount: 2 },
+        NOW
+      )
+    ).toBe("COLLECTING");
+    expect(
+      marketplaceRequestStatus(
+        { supplierCompanyId: null, biddingDeadline: null, bidCount: 0 },
+        NOW
+      )
+    ).toBe("WAITING");
   });
 
   it("formatCountdown", () => {

@@ -17,6 +17,7 @@ import {
   Contact,
   FileText,
   ReceiptText,
+  Gavel,
 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
@@ -35,6 +36,7 @@ const supplierNavItems = [
 const customerNavItems = [
   { href: "/dashboard", label: "Gösterge Paneli", icon: LayoutDashboard },
   { href: "/shipments", label: "Seferlerim", icon: Package },
+  { href: "/taleplerim", label: "Teklif Taleplerim", icon: Gavel },
   { href: "/gate-guards", label: "Nizamiye", icon: ShieldCheck },
   { href: "/warehouses", label: "Depo & Rampa", icon: Warehouse },
   { href: "/consignees", label: "Cariler", icon: Contact },

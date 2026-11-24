@@ -78,6 +78,14 @@ export async function submitBid(
   return bid;
 }
 
+/** The customer's spot/marketplace requests + their bidding process, for the "Teklif Taleplerim" overview. */
+export async function listMarketplaceRequestsForCustomer(ctx: TenantContext) {
+  requireCompanyType(ctx, CompanyType.CUSTOMER);
+  return marketplaceRepository.listMarketplaceRequestsForCustomer(
+    ctx.companyId
+  );
+}
+
 /** P2: a supplier's own bid history across every marketplace shipment they bid on, for the "Tekliflerim" report. */
 export async function listMyBids(ctx: TenantContext) {
   requireCompanyType(ctx, CompanyType.SUPPLIER);

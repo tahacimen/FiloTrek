@@ -39,6 +39,50 @@ export function msUntilDeadline(
   return Math.max(0, deadline.getTime() - now);
 }
 
+/**
+ * Where a customer's marketplace request stands in its bidding lifecycle:
+ * AWARDED (a supplier was chosen), CLOSED (deadline passed without an award),
+ * COLLECTING (open, has at least one bid) or WAITING (open, no bids yet).
+ */
+export type MarketplaceRequestStatus =
+  | "AWARDED"
+  | "COLLECTING"
+  | "WAITING"
+  | "CLOSED";
+
+export function marketplaceRequestStatus(
+  req: {
+    supplierCompanyId: string | null;
+    biddingDeadline: Date | null;
+    bidCount: number;
+  },
+  now: number = Date.now()
+): MarketplaceRequestStatus {
+  if (req.supplierCompanyId != null) return "AWARDED";
+  if (biddingDeadlinePassed(req.biddingDeadline, now)) return "CLOSED";
+  return req.bidCount > 0 ? "COLLECTING" : "WAITING";
+}
+
+export const marketplaceRequestStatusLabels: Record<
+  MarketplaceRequestStatus,
+  string
+> = {
+  AWARDED: "Karara Bağlandı",
+  COLLECTING: "Teklif Toplanıyor",
+  WAITING: "Teklif Bekleniyor",
+  CLOSED: "Süre Doldu",
+};
+
+export const marketplaceRequestStatusBadge: Record<
+  MarketplaceRequestStatus,
+  "default" | "secondary" | "outline" | "destructive" | "success" | "warning"
+> = {
+  AWARDED: "success",
+  COLLECTING: "default",
+  WAITING: "warning",
+  CLOSED: "secondary",
+};
+
 /** Compact "2g 4s 10dk" style remaining-time label from a millisecond span. */
 export function formatCountdown(ms: number): string {
   if (ms <= 0) return "Süre doldu";

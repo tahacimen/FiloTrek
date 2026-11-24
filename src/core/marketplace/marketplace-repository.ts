@@ -144,6 +144,23 @@ export function upsertBid(
   });
 }
 
+/**
+ * A customer's spot/marketplace requests with each one's bids (price + status)
+ * and the awarded supplier if any — the data behind the customer's "Teklif
+ * Taleplerim" process overview. fromMarketplace covers both open-market and
+ * targeted ("davet") requests.
+ */
+export function listMarketplaceRequestsForCustomer(companyId: string) {
+  return prisma.shipment.findMany({
+    where: { customerCompanyId: companyId, fromMarketplace: true },
+    include: {
+      supplierCompany: { select: { id: true, name: true } },
+      bids: { select: { price: true, status: true } },
+    },
+    orderBy: { createdAt: "desc" },
+  });
+}
+
 /** Scoped to a shipment the caller has already confirmed they own (see marketplace-service.ts). */
 export function listBidsForShipment(shipmentId: string) {
   return prisma.shipmentBid.findMany({
