@@ -190,6 +190,9 @@ type CreateShipmentRecordInput = {
   fromMarketplace?: boolean;
   // Spot bidding: optional deadline for collecting bids.
   biddingDeadline?: Date;
+  // Targeted "davet": only invited suppliers may bid (invitations created
+  // separately, see marketplace-repository.createBidInvitations).
+  biddingInviteOnly?: boolean;
   originAddress: string;
   originMapsUrl?: string;
   destinationAddress: string;

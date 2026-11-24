@@ -136,6 +136,8 @@ export async function createShipmentRequestAction(
  */
 export type ShipmentRequestRow = {
   supplierCompanyId?: string;
+  // Targeted "davet": suppliers invited to bid (only when no direct supplier).
+  invitedSupplierIds?: string[];
   // Multimodal: "ROAD" | "SEA" | "AIR" (string so it serializes across the
   // server-action boundary); omitted defaults to ROAD server-side.
   transportMode?: string;
@@ -212,6 +214,10 @@ export async function createShipmentRequestsAction(
 
       await shipmentService.createShipmentRequest(ctx, {
         supplierCompanyId: row.supplierCompanyId || undefined,
+        invitedSupplierIds:
+          row.invitedSupplierIds && row.invitedSupplierIds.length > 0
+            ? row.invitedSupplierIds
+            : undefined,
         transportMode: row.transportMode || undefined,
         loadType: row.loadType || undefined,
         carrierName: row.carrierName || undefined,

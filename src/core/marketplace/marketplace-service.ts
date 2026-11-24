@@ -17,6 +17,15 @@ export async function listOpenShipmentsForBidding(ctx: TenantContext) {
   );
 }
 
+/** Targeted ("davet") shipments this supplier was specifically invited to bid on. */
+export async function listInvitedShipmentsForBidding(ctx: TenantContext) {
+  requireCompanyType(ctx, CompanyType.SUPPLIER);
+  return marketplaceRepository.listInvitedShipmentsForBidding(
+    ctx.companyId,
+    ctx.isDemo
+  );
+}
+
 /**
  * A supplier bidding on a shipment the customer left unassigned (see
  * createShipmentRequest's "Pazara Aç" mode). Resubmitting updates the same

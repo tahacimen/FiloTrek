@@ -57,12 +57,14 @@ type Consignee = {
 };
 
 const MARKET = "__market";
+const INVITE = "__invite";
 const MANUAL = "__manual";
 
 type Row = {
   key: string;
   selected: boolean;
-  supplier: string; // supplierId | MARKET | ""
+  supplier: string; // supplierId | MARKET | INVITE | ""
+  invitedSupplierIds: string[];
   loadingSource: string; // warehouseId | MANUAL
   manualOrigin: string;
   manualOriginMapsUrl: string;
@@ -101,6 +103,7 @@ function makeRow(loadingPoints: LoadingPoint[], consignees: Consignee[]): Row {
     key: nextKey(),
     selected: true,
     supplier: "",
+    invitedSupplierIds: [],
     loadingSource:
       loadingPoints.find((p) => p.isDefault)?.id ??
       loadingPoints[0]?.id ??
@@ -210,8 +213,11 @@ export function RequestShipmentGrid({
       destinationAddress = row.manualDest.trim();
     }
 
+    const isDirect = row.supplier !== MARKET && row.supplier !== INVITE;
     return {
-      supplierCompanyId: row.supplier === MARKET ? undefined : row.supplier,
+      supplierCompanyId: isDirect ? row.supplier : undefined,
+      invitedSupplierIds:
+        row.supplier === INVITE ? row.invitedSupplierIds : undefined,
       transportMode: mode,
       loadType: row.loadType || undefined,
       carrierName: row.carrierName.trim() || undefined,
@@ -231,8 +237,9 @@ export function RequestShipmentGrid({
       tonnage: row.tonnage.trim(),
       distanceKm: row.km.trim() || undefined,
       latestLoadingAt: row.latestLoadingAt || undefined,
-      biddingDeadline:
-        row.supplier === MARKET ? row.biddingDeadline || undefined : undefined,
+      biddingDeadline: isDirect
+        ? undefined
+        : row.biddingDeadline || undefined,
       cargoDescription: row.cargoDescription.trim() || undefined,
       documentTrackingNumber: undefined,
       isDangerousGoods: row.isDangerousGoods,
@@ -263,6 +270,10 @@ export function RequestShipmentGrid({
     for (const row of chosen) {
       if (!row.supplier) {
         toast.error("Her satırda tedarikçi seçin (veya Pazara Aç).");
+        return;
+      }
+      if (row.supplier === INVITE && row.invitedSupplierIds.length === 0) {
+        toast.error("Davet için en az bir tedarikçi seçin.");
         return;
       }
       if (!row.tonnage.trim()) {
@@ -340,6 +351,7 @@ export function RequestShipmentGrid({
             row.consignee === MANUAL ||
             !consignees.find((c) => c.id === row.consignee);
           const isMarket = row.supplier === MARKET;
+          const isInvite = row.supplier === INVITE;
 
           return (
             <div
@@ -359,6 +371,12 @@ export function RequestShipmentGrid({
                     <Badge variant="secondary" className="gap-1">
                       <Store className="size-3" />
                       Pazaryeri
+                    </Badge>
+                  )}
+                  {isInvite && (
+                    <Badge variant="outline" className="gap-1">
+                      <Store className="size-3" />
+                      Davet ({row.invitedSupplierIds.length})
                     </Badge>
                   )}
                 </label>
@@ -387,6 +405,9 @@ export function RequestShipmentGrid({
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value={MARKET}>Pazara Aç (teklif topla)</SelectItem>
+                      <SelectItem value={INVITE}>
+                        Belirli tedarikçileri davet et
+                      </SelectItem>
                       {suppliers.map((s) => (
                         <SelectItem key={s.id} value={s.id}>
                           {s.name}
@@ -394,6 +415,39 @@ export function RequestShipmentGrid({
                       ))}
                     </SelectContent>
                   </Select>
+                  {isInvite && (
+                    <div className="mt-1 flex max-h-40 flex-col gap-1 overflow-auto rounded-md border p-2">
+                      {suppliers.length === 0 ? (
+                        <span className="text-muted-foreground text-xs">
+                          Davet edilebilecek tedarikçi yok.
+                        </span>
+                      ) : (
+                        suppliers.map((s) => {
+                          const checked = row.invitedSupplierIds.includes(s.id);
+                          return (
+                            <label
+                              key={s.id}
+                              className="flex items-center gap-2 text-xs"
+                            >
+                              <Checkbox
+                                checked={checked}
+                                onCheckedChange={(v) =>
+                                  patch(row.key, {
+                                    invitedSupplierIds: v
+                                      ? [...row.invitedSupplierIds, s.id]
+                                      : row.invitedSupplierIds.filter(
+                                          (id) => id !== s.id
+                                        ),
+                                  })
+                                }
+                              />
+                              {s.name}
+                            </label>
+                          );
+                        })
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 {/* Yükleme Noktası */}
@@ -559,7 +613,7 @@ export function RequestShipmentGrid({
                       }
                     />
                   </div>
-                  {isMarket && (
+                  {(isMarket || isInvite) && (
                     <div className="flex flex-col gap-1.5">
                       <Label className="text-xs">
                         Teklif Toplama Son Tarihi

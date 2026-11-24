@@ -420,3 +420,53 @@ describe("marketplace-service: open pool excludes closed/targeted", () => {
     expect(ids).not.toContain(invited.id);
   });
 });
+
+describe("marketplace-service: targeted invite (davet)", () => {
+  const companyIds: string[] = [];
+  afterAll(async () => {
+    await cleanupCompanies(companyIds);
+  });
+
+  it("creates an invite-only shipment visible only to invited suppliers", async () => {
+    const customerCtx = await createCustomerContext();
+    const invited = await createSupplierContext();
+    const outsider = await createSupplierContext();
+    companyIds.push(
+      customerCtx.companyId,
+      invited.companyId,
+      outsider.companyId
+    );
+
+    const shipment = await shipmentService.createShipmentRequest(customerCtx, {
+      ...baseFields,
+      invitedSupplierIds: [invited.companyId],
+    });
+
+    const row = await prisma.shipment.findUniqueOrThrow({
+      where: { id: shipment.id },
+    });
+    expect(row.biddingInviteOnly).toBe(true);
+    expect(row.supplierCompanyId).toBeNull();
+
+    const invitedList =
+      await marketplaceService.listInvitedShipmentsForBidding(invited);
+    expect(invitedList.map((s) => s.id)).toContain(shipment.id);
+
+    const outsiderInvited =
+      await marketplaceService.listInvitedShipmentsForBidding(outsider);
+    expect(outsiderInvited.map((s) => s.id)).not.toContain(shipment.id);
+
+    // Not in the open pool for anyone.
+    const pool = await marketplaceService.listOpenShipmentsForBidding(outsider);
+    expect(pool.map((s) => s.id)).not.toContain(shipment.id);
+
+    // Invited supplier can bid; the Stage-B gate blocks outsiders.
+    const bid = await marketplaceService.submitBid(invited, shipment.id, {
+      price: 8000,
+    });
+    expect(bid.supplierCompanyId).toBe(invited.companyId);
+    await expect(
+      marketplaceService.submitBid(outsider, shipment.id, { price: 7000 })
+    ).rejects.toThrow();
+  });
+});

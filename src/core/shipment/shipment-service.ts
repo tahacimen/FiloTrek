@@ -4,6 +4,7 @@ import type { TenantContext } from "@/core/shared/tenant-context";
 import type { DriverContext } from "@/core/shared/driver-context";
 import { NotFoundError, ValidationError } from "@/core/shared/errors";
 import * as shipmentRepository from "@/core/shipment/shipment-repository";
+import * as marketplaceRepository from "@/core/marketplace/marketplace-repository";
 import * as companyRepository from "@/core/company/company-repository";
 import * as driverRepository from "@/core/driver/driver-repository";
 import * as notificationService from "@/core/notification/notification-service";
@@ -217,14 +218,49 @@ export async function createShipmentRequest(
     }
   }
 
+  // invitedSupplierIds isn't a Shipment column — strip it before persisting.
+  const { invitedSupplierIds, ...shipmentInput } = input;
+  // Targeted "davet": opened to a chosen set of suppliers (only when no direct
+  // supplier was picked). Open market otherwise.
+  const inviteOnly =
+    !supplier &&
+    Array.isArray(invitedSupplierIds) &&
+    invitedSupplierIds.length > 0;
+
   const shipment = await shipmentRepository.createShipmentRecord({
-    ...input,
+    ...shipmentInput,
     customerCompanyId: ctx.companyId,
     supplierCompanyId: supplier?.id ?? null,
     // Spot/marketplace when no specific supplier was chosen ("Pazara Aç").
     fromMarketplace: !supplier,
+    biddingInviteOnly: inviteOnly,
     ...(contractPricing ?? {}),
   });
+
+  if (inviteOnly) {
+    try {
+      const invited = await marketplaceRepository.createBidInvitations(
+        shipment.id,
+        invitedSupplierIds,
+        ctx.isDemo
+      );
+      const customerCompany = await companyRepository.getCompanyById(
+        ctx.companyId
+      );
+      await Promise.all(
+        invited.map((s) =>
+          notificationService.notifyShipmentRequested({
+            supplierCompanyId: s.id,
+            customerCompanyName: customerCompany?.name ?? "Bir müşteri",
+            shipment,
+          })
+        )
+      );
+    } catch (error) {
+      console.error("Teklif daveti oluşturulamadı:", error);
+    }
+    return shipment;
+  }
 
   if (!supplier) return shipment;
 

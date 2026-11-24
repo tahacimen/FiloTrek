@@ -40,6 +40,67 @@ export function listOpenShipmentsForBidding(
   });
 }
 
+/**
+ * Create bid invitations for a targeted ("davet") shipment. Only ids that are
+ * real SUPPLIER companies in the same realm (demo/real) are invited; the rest
+ * are silently dropped. Returns the suppliers actually invited (for notifying).
+ */
+export async function createBidInvitations(
+  shipmentId: string,
+  supplierCompanyIds: string[],
+  isDemo: boolean
+): Promise<{ id: string; name: string }[]> {
+  const unique = [...new Set(supplierCompanyIds)];
+  if (unique.length === 0) return [];
+  const suppliers = await prisma.company.findMany({
+    where: {
+      id: { in: unique },
+      type: "SUPPLIER",
+      isDemo,
+    },
+    select: { id: true, name: true },
+  });
+  if (suppliers.length === 0) return [];
+  await prisma.shipmentBidInvitation.createMany({
+    data: suppliers.map((s) => ({
+      shipmentId,
+      supplierCompanyId: s.id,
+    })),
+    skipDuplicates: true,
+  });
+  return suppliers;
+}
+
+/**
+ * Open shipments a supplier was specifically invited to bid on (invite-only
+ * "davet"). Mirrors listOpenShipmentsForBidding's filters (unassigned,
+ * PENDING, realm, deadline not passed) but scoped to this supplier's
+ * invitations instead of the open pool.
+ */
+export function listInvitedShipmentsForBidding(
+  supplierCompanyId: string,
+  isDemo: boolean
+) {
+  return prisma.shipment.findMany({
+    where: {
+      supplierCompanyId: null,
+      status: ShipmentStatus.PENDING,
+      customerCompany: { isDemo },
+      biddingInviteOnly: true,
+      bidInvitations: { some: { supplierCompanyId } },
+      OR: [
+        { biddingDeadline: null },
+        { biddingDeadline: { gt: new Date() } },
+      ],
+    },
+    include: {
+      ...openShipmentListInclude,
+      bids: { where: { supplierCompanyId }, take: 1 },
+    },
+    orderBy: { createdAt: "desc" },
+  });
+}
+
 /** Whether a supplier was invited to bid on a targeted ("davet") shipment. */
 export async function isSupplierInvitedToBid(
   shipmentId: string,

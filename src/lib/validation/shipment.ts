@@ -137,6 +137,12 @@ export const shipmentRequestInputSchema = withDangerousGoodsValidation(
       (v) => (typeof v === "string" && v.trim() === "" ? undefined : v),
       z.coerce.date("Geçerli bir tarih/saat girin.").optional()
     ),
+    // Targeted "davet": when present (and no direct supplier chosen), the
+    // request is opened only to these suppliers rather than the whole market.
+    invitedSupplierIds: z
+      .array(z.uuid("Geçersiz tedarikçi seçimi."))
+      .max(50, "En fazla 50 tedarikçi davet edebilirsiniz.")
+      .optional(),
     // C1: set when the delivery point was picked from the customer's cari
     // list; null/omitted for a free-typed destination address.
     destinationProvince: z
