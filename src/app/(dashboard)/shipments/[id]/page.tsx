@@ -349,9 +349,18 @@ export default async function ShipmentDetailPage({
             id: bid.id,
             price: bid.price.toNumber(),
             message: bid.message,
+            transitDays: bid.transitDays,
+            validUntil: bid.validUntil
+              ? new Date(bid.validUntil).toISOString()
+              : null,
             supplierCompany: bid.supplierCompany,
             scorecard: bid.scorecard,
           }))}
+          biddingDeadline={
+            shipment.biddingDeadline
+              ? new Date(shipment.biddingDeadline).toISOString()
+              : null
+          }
         />
       )}
 
